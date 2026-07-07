@@ -11,6 +11,9 @@ class TestIsInternalHost(unittest.TestCase):
             "127.0.0.1", "0.0.0.0", "169.254.169.254", "10.0.0.5",
             "172.16.0.1", "172.31.255.255", "192.168.1.1",
             "::1", "fc00::1", "fd12::34", "fe80::1",
+            # Ranges a hand-rolled check tends to miss but ipaddress classifies (and the
+            # TS ipaddr.js backstop matches): carrier-grade NAT, multicast, broadcast, doc.
+            "100.64.0.1", "224.0.0.1", "255.255.255.255", "ff02::1", "2001:db8::1",
             # IPv4-mapped IPv6, dotted and hex forms (kept in parity with the TS backstop).
             "::ffff:127.0.0.1", "::ffff:169.254.169.254", "::ffff:a9fe:a9fe", "::ffff:7f00:1",
         ]

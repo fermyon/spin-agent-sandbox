@@ -7,6 +7,9 @@ test("isInternalHost blocks loopback / link-local / private / internal", () => {
     "localhost", "LOCALHOST", "", "svc.internal", "backend.spin.internal", "x.local", "y.localhost",
     "127.0.0.1", "0.0.0.0", "169.254.169.254", "10.0.0.5", "172.16.0.1", "172.31.255.255", "192.168.1.1",
     "::1", "::", "fc00::1", "fd12::34", "fe80::1",
+    // Ranges a hand-rolled check tends to miss but ipaddr.js classifies (and _egress.py
+    // matches): carrier-grade NAT, multicast, broadcast, documentation/reserved.
+    "100.64.0.1", "224.0.0.1", "255.255.255.255", "ff02::1", "2001:db8::1",
     // IPv4-mapped IPv6, in both the dotted and WHATWG-normalized hex forms. `[...]` is
     // what url.hostname actually yields for a bracketed literal.
     "::ffff:127.0.0.1", "::ffff:169.254.169.254", "::ffff:7f00:1", "[::ffff:a9fe:a9fe]",

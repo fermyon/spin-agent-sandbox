@@ -1,19 +1,13 @@
 // Outbound egress control: per-sandbox allow-list on top of the broad Spin manifest
 // bound. Pure logic (no Spin imports); `makeFetch` wraps `globalThis.fetch`.
 
-// Loopback / link-local / private IPv4, keyed on the first two octets (all that the
-// ranges below need). Kept in sync with Python's ipaddress-based check in _egress.py.
-function isInternalV4(a: number, b: number): boolean {
-  if (a === 0 || a === 127 || a === 10) return true;
-  if (a === 169 && b === 254) return true;
-  if (a === 172 && b >= 16 && b <= 31) return true;
-  if (a === 192 && b === 168) return true;
-  return false;
-}
+import * as ipaddr from "ipaddr.js";
 
 export function isInternalHost(hostname: string): boolean {
-  // Loopback / link-local / private / internal targets are never reachable, even if
-  // allow-listed — primary SSRF backstop (cloud metadata 169.254.169.254, *.spin.internal).
+  // Internal targets are never reachable, even if allow-listed — primary SSRF backstop
+  // (cloud metadata 169.254.169.254, *.spin.internal, loopback, RFC1918, ...).
+  //
+  // DNS-name checks (not IP classification) stay explicit, mirroring _egress.py.
   const h = (hostname || "").toLowerCase().replace(/\.$/, "");
   if (
     h === "" || h === "localhost" ||
@@ -21,23 +15,18 @@ export function isInternalHost(hostname: string): boolean {
   ) {
     return true;
   }
-  const v6 = h.replace(/^\[/, "").replace(/\]$/, "");
-  if (v6 === "::1" || v6 === "::" || /^f[cd][0-9a-f]*:/.test(v6) || v6.startsWith("fe80:")) return true;
 
-  // IPv4-mapped IPv6 — the WHATWG URL parser normalizes e.g. ::ffff:169.254.169.254 to
-  // ::ffff:a9fe:a9fe, so extract the embedded IPv4 and apply the v4 ranges. This keeps
-  // the backstop in sync with Python, whose ipaddress module resolves the mapped v4.
-  const mHex = v6.match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
-  if (mHex) {
-    const hi = parseInt(mHex[1], 16);
-    if (isInternalV4(hi >> 8, hi & 0xff)) return true;
+  // IP classification via ipaddr.js — the JS analogue of Python's stdlib `ipaddress`
+  // (used in _egress.py). Only a globally-routable unicast address may be reached; every
+  // special range (loopback, link-local, private, unique-local, multicast, reserved,
+  // IPv4-mapped, ...) is refused. url.hostname wraps an IPv6 literal in brackets.
+  const literal = h.replace(/^\[/, "").replace(/\]$/, "");
+  if (!ipaddr.isValid(literal)) return false; // not an IP literal -> treat as a DNS name
+  let addr = ipaddr.parse(literal);
+  if (addr instanceof ipaddr.IPv6 && addr.isIPv4MappedAddress()) {
+    addr = addr.toIPv4Address(); // classify the embedded IPv4 (e.g. ::ffff:169.254.169.254)
   }
-  const mDot = v6.match(/^::ffff:(\d{1,3})\.(\d{1,3})\.\d{1,3}\.\d{1,3}$/);
-  if (mDot && isInternalV4(Number(mDot[1]), Number(mDot[2]))) return true;
-
-  const m = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
-  if (m && isInternalV4(Number(m[1]), Number(m[2]))) return true;
-  return false;
+  return addr.range() !== "unicast";
 }
 
 export function hostAllowed(url: URL, allowedHosts: string[]): boolean {
