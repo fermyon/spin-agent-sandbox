@@ -115,12 +115,24 @@ componentize-py. `vendor/` and `.venv/` are regenerable and git-ignored.
 
 ## Testing
 
+### Unit tests (no build or server needed)
+
+The pure logic of each component — KV scoping, the egress allow-list, envelope validation,
+request shaping — lives in small dependency-free modules that are unit-tested directly:
+
+```bash
+cd ts-sandbox && npm test                              # TS logic (esbuild + node --test)
+cd py-sandbox && python3 -m unittest discover -s tests -t .   # Python logic (stdlib unittest)
+```
+
+### Integration tests (against a running server)
+
 ```bash
 spin up --listen 127.0.0.1:3007 &
 BASE=http://127.0.0.1:3007 tests/run-examples.sh          # every examples/* file, via curl+jq
 tests/gen-bodies.sh                                       # generate envelope bodies + examples.hurl
 hurl --variable base_url=http://127.0.0.1:3007 --test tests/examples.hurl   # every example, via hurl
-hurl --variable base_url=http://127.0.0.1:3007 --test tests/smoke.hurl      # hand-written fixtures
+hurl --variable base_url=http://127.0.0.1:3007 --test tests/smoke.hurl      # fixtures + security gates
 ```
 
 `examples/` is the single source of truth. Routing/input logic is shared in `tests/lib.sh`

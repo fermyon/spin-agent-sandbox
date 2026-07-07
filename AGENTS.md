@@ -67,9 +67,28 @@ spin up --build          # builds both components, then serves on :3000
 - py-sandbox: `bash build.sh` — see [py-sandbox/README.md](py-sandbox/README.md). It needs
   the sibling `../../spin-python-deps` checkout for the prebuilt `wasm32-wasi` packages.
 
+## Module layout
+
+Each component's logic is split into small, single-purpose modules so the entry file stays
+thin and the pure logic is unit-testable without the Spin runtime:
+
+- **ts-sandbox/src/**: `index.ts` (orchestration), `envelope.ts`, `kv.ts`, `egress.ts`,
+  `console.ts`, `registry.ts`, `runner.ts`, `logger.ts`.
+- **py-sandbox/**: `app.py` (Spin glue + dependency freezing), `_kv.py`, `_egress.py`,
+  `_envelope.py`. The `_`-prefixed modules import no `spin_sdk`, so they load under plain
+  `python3` for tests and freeze cleanly as part of `app`'s static import closure.
+
 ## Test
 
-Requires a running server; there is no security assertion without one.
+Unit tests cover the pure logic and need **no build or server**:
+
+```bash
+cd ts-sandbox && npm test                                     # esbuild + node --test
+cd py-sandbox && python3 -m unittest discover -s tests -t .   # stdlib unittest
+```
+
+Integration tests exercise the built components end-to-end and **require a running server**
+(the security gates in `tests/smoke.hurl` — KV isolation, egress deny — only assert there):
 
 ```bash
 spin up --listen 127.0.0.1:3007 &

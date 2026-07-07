@@ -6,7 +6,7 @@
   "scripts": {
     "build": "node build.mjs && mkdirp dist && j2w -i build/bundle.js --initLocation http://ts-sandbox.localhost -o dist/ts-sandbox.wasm",
     "build:debug": "node build.mjs && mkdirp dist && j2w -d -i build/bundle.js --initLocation http://ts-sandbox.localhost -o dist/ts-sandbox.wasm",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node test/run.mjs"
   },
   "keywords": [],
   "author": "",

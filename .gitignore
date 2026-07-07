@@ -2,6 +2,8 @@
 node_modules/
 build/
 dist/
+.build/
+__pycache__/
 # NOTE: package-lock.json is committed so `npm ci` gives reproducible builds of the
 # untrusted-code toolchain (sucrase/esbuild/zod). Do not add it back here.
 
@@ -17,3 +19,7 @@ tests/bodies/*.ts.json
 tests/examples.hurl
 
 .env
+
+
+.dash_manifest.toml
+.claude

@@ -10,9 +10,12 @@ The user `code` is exec'd in a fresh namespace. Two code shapes are supported:
     - main:    code is a plain script that prints. stdout + stderr are captured and
       returned as {stdout, stderr, error} JSON.
 
-Pre-configured dependencies are imported at module top so componentize-py freezes
-them into the component (it only bundles the static import closure of this module;
-modules reached only via runtime exec/import would otherwise be missing).
+This module is the Spin glue layer; the logic lives in focused, spin-free modules:
+    _kv.py (scoped store), _egress.py (allow-list), _envelope.py (validation + request).
+
+Pre-configured dependencies are imported at module top so componentize-py freezes them
+into the component (it only bundles the static import closure of this module; modules
+reached only via runtime exec/import would otherwise be missing).
 """
 
 # --- stdlib ---
@@ -22,13 +25,14 @@ import json
 import math  # noqa: F401  (commonly used by user code)
 import types
 import traceback
-import urllib.parse
-import re
-import ipaddress
 
 from spin_sdk.http import IncomingHandler, Request, Response, send as _orig_send
 import spin_sdk.http as _spin_http
 import spin_sdk.key_value as _key_value
+
+from _kv import ScopedStore, scoped_prefix
+from _egress import host_allowed
+from _envelope import validate_envelope, build_request_args
 
 # Originals captured so the scoped factories can reach the real store without recursion.
 _orig_kv_open_default = _key_value.open_default
@@ -76,81 +80,28 @@ for _m in (
     except Exception:  # noqa: BLE001 - resilient load; a flaky extra shouldn't kill the component
         pass
 
-_MAX_OUTPUT = 256 * 1024        # cap captured stdout/stderr
-_MAX_BODY = 8 * 1024 * 1024     # reject request bodies larger than this
-_MAX_CODE = 5 * 1024 * 1024     # reject user code larger than this
+_MAX_OUTPUT = 256 * 1024  # cap captured stdout/stderr
 
 
 # ---------------------------------------------------------------------------
-# Scoped KV. There is one shared `default` store; each sandbox sees only its own
-# keys, namespaced as f"{len(sandboxId)}:{sandboxId}:{key}".
-#
-# The length-prefixed separator is what makes the namespace UNAMBIGUOUS: a bare
-# "{sandboxId}-{key}" separator collides because "-" is also a legal sandboxId
-# character (id "a" + key "b-k" and id "a-b" + key "k" both map to "a-b-k", so a
-# sandbox whose id is a "-"-boundary prefix of another could read/write/enumerate
-# its keys). Prefixing the id with its length removes that ambiguity for any id.
-#
-# The wrapper is a faithful drop-in for the documented Spin SDK key-value API, so
-# code written against the Spin docs runs unmodified and scoped:
-#   - canonical:  `from spin_sdk import key_value; key_value.open_default()`
-#     Store methods: get / set / delete / exists / get_keys (bytes) + context manager.
-#   - we also expose get_json / set_json (matching the Spin TypeScript SDK) and a
-#     `spin_sdk.kv` alias, as conveniences some snippets use.
+# Scoped KV install. Patches the canonical spin_sdk modules so documented usage
+# (`from spin_sdk import key_value; key_value.open_default()`) is transparently scoped.
+# The scoping logic itself lives in _kv.py.
 # ---------------------------------------------------------------------------
-class _ScopedStore:
-    def __init__(self, inner, prefix):
-        self._inner = inner
-        self._p = prefix
-
-    def get(self, key):
-        return self._inner.get(self._p + key)
-
-    def set(self, key, value):
-        self._inner.set(self._p + key, value)
-
-    def delete(self, key):
-        self._inner.delete(self._p + key)
-
-    def exists(self, key):
-        return self._inner.exists(self._p + key)
-
-    def get_keys(self):
-        n = len(self._p)
-        return [k[n:] for k in self._inner.get_keys() if k.startswith(self._p)]
-
-    # Conveniences (mirror the Spin TypeScript SDK); not in the canonical Python SDK.
-    def get_json(self, key):
-        raw = self.get(key)
-        return None if raw is None else json.loads(raw)
-
-    def set_json(self, key, value):
-        self.set(key, json.dumps(value).encode())
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *a):
-        ex = getattr(self._inner, "__exit__", None)
-        return ex(*a) if ex is not None else False
-
-
 def _scoped_open_default(prefix):
     def open_default():
-        return _ScopedStore(_orig_kv_open_default(), prefix)
+        return ScopedStore(_orig_kv_open_default(), prefix)
     return open_default
 
 
 def _scoped_open(prefix):
     def open_(name="default"):
-        return _ScopedStore(_orig_kv_open(name), prefix)
+        return ScopedStore(_orig_kv_open(name), prefix)
     return open_
 
 
 def _install_scoped_kv(sandbox_id):
-    # Length-prefixed so no sandbox id can be a key-prefix of another's (see the
-    # module comment above the _ScopedStore class).
-    prefix = f"{len(sandbox_id)}:{sandbox_id}:"
+    prefix = scoped_prefix(sandbox_id)
     open_default = _scoped_open_default(prefix)
     open_ = _scoped_open(prefix)
 
@@ -166,47 +117,14 @@ def _install_scoped_kv(sandbox_id):
 
 
 # ---------------------------------------------------------------------------
-# Outbound HTTP: per-sandbox allow-list, layered on the broad Spin manifest bound.
+# Outbound HTTP: gate every egress path (the injected fetch and spin_sdk.http.send)
+# through the per-sandbox allow-list from _egress.host_allowed.
 # ---------------------------------------------------------------------------
-def _is_internal_host(host):
-    """Loopback / link-local / private / internal targets are never reachable,
-    even if explicitly allow-listed — this is the primary SSRF backstop (cloud
-    metadata at 169.254.169.254, *.spin.internal service chaining, etc.)."""
-    h = (host or "").lower().strip(".")
-    if h in ("", "localhost") or h.endswith((".localhost", ".internal", ".local")):
-        return True
-    try:
-        ip = ipaddress.ip_address(h.strip("[]"))
-    except ValueError:
-        return False
-    return (
-        ip.is_loopback or ip.is_link_local or ip.is_private
-        or ip.is_reserved or ip.is_unspecified or ip.is_multicast
-    )
-
-
-def _host_allowed(url, allowed):
-    host = (urllib.parse.urlparse(url).hostname or "").lower()
-    if _is_internal_host(host):
-        return False  # deny internal/loopback/link-local targets unconditionally
-    for raw in allowed or []:
-        pat = re.sub(r"^[a-z]+://", "", raw, flags=re.I).split("/")[0].lower()
-        if pat == "*":
-            continue  # a bare "*" in the per-request envelope must not mean allow-all
-        if pat.startswith("*."):
-            base = pat[2:]
-            if host == base or host.endswith("." + base):
-                return True
-        elif host == pat:
-            return True
-    return False
-
-
 def _install_fetch(allowed_hosts):
     allowed = list(allowed_hosts or [])
 
     def guarded_send(req):
-        if not _host_allowed(req.uri, allowed):
+        if not host_allowed(req.uri, allowed):
             raise PermissionError(
                 f"outbound host not allowed by sandbox: {req.uri} (allowedHosts={allowed})"
             )
@@ -229,7 +147,7 @@ def _install_fetch(allowed_hosts):
 
 
 # ---------------------------------------------------------------------------
-# Convenience helpers injected into the user namespace.
+# Response helpers.
 # ---------------------------------------------------------------------------
 def _plot(fig):
     """Render a plotly figure to an HTML Response (example 3.py calls plot(fig))."""
@@ -252,19 +170,7 @@ def _coerce(resp):
 
 
 def _build_request(i):
-    i = i or {}
-    method = str(i.get("method", "GET")).upper()
-    headers = {str(k).lower(): str(v) for k, v in (i.get("headers") or {}).items()}
-    q = i.get("query") or {}
-    query = urllib.parse.urlencode({str(k): v for k, v in q.items()}, doseq=True)
-    uri = "/" + (f"?{query}" if query else "")
-    body = i.get("body")
-    if isinstance(body, str):
-        body = body.encode()
-    elif isinstance(body, (dict, list)):
-        body = json.dumps(body).encode()
-    elif body is not None:
-        body = str(body).encode()
+    method, uri, headers, body = build_request_args(i)
     return Request(method, uri, headers, body)
 
 
@@ -318,26 +224,9 @@ def _run(env):
 
 
 def _parse_envelope(request):
-    if request.body is None:
-        return None, _json(400, {"error": "invalid_envelope", "message": "missing request body"})
-    if len(request.body) > _MAX_BODY:
-        return None, _json(413, {"error": "body_too_large", "message": f"request body exceeds {_MAX_BODY} bytes"})
-    try:
-        env = json.loads(request.body)
-    except Exception as e:  # noqa: BLE001
-        return None, _json(400, {"error": "invalid_json", "message": str(e)})
-    if (
-        not isinstance(env, dict)
-        or not isinstance(env.get("code"), str)
-        or not isinstance(env.get("sandboxId"), str)
-    ):
-        return None, _json(
-            400,
-            {"error": "invalid_envelope",
-             "message": "expected {code: str, sandboxId: str, input?, allowedHosts?}"},
-        )
-    if len(env["code"]) > _MAX_CODE:
-        return None, _json(413, {"error": "code_too_large", "message": f"code exceeds {_MAX_CODE} bytes"})
+    env, err = validate_envelope(request.body)
+    if err is not None:
+        return None, _json(err["status"], {"error": err["error"], "message": err["message"]})
     return env, None
 
 
