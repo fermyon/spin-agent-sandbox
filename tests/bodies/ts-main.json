@@ -1,0 +1,1 @@
+{ "code": "console.log('hi from ts'); console.log(40 + 2); console.error('oops');", "sandboxId": "smoke-ts" }

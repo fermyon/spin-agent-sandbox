@@ -1,0 +1,16 @@
+# Pure-python runtime dependencies that are NOT in the prebuilt wasm set.
+# setup-vendor.sh installs these into vendor/ (binaries stripped; the prebuilt
+# wasm32-wasi packages always win). Binary deps (numpy, regex, pydantic_core,
+# tiktoken, sqlalchemy cyext, _yaml, charset_normalizer, multidict, frozenlist,
+# wrapt, yarl) come from ../../spin-python-deps, not from here.
+plotly
+tabulate
+markdown
+jinja2
+markupsafe
+beautifulsoup4
+soupsieve
+pydantic
+idna
+typing_extensions
+annotated-types

@@ -1,0 +1,1 @@
+{ "code": "export default { async fetch(req) { return Response.json({ ok: true }); } }", "sandboxId": "smoke-ts" }

@@ -1,0 +1,1 @@
+{ "code": "import * as kv from '@spinframework/spin-kv'; export default { async fetch(){ const s = kv.openDefault(); s.setJson('n', 7); return Response.json({ n: s.getJson('n') }); } }", "sandboxId": "smoke-ts-kv" }

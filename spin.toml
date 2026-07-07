@@ -1,0 +1,48 @@
+spin_manifest_version = 2
+
+[application]
+name = "wasm-agent-sandbox"
+version = "0.1.0"
+
+[variables]
+log_level = { default = "info" }
+
+# ---------------------------------------------------------------------------
+# TypeScript / JavaScript sandbox
+# ---------------------------------------------------------------------------
+[[trigger.http]]
+route = "/ts/..."
+component = "ts-sandbox"
+
+[component.ts-sandbox]
+source = "ts-sandbox/dist/ts-sandbox.wasm"
+exclude_files = ["**/node_modules"]
+# Single shared KV store; the component scopes keys per sandbox id.
+key_value_stores = ["default"]
+# Broad dev outer bound; the component's fetch shim enforces the per-sandbox
+# allow-list on top. Tighten this per-deployment in production.
+allowed_outbound_hosts = ["https://*:*", "http://*:*"]
+[component.ts-sandbox.variables]
+log_level = "{{log_level}}"
+[component.ts-sandbox.build]
+command = "npm install && npm run build"
+workdir = "ts-sandbox"
+
+# ---------------------------------------------------------------------------
+# Python sandbox
+# ---------------------------------------------------------------------------
+[[trigger.http]]
+route = "/py/..."
+component = "py-sandbox"
+
+[component.py-sandbox]
+source = "py-sandbox/app.wasm"
+key_value_stores = ["default"]
+allowed_outbound_hosts = ["https://*:*", "http://*:*"]
+[component.py-sandbox.build]
+# build.sh sets up an isolated python3.12 venv (pinned spin-sdk + componentize-py),
+# populates vendor/ with the runtime deps, then runs componentize-py with
+# `-p . -p vendor` so every pre-bundled dependency is frozen into the component.
+command = "bash build.sh"
+workdir = "py-sandbox"
+watch = ["*.py", "requirements.txt"]
