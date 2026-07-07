@@ -24,6 +24,7 @@ import types
 import traceback
 import urllib.parse
 import re
+import ipaddress
 
 from spin_sdk.http import IncomingHandler, Request, Response, send as _orig_send
 import spin_sdk.http as _spin_http
@@ -75,12 +76,20 @@ for _m in (
     except Exception:  # noqa: BLE001 - resilient load; a flaky extra shouldn't kill the component
         pass
 
-_MAX_OUTPUT = 256 * 1024  # cap captured stdout/stderr
+_MAX_OUTPUT = 256 * 1024        # cap captured stdout/stderr
+_MAX_BODY = 8 * 1024 * 1024     # reject request bodies larger than this
+_MAX_CODE = 5 * 1024 * 1024     # reject user code larger than this
 
 
 # ---------------------------------------------------------------------------
 # Scoped KV. There is one shared `default` store; each sandbox sees only its own
-# keys, namespaced as f"{sandboxId}-{key}".
+# keys, namespaced as f"{len(sandboxId)}:{sandboxId}:{key}".
+#
+# The length-prefixed separator is what makes the namespace UNAMBIGUOUS: a bare
+# "{sandboxId}-{key}" separator collides because "-" is also a legal sandboxId
+# character (id "a" + key "b-k" and id "a-b" + key "k" both map to "a-b-k", so a
+# sandbox whose id is a "-"-boundary prefix of another could read/write/enumerate
+# its keys). Prefixing the id with its length removes that ambiguity for any id.
 #
 # The wrapper is a faithful drop-in for the documented Spin SDK key-value API, so
 # code written against the Spin docs runs unmodified and scoped:
@@ -139,7 +148,9 @@ def _scoped_open(prefix):
 
 
 def _install_scoped_kv(sandbox_id):
-    prefix = f"{sandbox_id}-"
+    # Length-prefixed so no sandbox id can be a key-prefix of another's (see the
+    # module comment above the _ScopedStore class).
+    prefix = f"{len(sandbox_id)}:{sandbox_id}:"
     open_default = _scoped_open_default(prefix)
     open_ = _scoped_open(prefix)
 
@@ -157,12 +168,31 @@ def _install_scoped_kv(sandbox_id):
 # ---------------------------------------------------------------------------
 # Outbound HTTP: per-sandbox allow-list, layered on the broad Spin manifest bound.
 # ---------------------------------------------------------------------------
+def _is_internal_host(host):
+    """Loopback / link-local / private / internal targets are never reachable,
+    even if explicitly allow-listed — this is the primary SSRF backstop (cloud
+    metadata at 169.254.169.254, *.spin.internal service chaining, etc.)."""
+    h = (host or "").lower().strip(".")
+    if h in ("", "localhost") or h.endswith((".localhost", ".internal", ".local")):
+        return True
+    try:
+        ip = ipaddress.ip_address(h.strip("[]"))
+    except ValueError:
+        return False
+    return (
+        ip.is_loopback or ip.is_link_local or ip.is_private
+        or ip.is_reserved or ip.is_unspecified or ip.is_multicast
+    )
+
+
 def _host_allowed(url, allowed):
     host = (urllib.parse.urlparse(url).hostname or "").lower()
+    if _is_internal_host(host):
+        return False  # deny internal/loopback/link-local targets unconditionally
     for raw in allowed or []:
-        if raw == "*":
-            return True
         pat = re.sub(r"^[a-z]+://", "", raw, flags=re.I).split("/")[0].lower()
+        if pat == "*":
+            continue  # a bare "*" in the per-request envelope must not mean allow-all
         if pat.startswith("*."):
             base = pat[2:]
             if host == base or host.endswith("." + base):
@@ -290,6 +320,8 @@ def _run(env):
 def _parse_envelope(request):
     if request.body is None:
         return None, _json(400, {"error": "invalid_envelope", "message": "missing request body"})
+    if len(request.body) > _MAX_BODY:
+        return None, _json(413, {"error": "body_too_large", "message": f"request body exceeds {_MAX_BODY} bytes"})
     try:
         env = json.loads(request.body)
     except Exception as e:  # noqa: BLE001
@@ -304,6 +336,8 @@ def _parse_envelope(request):
             {"error": "invalid_envelope",
              "message": "expected {code: str, sandboxId: str, input?, allowedHosts?}"},
         )
+    if len(env["code"]) > _MAX_CODE:
+        return None, _json(413, {"error": "code_too_large", "message": f"code exceeds {_MAX_CODE} bytes"})
     return env, None
 
 

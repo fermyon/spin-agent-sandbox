@@ -1,17 +1,9 @@
-# Rust
-target/
-Cargo.lock
-
 # TypeScript / Node
 node_modules/
 build/
 dist/
-package-lock.json
-
-# Nuxt
-.output/
-.nuxt/
-.data/
+# NOTE: package-lock.json is committed so `npm ci` gives reproducible builds of the
+# untrusted-code toolchain (sucrase/esbuild/zod). Do not add it back here.
 
 # Spin
 .spin/

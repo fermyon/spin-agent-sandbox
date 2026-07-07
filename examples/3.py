@@ -10,7 +10,7 @@ def handle_request(request: Request) -> Response:
         go.Bar(x=months, y=revenue, marker_color="#dbdee6")
     ])
     fig.update_layout(
-        title="Monthly Reevenue",
+        title="Monthly Revenue",
         xaxis_title="Month",
         yaxis_title="Revenue ($k)",
         template="plotly_white",

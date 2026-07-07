@@ -1,0 +1,4 @@
+{
+  "code": "from spin_sdk import key_value\nstore = key_value.open_default()\nstore.set(\"secret\", b\"TOPSECRET\")\nprint(\"wrote\")",
+  "sandboxId": "iso-a-b"
+}

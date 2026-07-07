@@ -31,11 +31,17 @@ import * as dateFns from "date-fns";
 import dayjs from "dayjs";
 import * as realKv from "@spinframework/spin-kv";
 
+const MAX_OUTPUT = 256 * 1024; // cap captured stdout/stderr (mirror py-sandbox _MAX_OUTPUT)
+const MAX_CODE = 5 * 1024 * 1024; // reject user code larger than this
+
 // ---------------------------------------------------------------------------
 // Scoped KV: one `default` store, keys namespaced as `${sandboxId}-${key}`.
 // ---------------------------------------------------------------------------
 function makeScopedKv(sandboxId: string) {
-  const prefix = `${sandboxId}-`;
+  // Length-prefixed so no sandbox id can be a key-prefix of another's: a bare
+  // `${id}-` separator collides (id "a" + key "b-k" === id "a-b" + key "k"), which
+  // would let one sandbox read/write/enumerate another's keys.
+  const prefix = `${sandboxId.length}:${sandboxId}:`;
   const wrap = (store: any) => ({
     get: (k: string) => store.get(prefix + k),
     set: (k: string, v: any) => store.set(prefix + k, v),
@@ -86,12 +92,37 @@ function makeRequire(sandboxId: string): (name: string) => any {
 // ---------------------------------------------------------------------------
 // Outbound fetch: per-sandbox allow-list on top of the broad Spin manifest bound.
 // ---------------------------------------------------------------------------
+function isInternalHost(hostname: string): boolean {
+  // Loopback / link-local / private / internal targets are never reachable, even if
+  // allow-listed — primary SSRF backstop (cloud metadata 169.254.169.254, *.spin.internal).
+  const h = (hostname || "").toLowerCase().replace(/\.$/, "");
+  if (
+    h === "" || h === "localhost" ||
+    h.endsWith(".localhost") || h.endsWith(".internal") || h.endsWith(".local")
+  ) {
+    return true;
+  }
+  const v6 = h.replace(/^\[/, "").replace(/\]$/, "");
+  if (v6 === "::1" || v6 === "::" || /^f[cd][0-9a-f]*:/.test(v6) || v6.startsWith("fe80:")) return true;
+  const m = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (m) {
+    const a = Number(m[1]);
+    const b = Number(m[2]);
+    if (a === 0 || a === 127 || a === 10) return true;
+    if (a === 169 && b === 254) return true;
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a === 192 && b === 168) return true;
+  }
+  return false;
+}
+
 function hostAllowed(url: URL, allowedHosts: string[]): boolean {
   if (!allowedHosts || allowedHosts.length === 0) return false; // default deny
+  if (isInternalHost(url.hostname)) return false; // deny internal targets unconditionally
   const host = url.host; // host[:port]
   const hostname = url.hostname;
   return allowedHosts.some((raw) => {
-    if (raw === "*") return true;
+    if (raw === "*") return false; // a bare "*" from the per-request envelope must not allow-all
     const pat = raw.replace(/^[a-z]+:\/\//i, "").replace(/\/.*$/, "");
     if (pat.startsWith("*.")) {
       const base = pat.slice(2);
@@ -103,6 +134,7 @@ function hostAllowed(url: URL, allowedHosts: string[]): boolean {
 
 function makeFetch(allowedHosts: string[]) {
   const nativeFetch = globalThis.fetch.bind(globalThis);
+  const MAX_REDIRECTS = 5;
   return async (input: any, init?: any) => {
     const raw = typeof input === "string" ? input : input && input.url ? input.url : String(input);
     let url: URL;
@@ -116,7 +148,34 @@ function makeFetch(allowedHosts: string[]) {
         `outbound host not allowed by sandbox: ${url.host} (allowedHosts: ${JSON.stringify(allowedHosts)})`
       );
     }
-    return nativeFetch(input, init);
+    // Follow redirects manually so EVERY hop is re-checked against the allow-list — an
+    // allow-listed host must not be able to 302 to an internal/metadata or otherwise
+    // disallowed target. NOTE: this relies on `redirect: "manual"` being honored by the
+    // Spin JS runtime; if it is not, fetch auto-follows and only the initial URL is
+    // validated (the internal-host block still applies). Verify with a build+test.
+    let curInput: any = input;
+    let curInit: any = { ...(init || {}), redirect: "manual" };
+    for (let hop = 0; ; hop++) {
+      const resp = await nativeFetch(curInput, curInit);
+      const location = typeof resp.headers?.get === "function" ? resp.headers.get("location") : null;
+      if (resp.status >= 300 && resp.status < 400 && location) {
+        if (hop >= MAX_REDIRECTS) throw new Error("too many redirects");
+        let next: URL;
+        try {
+          next = new URL(location, url);
+        } catch {
+          throw new Error(`invalid redirect location: ${location}`);
+        }
+        if (!hostAllowed(next, allowedHosts)) {
+          throw new Error(`redirect to disallowed host blocked: ${next.host}`);
+        }
+        url = next;
+        curInput = next.toString();
+        curInit = { ...curInit, redirect: "manual" };
+        continue;
+      }
+      return resp;
+    }
   };
 }
 
@@ -137,12 +196,32 @@ function fmt(args: any[]): string {
 }
 
 function makeConsole(out: string[], err: string[]) {
+  // Cap each stream so unbounded logging (e.g. `for(;;) console.log(...)`) can't grow
+  // the buffer until the instance OOMs. Mirrors py-sandbox's _MAX_OUTPUT.
+  const cap = (arr: string[]) => {
+    let len = 0;
+    let cut = false;
+    return (s: string) => {
+      if (cut) return;
+      const remaining = MAX_OUTPUT - len;
+      if (s.length >= remaining) {
+        if (remaining > 0) arr.push(s.slice(0, remaining));
+        arr.push("...[truncated]");
+        cut = true;
+        return;
+      }
+      len += s.length + 1; // +1 approximates the join("\n") separator
+      arr.push(s);
+    };
+  };
+  const pushOut = cap(out);
+  const pushErr = cap(err);
   return {
-    log: (...a: any[]) => out.push(fmt(a)),
-    info: (...a: any[]) => out.push(fmt(a)),
-    debug: (...a: any[]) => out.push(fmt(a)),
-    warn: (...a: any[]) => err.push(fmt(a)),
-    error: (...a: any[]) => err.push(fmt(a)),
+    log: (...a: any[]) => pushOut(fmt(a)),
+    info: (...a: any[]) => pushOut(fmt(a)),
+    debug: (...a: any[]) => pushOut(fmt(a)),
+    warn: (...a: any[]) => pushErr(fmt(a)),
+    error: (...a: any[]) => pushErr(fmt(a)),
   };
 }
 
@@ -186,6 +265,9 @@ async function handle(request: Request): Promise<Response> {
       "invalid_envelope",
       "expected { code: string, sandboxId: string, input?, allowedHosts? }"
     );
+  }
+  if (envelope.code.length > MAX_CODE) {
+    return errorResponse(413, "code_too_large", `code exceeds ${MAX_CODE} bytes`);
   }
 
   const sandboxId: string = envelope.sandboxId;

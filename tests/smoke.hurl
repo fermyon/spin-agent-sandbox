@@ -54,3 +54,73 @@ POST {{base_url}}/py/run
 content-type: application/json
 file,bodies/bad-envelope.json;
 HTTP 400
+
+# ===========================================================================
+# Security regression gates. These fail on the pre-fix code and pass after it.
+# ===========================================================================
+
+# --- KV isolation (Python): sandbox "iso-a" must NOT see sandbox "iso-a-b"'s key ---
+# Prefix-collision attack: "iso-a" + key "b-secret" once mapped to the same physical
+# key as "iso-a-b" + key "secret". Write first, then attempt the cross-sandbox read.
+POST {{base_url}}/py/run
+content-type: application/json
+file,bodies/py-kv-iso-write.json;
+HTTP 200
+[Asserts]
+jsonpath "$.stdout" contains "wrote"
+
+POST {{base_url}}/py/run
+content-type: application/json
+file,bodies/py-kv-iso-read.json;
+HTTP 200
+[Asserts]
+jsonpath "$.error" == null
+jsonpath "$.stdout" not contains "TOPSECRET"
+jsonpath "$.stdout" contains "leaked=None"
+
+# --- KV isolation (TypeScript): same cross-sandbox read must be blocked ---
+POST {{base_url}}/ts/run
+content-type: application/json
+file,bodies/ts-kv-iso-write.json;
+HTTP 200
+[Asserts]
+jsonpath "$.stdout" contains "wrote"
+
+POST {{base_url}}/ts/run
+content-type: application/json
+file,bodies/ts-kv-iso-read.json;
+HTTP 200
+[Asserts]
+jsonpath "$.error" == null
+jsonpath "$.stdout" not contains "TOPSECRET"
+jsonpath "$.stdout" contains "leaked=null"
+
+# --- Egress default-deny: no allowedHosts => outbound fetch is refused ---
+POST {{base_url}}/py/run
+content-type: application/json
+file,bodies/py-egress-deny.json;
+HTTP 200
+[Asserts]
+jsonpath "$.stdout" contains "DENIED"
+
+POST {{base_url}}/ts/run
+content-type: application/json
+file,bodies/ts-egress-deny.json;
+HTTP 200
+[Asserts]
+jsonpath "$.stdout" contains "DENIED"
+
+# --- Egress SSRF backstop: an allow-listed INTERNAL target is still refused ---
+POST {{base_url}}/py/run
+content-type: application/json
+file,bodies/py-egress-internal.json;
+HTTP 200
+[Asserts]
+jsonpath "$.stdout" contains "DENIED"
+
+POST {{base_url}}/ts/run
+content-type: application/json
+file,bodies/ts-egress-internal.json;
+HTTP 200
+[Asserts]
+jsonpath "$.stdout" contains "DENIED"

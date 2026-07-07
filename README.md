@@ -41,8 +41,11 @@ The code may be written in **either** of two shapes — both work:
   { "stdout": "…", "stderr": "…", "error": null }
   ```
 
-Syntax/runtime errors and malformed envelopes always come back as well-formed JSON; the
-component never crashes.
+Syntax/runtime errors and malformed envelopes always come back as well-formed JSON. That
+covers *exceptions*, not resource exhaustion: there is no per-request CPU/wall-clock
+timeout or memory bound, so a non-terminating or memory-hungry program can still hang or
+OOM its instance — enforce a deadline and memory limit at the host/deployment layer
+(handler errors return HTTP 500; oversized bodies/code return 413).
 
 ```bash
 # main-program (Python)
@@ -72,9 +75,10 @@ clear "module not found" error.
 
 ## Scoped key-value store
 
-There is one shared `default` store; each `sandboxId` sees only its own keys (transparently
-namespaced `"{sandboxId}-{key}"`). The wrapper is a **faithful drop-in for the documented
-Spin SDK**, so code generated from Spin docs works unmodified and scoped:
+There is one shared `default` store; each `sandboxId` sees only its own keys, namespaced
+with a length-prefixed separator (`"{len}:{sandboxId}:{key}"`) so that no sandbox id can be
+a key-prefix of another's. The wrapper is a **faithful drop-in for the documented Spin
+SDK**, so code generated from Spin docs works unmodified and scoped:
 
 ```python
 from spin_sdk import key_value           # canonical Spin Python API
@@ -91,7 +95,11 @@ store.setJson("k", { v: 1 }); store.getJson("k");
 
 The Spin manifest grants a broad outer bound (`https://*:*`) for development. On top of it,
 user code's `fetch`/`spin_sdk.http.send` is gated by the per-request `allowedHosts`
-allow-list (default-deny when empty). Tighten `allowed_outbound_hosts` per deployment.
+allow-list (default-deny when empty; the per-request list can only *narrow* egress, never
+grant all — a bare `"*"` entry is ignored). Loopback / link-local / private / `.internal`
+targets are always refused even if allow-listed (SSRF backstop), and the TS `fetch` shim
+follows redirects manually so each hop is re-checked. Tighten `allowed_outbound_hosts` per
+deployment.
 
 ## Build & run
 
