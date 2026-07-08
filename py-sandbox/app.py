@@ -48,20 +48,8 @@ import regex            # noqa: F401
 import bs4              # noqa: F401
 import soupsieve        # noqa: F401
 
-# NOTE on plotly (pinned / partially supported): plotly is installed and importable,
-# but constructing figures fails in this runtime. It combines two patterns
-# componentize-py does not handle out of the box: deep lazy imports
-# (plotly.graph_objects -> graph_objs._figure -> ... -> plotly.animation, etc., which
-# must each be eagerly imported here to be frozen in) and runtime reads of packaged
-# data files (validators/templates JSON) which need to be mounted via the component's
-# `files` directive (componentize-py exposes no readable filesystem). Both are doable
-# (a files-mount + an exhaustive eager-import walk got it to figure construction) but
-# are deferred. `plot()` below is ready for when plotly is fully wired.
-
 # --- freeze block: popular extras (best-effort; a missing one must not break load) ---
 for _m in (
-    "plotly",
-    "plotly.graph_objects",
     "yaml",
     "sqlalchemy",
     "sqlalchemy.dialects.sqlite",
@@ -149,12 +137,6 @@ def _install_fetch(allowed_hosts):
 # ---------------------------------------------------------------------------
 # Response helpers.
 # ---------------------------------------------------------------------------
-def _plot(fig):
-    """Render a plotly figure to an HTML Response (example 3.py calls plot(fig))."""
-    html = fig.to_html(full_html=True, include_plotlyjs="cdn")
-    return Response(200, {"content-type": "text/html"}, html.encode())
-
-
 def _json(status, obj):
     return Response(status, {"content-type": "application/json"}, json.dumps(obj).encode())
 
@@ -186,7 +168,7 @@ def _run(env):
     _install_scoped_kv(sandbox_id)
     fetch = _install_fetch(env.get("allowedHosts"))
 
-    ns = {"__name__": "__main__", "fetch": fetch, "plot": _plot}
+    ns = {"__name__": "__main__", "fetch": fetch}
     out, errbuf = io.StringIO(), io.StringIO()
     old_out, old_err = sys.stdout, sys.stderr
     sys.stdout, sys.stderr = out, errbuf

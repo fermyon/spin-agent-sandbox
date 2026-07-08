@@ -1,0 +1,271 @@
+// Wagent API — a Claude agent whose tool is a sandbox.
+//
+// The model is given one tool: it runs code in the fast Wasm interpreter. The
+// model writes the code, we execute it through @spinframework/sandbox and feed
+// the result back. The full transcript (reasoning + each tool call + output +
+// answer) is streamed to the UI.
+//
+// The library is extensible: when it gains a container / microVM backend, a
+// second tool can be added here the same way — the `CodeRunner` contract and the
+// wire protocol below already accommodate a heavier sandbox (startupMs / reused /
+// kept fields), which is why the interpreter simply reports them as null/false.
+
+import { Hono } from "hono";
+import { fire } from "hono/service-worker";
+import type { Context } from "hono";
+import Anthropic from "@anthropic-ai/sdk";
+import * as variables from "@spinframework/spin-variables";
+
+import type { Lang } from "../../../../sdk/src/core/index.ts";
+import { Interpreter } from "../../../../sdk/src/interpreter/index.ts";
+import { log, initLogger } from "./logger";
+
+// ---- the sandbox tool the model can call ----
+
+const INTERPRETER_TOOL: Anthropic.Tool = {
+  name: "run_in_wasm_interpreter",
+  description:
+    "Execute self-contained Python or JavaScript in a FAST, lightweight WebAssembly sandbox. " +
+    "Best for quick computations, math, data transformations, parsing, and string/JSON work. " +
+    "Pre-bundled libraries are available (Python: numpy, pydantic, regex, beautifulsoup4, " +
+    "jinja2, markdown, tabulate, tiktoken; JavaScript: lodash, zod, date-fns, dayjs, cheerio, uuid, nanoid). " +
+    "NO filesystem, NO shell, NO pip/npm install, stateless. Print results to stdout.",
+  input_schema: {
+    type: "object",
+    properties: {
+      language: { type: "string", enum: ["python", "javascript"] },
+      code: { type: "string", description: "The full program to run. Print results to stdout." },
+    },
+    required: ["language", "code"],
+  },
+};
+
+function systemPrompt(): string {
+  return (
+    "You are Wagent, an AI code executor. When the user asks you to compute something, write the code and " +
+    "RUN it in a sandbox using your tool — never compute by hand. After running, give a short, direct answer " +
+    "with the result. Keep code minimal and print the result to stdout. " +
+    "You have one sandbox: a fast Wasm interpreter. Use it for all code execution."
+  );
+}
+
+// ---- streaming wire events (one JSON object per line, NDJSON) ----
+
+type Sandbox = "wasm_interpreter";
+
+type WireEvent =
+  // An incremental slice of the model's text, streamed as it is generated.
+  // `block` groups the deltas of one text block (unique within an assistant turn).
+  | { t: "text_delta"; block: string; text: string }
+  | { t: "tool_start"; id: number; sandbox: Sandbox; language: string; code: string; genMs: number }
+  | {
+      t: "tool_end";
+      id: number;
+      /** null on the interpreter (no boot phase); a heavier backend times its startup here. */
+      startupMs: number | null;
+      execMs: number;
+      /** false on the interpreter (stateless); a heavier backend may reuse a kept sandbox. */
+      reused: boolean;
+      /** false on the interpreter (no lifecycle); a heavier backend may keep the sandbox. */
+      kept: boolean;
+      stdout: string;
+      stderr: string;
+      error: string | null;
+    }
+  | { t: "done"; messages: Anthropic.MessageParam[] }
+  | { t: "error"; error: string };
+
+type Emit = (e: WireEvent) => void;
+
+function clip(s: string, n: number): string {
+  return s.length > n ? s.slice(0, n) + "…" : s;
+}
+
+function formatToolResult(stdout: string, stderr: string, error: string | null): string {
+  const parts: string[] = [];
+  if (stdout) parts.push("stdout:\n" + stdout);
+  if (stderr) parts.push("stderr:\n" + stderr);
+  if (error) parts.push("error: " + error);
+  return parts.join("\n\n") || "(no output)";
+}
+
+// Runs the agentic loop, emitting each step as soon as it is available so the UI
+// can render turn by turn (the code the moment the model writes it, then the
+// output the moment the sandbox returns) instead of waiting for the whole
+// transcript.
+async function runAgent(prompt: string, history: Anthropic.MessageParam[], emit: Emit): Promise<void> {
+  const apiKey = variables.get("anthropic_api_key") ?? "";
+  const model = variables.get("model") ?? "claude-opus-4-8";
+  const tsUrl = variables.get("ts_interpreter_url") ?? "http://ts-sandbox.spin.internal";
+  const pyUrl = variables.get("py_interpreter_url") ?? "http://py-sandbox.spin.internal";
+
+  const anthropic = new Anthropic({ apiKey });
+  // The interpreter is two private, service-chained components — one per language —
+  // so pick the client by the language the model chose.
+  const interpreters: Record<Lang, Interpreter> = {
+    javascript: new Interpreter({ baseUrl: tsUrl }),
+    python: new Interpreter({ baseUrl: pyUrl }),
+  };
+
+  log.info(`chat: model=${model} prompt=${JSON.stringify(clip(prompt, 80))}`);
+
+  const tools: Anthropic.Tool[] = [INTERPRETER_TOOL];
+  // Continue the conversation: prior turns + the new user message.
+  const messages: Anthropic.MessageParam[] = [...history, { role: "user", content: prompt }];
+  let toolId = 0;
+
+  // Agentic loop: let the model call the sandbox tool until it produces a final answer.
+  for (let turn = 0; turn < 8; turn++) {
+    // Time the model "generating the code" — the latency of this Claude turn.
+    const genStart = Date.now();
+    // Stream the turn so the model's text appears token-by-token as it is
+    // produced, instead of arriving in one buffered blob at the end of the turn.
+    const stream = anthropic.messages.stream({
+      model,
+      max_tokens: 4096,
+      system: systemPrompt(),
+      tools,
+      messages,
+    });
+    for await (const event of stream) {
+      if (event.type === "content_block_delta" && event.delta.type === "text_delta" && event.delta.text) {
+        emit({ t: "text_delta", block: `${turn}-${event.index}`, text: event.delta.text });
+      }
+    }
+    const res = await stream.finalMessage();
+    const genMs = Date.now() - genStart;
+    log.info(
+      `generate: turn=${turn} ${genMs}ms stop=${res.stop_reason} in=${res.usage.input_tokens} out=${res.usage.output_tokens}`,
+    );
+
+    const toolResults: Anthropic.ToolResultBlockParam[] = [];
+    for (const block of res.content) {
+      // Text blocks were already streamed above as text_delta events.
+      if (block.type === "tool_use") {
+        const input = block.input as { language: Lang; code: string };
+        const id = toolId++;
+
+        // Stream the code the moment the model produces it (before it runs).
+        emit({ t: "tool_start", id, sandbox: "wasm_interpreter", language: input.language, code: input.code, genMs });
+
+        let stdout = "";
+        let stderr = "";
+        let error: string | null = null;
+        let execMs = 0;
+        try {
+          // Wasm interpreter: stateless, no startup phase.
+          const t = Date.now();
+          const r = await interpreters[input.language].run(input.code, { lang: input.language, allowedHosts: [] });
+          execMs = Date.now() - t;
+          stdout = r.stdout;
+          stderr = r.stderr;
+          error = r.error ? `${r.error.name}: ${r.error.value}` : null;
+        } catch (e: any) {
+          error = `sandbox error: ${String(e?.message ?? e)}`;
+        }
+        log.info(
+          `execute: sandbox=wasm_interpreter lang=${input.language} exec=${execMs}ms ` +
+            `${error ? "error=" + JSON.stringify(error) : "ok"} stdout=${stdout.length}b`,
+        );
+
+        // Stream the output the moment the sandbox returns.
+        emit({ t: "tool_end", id, startupMs: null, execMs, reused: false, kept: false, stdout, stderr, error });
+        toolResults.push({
+          type: "tool_result",
+          tool_use_id: block.id,
+          content: formatToolResult(stdout, stderr, error),
+          is_error: error !== null,
+        });
+      }
+    }
+
+    messages.push({ role: "assistant", content: res.content });
+    if (res.stop_reason !== "tool_use") {
+      // Return the full updated history so the next turn continues the conversation.
+      emit({ t: "done", messages });
+      return;
+    }
+    messages.push({ role: "user", content: toolResults });
+  }
+  emit({ t: "done", messages });
+}
+
+// ---- HTTP surface ----
+
+const app = new Hono();
+
+app.use(async (c: Context, next) => {
+  initLogger();
+  c.header("server", "Wagent");
+  await next();
+});
+
+app.get("/api/health", (c: Context) => {
+  return c.json({
+    ok: true,
+    model: variables.get("model") ?? "claude-opus-4-8",
+    // No container backend in this library; the UI's container toggle stays hidden.
+    containerEnabled: false,
+  });
+});
+
+// Diagnostic: proves the server flushes a streaming body incrementally.
+// `curl -N http://localhost:PORT/api/stream-test` should print a line every ~400ms.
+app.get("/api/stream-test", () => {
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      for (let i = 1; i <= 6; i++) {
+        controller.enqueue(encoder.encode(`chunk ${i} @ ${Date.now()}\n`));
+        await new Promise((r) => setTimeout(r, 400));
+      }
+      controller.close();
+    },
+  });
+  return new Response(stream, { headers: { "content-type": "text/plain", "cache-control": "no-store" } });
+});
+
+// The UI calls this on "New Chat". The interpreter is stateless (no sandbox to
+// tear down), so this is a no-op kept for UI compatibility.
+app.post("/api/reset", (c: Context) => {
+  return c.json({ destroyed: 0 });
+});
+
+app.post("/api/chat", async (c: Context) => {
+  let prompt = "";
+  let history: Anthropic.MessageParam[] = [];
+  try {
+    const body = await c.req.json<{
+      prompt?: string;
+      history?: Anthropic.MessageParam[];
+    }>();
+    prompt = (body.prompt ?? "").trim();
+    if (Array.isArray(body.history)) history = body.history;
+  } catch {
+    return c.json({ error: "expected JSON body { prompt: string }" }, 400);
+  }
+  if (!prompt) return c.json({ error: "prompt is required" }, 400);
+
+  // Stream the transcript as newline-delimited JSON: each event is flushed as
+  // soon as it is produced, so the browser renders turn by turn.
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const emit: Emit = (e) => controller.enqueue(encoder.encode(JSON.stringify(e) + "\n"));
+      try {
+        await runAgent(prompt, history, emit);
+      } catch (e: any) {
+        log.error(`agent error: ${e?.stack ?? e}`);
+        emit({ t: "error", error: String(e?.message ?? e) });
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: { "content-type": "application/x-ndjson", "cache-control": "no-store" },
+  });
+});
+
+fire(app);

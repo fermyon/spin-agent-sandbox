@@ -49,7 +49,7 @@ trap 'rm -rf "$TMP"' EXIT
 
 echo ">> merging pure-python deps into vendor (prebuilt wins; binaries stripped)"
 shopt -s nullglob
-# Package dirs and their .dist-info metadata (plotly etc. read importlib.metadata.version).
+# Package dirs and their .dist-info metadata (some packages read importlib.metadata.version).
 for entry in "$TMP"/*/; do
   name="$(basename "$entry")"
   case "$name" in

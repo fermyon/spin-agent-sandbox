@@ -3,7 +3,6 @@
 # wasm32-wasi packages always win). Binary deps (numpy, regex, pydantic_core,
 # tiktoken, sqlalchemy cyext, _yaml, charset_normalizer, multidict, frozenlist,
 # wrapt, yarl) come from spin-python-deps, not from here.
-plotly
 tabulate
 markdown
 jinja2

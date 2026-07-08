@@ -1,0 +1,89 @@
+spin_manifest_version = 2
+
+[application]
+name = "wagent"
+version = "0.1.0"
+authors = ["Spin Sandbox"]
+description = "Wagent — a Claude code executor that runs model-written code in private, service-chained Wasm interpreter components."
+
+# ---- Configuration as Spin application variables ----
+# Provide the API key at run time:  SPIN_VARIABLE_ANTHROPIC_API_KEY=sk-ant-...
+# The interpreter URLs default to local service chaining — the ts-sandbox and
+# py-sandbox components are PRIVATE (no public route), reachable only from inside
+# the app via `<component>.spin.internal`.
+[variables]
+log_level = { default = "info" }
+anthropic_api_key = { required = true, secret = true }
+model = { default = "claude-opus-4-8" }
+ts_interpreter_url = { default = "http://ts-sandbox.spin.internal" }
+py_interpreter_url = { default = "http://py-sandbox.spin.internal" }
+
+# ---- UI: Nuxt SPA served by the Spin static fileserver (public catch-all) ----
+[[trigger.http]]
+route = "/..."
+component = "ui"
+
+[component.ui]
+source = { url = "https://github.com/fermyon/spin-fileserver/releases/download/v0.3.0/spin_static_fs.wasm", digest = "sha256:ef88708817e107bf49985c7cefe4dd1f199bf26f6727819183d5c996baa3d148" }
+files = [{ source = "ui/.output/public", destination = "/" }]
+environment = { FALLBACK_PATH = "index.html" }
+[component.ui.build]
+command = "npm install && npx nuxt generate"
+workdir = "ui"
+
+# ---- API: Claude + the Wasm interpreter tool (public /api) ----
+[[trigger.http]]
+route = "/api/..."
+component = "api"
+
+[component.api]
+source = "api/dist/api.wasm"
+# Reach Claude and the two private interpreter components (service chaining).
+allowed_outbound_hosts = [
+  "https://api.anthropic.com",
+  "http://ts-sandbox.spin.internal",
+  "http://py-sandbox.spin.internal",
+]
+[component.api.variables]
+log_level = "{{ log_level }}"
+anthropic_api_key = "{{ anthropic_api_key }}"
+model = "{{ model }}"
+ts_interpreter_url = "{{ ts_interpreter_url }}"
+py_interpreter_url = "{{ py_interpreter_url }}"
+[component.api.build]
+command = "npm install && npm run build"
+workdir = "api"
+
+# ---- ts-sandbox: PRIVATE JS/TS interpreter (internal-only, no public route) ----
+# Built from this repo's ts-sandbox component; reachable only at
+# http://ts-sandbox.spin.internal from the api component.
+[[trigger.http]]
+route = { private = true }
+component = "ts-sandbox"
+
+[component.ts-sandbox]
+source = "../../ts-sandbox/dist/ts-sandbox.wasm"
+exclude_files = ["**/node_modules"]
+key_value_stores = ["default"]
+# Broad dev outer bound for user code; the component's fetch shim enforces the
+# per-request allow-list on top. Tighten per deployment.
+allowed_outbound_hosts = ["https://*:*", "http://*:*"]
+[component.ts-sandbox.variables]
+log_level = "{{ log_level }}"
+[component.ts-sandbox.build]
+command = "npm ci && npm run build"
+workdir = "../../ts-sandbox"
+
+# ---- py-sandbox: PRIVATE Python interpreter (internal-only, no public route) ----
+[[trigger.http]]
+route = { private = true }
+component = "py-sandbox"
+
+[component.py-sandbox]
+source = "../../py-sandbox/app.wasm"
+key_value_stores = ["default"]
+allowed_outbound_hosts = ["https://*:*", "http://*:*"]
+[component.py-sandbox.build]
+command = "bash build.sh"
+workdir = "../../py-sandbox"
+watch = ["*.py", "requirements.txt"]

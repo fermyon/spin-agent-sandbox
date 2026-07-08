@@ -26,5 +26,6 @@ is_main_shape() {
   ! grep -qE 'def handle_request|export default' "$1"
 }
 
-# Examples intentionally set aside (not asserted).
-is_known_fail() { case "$1" in 3.py) return 0 ;; *) return 1 ;; esac; }
+# Examples intentionally set aside (not asserted). None currently — every example is expected
+# to pass. Add cases here (e.g. `3.py) return 0 ;;`) to pin a known failure.
+is_known_fail() { case "$1" in *) return 1 ;; esac; }

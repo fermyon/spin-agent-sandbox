@@ -52,6 +52,12 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install wasm-tools (py-sandbox/build.sh strips the component with it)
+        run: |
+          VER=1.245.1
+          curl -fsSL "https://github.com/bytecodealliance/wasm-tools/releases/download/v${VER}/wasm-tools-${VER}-x86_64-linux.tar.gz" | tar -xz
+          echo "$PWD/wasm-tools-${VER}-x86_64-linux" >> "$GITHUB_PATH"
+
       - name: Build components
         # py-sandbox/build.sh finds the prebuilt wasm32-wasi packages via the
         # spin-python-deps submodule (checked out above).

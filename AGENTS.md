@@ -93,10 +93,10 @@ Integration tests exercise the built components end-to-end and **require a runni
 ```bash
 spin up --listen 127.0.0.1:3007 &
 hurl --variable base_url=http://127.0.0.1:3007 --test tests/smoke.hurl      # fixtures + security gates
-BASE=http://127.0.0.1:3007 tests/run-examples.sh                            # every examples/* file
+BASE=http://127.0.0.1:3007 tests/run-examples.sh                            # every tests/examples/* file
 ```
 
-`examples/` is the single source of truth for example coverage; `tests/lib.sh` detects
+`tests/examples/` is the single source of truth for example coverage; `tests/lib.sh` detects
 language by **content**, not extension (some example files are intentionally mislabeled).
 
 ## Scope note

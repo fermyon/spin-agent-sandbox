@@ -40,4 +40,16 @@ fi
 
 echo ">> componentize"
 .venv/bin/componentize-py -w spin-http componentize -p . -p vendor app -o app.wasm
+
+# Strip DWARF/debug + name sections. componentize-py bakes the CPython runtime and the
+# native extension modules (numpy, sqlalchemy, ...) in with debug info, which is ~half the
+# component and unused at runtime — stripping roughly halves app.wasm with no behaviour
+# change. Requires wasm-tools; skipped (with a note) if it is not installed.
+if command -v wasm-tools >/dev/null 2>&1; then
+  echo ">> stripping debug info"
+  wasm-tools strip -a app.wasm -o app.wasm.tmp && mv app.wasm.tmp app.wasm
+else
+  echo ">> NOTE: wasm-tools not found; skipping debug strip (install it to shrink app.wasm ~2x)" >&2
+fi
+
 echo ">> built app.wasm ($(du -h app.wasm | cut -f1))"

@@ -141,17 +141,17 @@ cd py-sandbox && python3 -m unittest discover -s tests -t .   # Python logic (st
 
 ```bash
 spin up --listen 127.0.0.1:3007 &
-BASE=http://127.0.0.1:3007 tests/run-examples.sh          # every examples/* file, via curl+jq
+BASE=http://127.0.0.1:3007 tests/run-examples.sh          # every tests/examples/* file, via curl+jq
 tests/gen-bodies.sh                                       # generate envelope bodies + examples.hurl
 hurl --variable base_url=http://127.0.0.1:3007 --test tests/examples.hurl   # every example, via hurl
 hurl --variable base_url=http://127.0.0.1:3007 --test tests/smoke.hurl      # fixtures + security gates
 ```
 
-`examples/` is the single source of truth. Routing/input logic is shared in `tests/lib.sh`
+`tests/examples/` is the single source of truth. Routing/input logic is shared in `tests/lib.sh`
 (language detected by **content**, not extension — some example files are intentionally
 mislabeled). Three ways to run them:
 
-- **`run-examples.sh`** — wraps each `examples/*` into an envelope on the fly with `jq` and
+- **`run-examples.sh`** — wraps each `tests/examples/*` into an envelope on the fly with `jq` and
   reports per-example pass/fail.
 - **`gen-bodies.sh` + `examples.hurl`** — hurl can't wrap raw source into the JSON envelope
   itself, so the generator emits one envelope body per example (`tests/bodies/<name>.json`)
@@ -162,8 +162,9 @@ mislabeled). Three ways to run them:
 
 ## Known limitations
 
-- **plotly is pinned** (partially supported). componentize-py freezes Python modules but exposes no
-  readable filesystem, and resolves only statically-imported modules.
-- **Component sizes** — the engines + bundled deps are large (TS ≈ 30 MB, Python ≈ 130 MB).
+- **Component sizes** — the engines + bundled deps are large (TS ≈ 30 MB, Python ≈ 85 MB
+  after the build's debug-strip; `numpy` and `sqlalchemy` dominate the Python side). The
+  Python build strips DWARF/name sections via `wasm-tools` (~2× smaller); it is skipped with
+  a note if `wasm-tools` is not installed.
 - **Trust boundary** is the Wasm component (no filesystem; egress gated by Spin), not the
   JS scope / Python namespace.
