@@ -14,8 +14,6 @@ import * as variables from "@spinframework/spin-variables";
 import { Interpreter, type Language } from "@spinframework/sandbox/interpreter";
 import { log, initLogger } from "./logger";
 
-// ---- the sandbox tool the model can call ----
-
 const INTERPRETER_TOOL: Anthropic.Tool = {
   name: "run_in_wasm_interpreter",
   description:
@@ -42,8 +40,6 @@ function systemPrompt(): string {
     "You have one sandbox: a fast Wasm interpreter. Use it for all code execution."
   );
 }
-
-// ---- streaming wire events (one JSON object per line, NDJSON) ----
 
 type WireEvent =
   // An incremental slice of the model's text, streamed as it is generated.
@@ -143,7 +139,7 @@ async function runAgent(prompt: string, history: Anthropic.MessageParam[], emit:
         }
         log.info(
           `execute: sandbox=wasm_interpreter lang=${input.language} exec=${execMs}ms ` +
-            `${error ? "error=" + JSON.stringify(error) : "ok"} stdout=${stdout.length}b`,
+          `${error ? "error=" + JSON.stringify(error) : "ok"} stdout=${stdout.length}b`,
         );
 
         // Stream the output the moment the sandbox returns.
@@ -168,8 +164,6 @@ async function runAgent(prompt: string, history: Anthropic.MessageParam[], emit:
   emit({ t: "done", messages });
 }
 
-// ---- HTTP surface ----
-
 const app = new Hono();
 
 app.use(async (c: Context, next) => {
@@ -180,22 +174,6 @@ app.use(async (c: Context, next) => {
 
 app.get("/api/health", (c: Context) => {
   return c.json({ ok: true, model: variables.get("model") ?? "claude-opus-4-8" });
-});
-
-// Diagnostic: proves the server flushes a streaming body incrementally.
-// `curl -N http://localhost:PORT/api/stream-test` should print a line every ~400ms.
-app.get("/api/stream-test", () => {
-  const encoder = new TextEncoder();
-  const stream = new ReadableStream<Uint8Array>({
-    async start(controller) {
-      for (let i = 1; i <= 6; i++) {
-        controller.enqueue(encoder.encode(`chunk ${i} @ ${Date.now()}\n`));
-        await new Promise((r) => setTimeout(r, 400));
-      }
-      controller.close();
-    },
-  });
-  return new Response(stream, { headers: { "content-type": "text/plain", "cache-control": "no-store" } });
 });
 
 app.post("/api/chat", async (c: Context) => {
