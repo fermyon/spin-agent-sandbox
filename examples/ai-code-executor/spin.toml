@@ -1,10 +1,10 @@
 spin_manifest_version = 2
 
 [application]
-name = "wagent"
+name = "ai-code-executor"
 version = "0.1.0"
 authors = ["Spin Sandbox"]
-description = "Wagent — a Claude code executor that runs model-written code in private, service-chained Wasm interpreter components."
+description = "AI Code Executor — a Claude code executor that runs model-written code in private, service-chained Wasm interpreter components."
 
 # ---- Configuration as Spin application variables ----
 # Provide the API key at run time:  SPIN_VARIABLE_ANTHROPIC_API_KEY=sk-ant-...

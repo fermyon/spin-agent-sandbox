@@ -46,7 +46,7 @@ validation failures.
   await py.run(code, { lang: "python" });      // -> py-sandbox
   ```
 
-  See [`examples/wagent`](../examples/wagent). (A single combined app that routes both `/ts`
+  See [`examples/ai-code-executor`](../examples/ai-code-executor). (A single combined app that routes both `/ts`
   and `/py` by path also works — then one `baseUrl` at the app suffices.)
 
 ## Extending it

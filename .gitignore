@@ -5,7 +5,7 @@ dist/
 .build/
 __pycache__/
 
-# Nuxt (examples/wagent/ui)
+# Nuxt (examples/ai-code-executor/ui)
 .nuxt/
 .output/
 # NOTE: package-lock.json is committed so `npm ci` gives reproducible builds of the

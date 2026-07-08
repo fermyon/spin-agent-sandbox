@@ -1,4 +1,4 @@
-# Wagent — an AI code executor where the sandbox is a tool
+# AI Code Executor — an agent whose tool is a sandbox
 
 A Spin application: **Claude writes code and runs it in the fast Wasm interpreter**,
 executes it through [`@spinframework/sandbox`](../../sdk), and streams the transcript
@@ -18,6 +18,27 @@ the `api` component via local **service chaining** (`<component>.spin.internal`)
 depends on the sandbox client from this repo ([`@spinframework/sandbox`](../../sdk), a local
 `file:` dependency) and holds one `Interpreter` per language, each pointed at its component's
 internal URL, calling `Interpreter.run()`.
+
+## How it works
+
+This is the **code-interpreter agent** pattern. Instead of answering from memory — and
+risking a wrong number — the model *writes a program, runs it, reads the real output, and
+only then answers*, looping until the result is right.
+
+1. **You ask** a question in the chat.
+2. **Claude writes code** — it picks Python or JavaScript and produces a small program,
+   streamed into the UI as it is typed.
+3. **A private Wasm sandbox runs it** — the code executes in an isolated WebAssembly
+   interpreter (`ts-sandbox` / `py-sandbox`) with no filesystem, no shell, and default-deny
+   egress. Because model-written code is untrusted, the sandbox is a **private component**
+   reached only over internal service chaining — never a public endpoint.
+4. **The output loops back** — stdout / stderr / errors return to Claude, which fixes and
+   re-runs or, once satisfied, writes the final answer.
+
+Two properties make it trustworthy: **correctness** (a real interpreter computes the answer,
+the model doesn't guess) and **isolation** (untrusted code can't touch the host — see the
+topology above). The whole loop streams live, so each step appears as it happens; the UI's
+**How it works** button shows the same flow as a diagram.
 
 ## The tool
 

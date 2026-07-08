@@ -1,7 +1,7 @@
 {
   "name": "api",
   "version": "1.0.0",
-  "description": "Wagent API — Claude tool-use loop over the Wasm interpreter sandbox",
+  "description": "AI Code Executor API — Claude tool-use loop over the Wasm interpreter sandbox",
   "main": "index.js",
   "type": "module",
   "scripts": {

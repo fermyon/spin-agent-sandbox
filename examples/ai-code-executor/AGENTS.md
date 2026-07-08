@@ -1,4 +1,4 @@
-# AGENTS.md — Wagent example
+# AGENTS.md — AI Code Executor example
 
 A Spin app that puts a Claude tool-use loop in front of the Wasm code sandbox. See
 [README.md](README.md) for the full picture; this covers the layout and the invariants.

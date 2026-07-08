@@ -18,7 +18,7 @@ description = "{{project-description}}"
 # NOTE: /ts and /py are PUBLIC — this standalone app is a local dev/test harness. In
 # production run the sandbox as a PRIVATE component (`route = { private = true }`) inside a
 # consuming app and reach it via service chaining through @spinframework/sandbox — see the
-# `sandbox-ts` / `sandbox-py` templates' `spin add` mode and examples/wagent.
+# `sandbox-ts` / `sandbox-py` templates' `spin add` mode and examples/ai-code-executor.
 [[trigger.http]]
 route = "/ts/..."
 component = "ts-sandbox"

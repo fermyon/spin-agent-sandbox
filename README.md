@@ -22,7 +22,7 @@ Two components:
 > this standalone app — convenient for local dev/testing. In production the sandbox is meant
 > to run as a **private component** (`route = { private = true }`) inside a consuming app and
 > be reached only via local service chaining through [`@spinframework/sandbox`](sdk) — see
-> [examples/wagent](examples/wagent).
+> [examples/ai-code-executor](examples/ai-code-executor).
 
 ## Request / response contract
 

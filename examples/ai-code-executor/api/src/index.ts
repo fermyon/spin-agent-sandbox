@@ -1,4 +1,4 @@
-// Wagent API — a Claude agent whose tool is a sandbox.
+// AI Code Executor API — a Claude agent whose tool is a sandbox.
 //
 // The model is given one tool: it runs code in the fast Wasm interpreter. The
 // model writes the code, we execute it through @spinframework/sandbox and feed
@@ -36,7 +36,7 @@ const INTERPRETER_TOOL: Anthropic.Tool = {
 
 function systemPrompt(): string {
   return (
-    "You are Wagent, an AI code executor. When the user asks you to compute something, write the code and " +
+    "You are an AI code executor. When the user asks you to compute something, write the code and " +
     "RUN it in a sandbox using your tool — never compute by hand. After running, give a short, direct answer " +
     "with the result. Keep code minimal and print the result to stdout. " +
     "You have one sandbox: a fast Wasm interpreter. Use it for all code execution."
@@ -174,7 +174,7 @@ const app = new Hono();
 
 app.use(async (c: Context, next) => {
   initLogger();
-  c.header("server", "Wagent");
+  c.header("server", "ai-code-executor");
   await next();
 });
 

@@ -7,7 +7,7 @@
 // In the intended deployment the interpreter is TWO PRIVATE components — ts-sandbox and
 // py-sandbox — reached via service chaining. `.spin.internal` resolves to a COMPONENT id,
 // so each language has its own host: use one Interpreter per language, each `baseUrl`
-// pointed at its component (see examples/wagent/api/src/index.ts):
+// pointed at its component (see examples/ai-code-executor/api/src/index.ts):
 //
 //   const js = new Interpreter({ baseUrl: "http://ts-sandbox.spin.internal" });
 //   const py = new Interpreter({ baseUrl: "http://py-sandbox.spin.internal" });
