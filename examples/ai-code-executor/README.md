@@ -19,11 +19,13 @@ depends on the sandbox client from this repo ([`@spinframework/sandbox`](../../s
 `file:` dependency) and holds one `Interpreter` per language, each pointed at its component's
 internal URL, calling `Interpreter.run()`.
 
-## How it works
+## How it works — the CodeAct pattern
 
-This is the **code-interpreter agent** pattern. Instead of answering from memory — and
-risking a wrong number — the model *writes a program, runs it, reads the real output, and
-only then answers*, looping until the result is right.
+This example is a concrete **CodeAct** agent: the model's *action is code it writes and runs*,
+not a call into a fixed tool set. It reasons, emits a program, runs it in a sandbox, observes
+the real output, and repeats until it can answer — the standard agentic loop with dynamic code
+execution as the action. (Background:
+[Why: CodeAct](../../README.md#why-codeact).)
 
 1. **You ask** a question in the chat.
 2. **Claude writes code** — it picks Python or JavaScript and produces a small program,
@@ -32,13 +34,15 @@ only then answers*, looping until the result is right.
    interpreter (`ts-sandbox` / `py-sandbox`) with no filesystem, no shell, and default-deny
    egress. Because model-written code is untrusted, the sandbox is a **private component**
    reached only over internal service chaining — never a public endpoint.
-4. **The output loops back** — stdout / stderr / errors return to Claude, which fixes and
-   re-runs or, once satisfied, writes the final answer.
+4. **The output loops back** — stdout / stderr / errors return to Claude (the *observation*),
+   which fixes-and-re-runs or, once satisfied, writes the final answer.
 
-Two properties make it trustworthy: **correctness** (a real interpreter computes the answer,
-the model doesn't guess) and **isolation** (untrusted code can't touch the host — see the
-topology above). The whole loop streams live, so each step appears as it happens; the UI's
-**How it works** button shows the same flow as a diagram.
+Why let the model write code instead of only calling fixed tools? An **open-ended action
+space** (anything the sandbox can run, not just pre-bundled tools), **fewer model round-trips**
+(control flow lives in one program, not N tool calls), and **verifiable, deterministic**
+results (a real interpreter computes the answer; the model doesn't guess). The trade-off —
+untrusted generated code — is contained by the **isolated, private sandbox**. The whole loop
+streams live; the UI's **How it works** button shows the same flow as a diagram.
 
 ## The tool
 

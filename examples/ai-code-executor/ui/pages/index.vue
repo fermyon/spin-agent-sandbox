@@ -64,10 +64,15 @@
         <button class="help-close" @click="showHelp = false" aria-label="Close">×</button>
         <h2 class="help-title">How it works</h2>
         <p class="help-lede">
-          Instead of answering from memory — and risking a wrong number — the model
-          <strong>writes a program, runs it in a sandbox, reads the real output, and only
-          then answers</strong>. It loops until the result is right. This is the
-          <em>code-interpreter agent</em> pattern.
+          This is a chat assistant that solves tasks by writing and running code. Ask it to
+          compute, parse, or transform something — it writes a short program, runs it, and
+          answers from the real output, fixing and re-running if the code fails.
+        </p>
+        <p class="help-lede">
+          That code is written by the model, so it is untrusted. Each run executes in a
+          <strong>WebAssembly sandbox</strong>: isolated from the host — no filesystem, and no
+          network unless a request allows it — and near-instant to start (milliseconds, no
+          container cold-start), so running fresh code on every request stays cheap.
         </p>
 
         <div class="diagram">
@@ -117,20 +122,26 @@
             <div><strong>You ask.</strong> A question goes into the chat.</div>
           </li>
           <li><span class="n">2</span>
-            <div><strong>Claude writes code.</strong> It picks Python or JavaScript and produces a small program — streamed into the UI as it is typed.</div>
+            <div><strong>Claude writes code.</strong> It picks Python or JavaScript and produces a small program.</div>
           </li>
           <li><span class="n">3</span>
-            <div><strong>A private Wasm sandbox runs it.</strong> The code executes in an isolated WebAssembly interpreter — no filesystem, no shell, default-deny network. Because model-written code is untrusted, the sandbox is a <strong>private component</strong> reached only over internal service chaining, never exposed publicly.</div>
+            <div><strong>A private Wasm sandbox runs it.</strong> The code executes in an isolated WebAssembly interpreter — no filesystem, no shell, default-deny network.</div>
           </li>
           <li><span class="n">4</span>
             <div><strong>The output loops back.</strong> stdout, stderr and errors return to Claude, which fixes-and-reruns or, once satisfied, writes the final answer.</div>
           </li>
         </ol>
 
-        <p class="help-foot">
-          Two properties make this trustworthy: <strong>correctness</strong> — a real
-          interpreter computes the result, the model doesn't guess — and
-          <strong>isolation</strong> — untrusted code can't reach the host or the network.
+        <p class="help-why-title">Why write code instead of only calling fixed tools?</p>
+        <ul class="help-why">
+          <li><strong>Open-ended</strong> — anything the sandbox can run, not just the tools that were pre-bundled.</li>
+          <li><strong>Fewer round-trips</strong> — one program with real control flow, instead of a model turn per tool call.</li>
+          <li><strong>Verifiable</strong> — a real interpreter computes the result; the model doesn't guess.</li>
+        </ul>
+        <p class="help-refs">
+          Further reading:
+          <a href="https://arxiv.org/pdf/2210.03629" target="_blank" rel="noopener">ReAct</a> (ICLR 2023) ·
+          <a href="https://machinelearning.apple.com/research/codeact" target="_blank" rel="noopener">CodeAct</a> (Apple, 2024).
         </p>
       </div>
     </div>
@@ -521,5 +532,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sa
 .help-steps { list-style: none; margin: 0 0 20px; padding: 0; display: flex; flex-direction: column; gap: 14px; }
 .help-steps li { display: flex; gap: 12px; align-items: flex-start; font-size: 14.5px; line-height: 1.55; color: #2a2f36; }
 .help-steps .n { flex: 0 0 auto; width: 24px; height: 24px; margin-top: 1px; border-radius: 999px; background: #eef4ff; color: #1d4ed8; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
-.help-foot { margin: 0; padding: 14px 16px; background: #f7f8fa; border-radius: 10px; color: #4a4f57; font-size: 13.5px; line-height: 1.55; }
+.help-why-title { margin: 0 0 10px; font-size: 14px; font-weight: 650; color: #2a2f36; }
+.help-why { margin: 0 0 18px; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.help-why li { position: relative; padding-left: 18px; font-size: 14px; line-height: 1.5; color: #2a2f36; }
+.help-why li::before { content: "→"; position: absolute; left: 0; color: #1d4ed8; }
+.help-refs { margin: 14px 0 0; font-size: 12.5px; color: #8a8f98; }
+.help-refs a { color: #1d4ed8; text-decoration: none; }
+.help-refs a:hover { text-decoration: underline; }
 </style>

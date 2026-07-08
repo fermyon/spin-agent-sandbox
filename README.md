@@ -1,30 +1,62 @@
-# Wasm code sandbox (Spin)
+# Sandboxes for AI-generated code
 
-A Spin application that executes **dynamic, AI-generated JS/TS and Python code** received
-over HTTP, inside WebAssembly. Each request carries the code to run; popular dependencies
-are pre-bundled, a per-sandbox KV store is available, and outbound HTTP is allow-listed.
+Fast, isolated **WebAssembly sandboxes** for running untrusted, AI-generated **JS/TS and
+Python** — secure by default, quick to start, built on [Spin](https://spinframework.dev).
 
-Two components:
+This repository contains three composable layers: the sandbox **components**, a
+**client library** that turns a sandbox into an agent tool, and **examples** that wire them
+together.
+
+## What's in this repo
+
+1. **Sandboxes** — [`ts-sandbox/`](ts-sandbox) and [`py-sandbox/`](py-sandbox): Spin
+   WebAssembly components that execute untrusted JS/TS and Python received over HTTP. Popular
+   dependencies are pre-bundled, each run gets a scoped KV store, and outbound HTTP is
+   possible.
+2. **A client library** — [`@spinframework/sandbox`](sdk): a small TypeScript client that
+   consumes a sandbox and exposes it as an **agent tool** behind a portable `CodeRunner`
+   contract.
+3. **Examples** — [`examples/`](examples): complete agents built on the layers above.
+   [`ai-code-executor`](examples/ai-code-executor) is a Claude **CodeAct** agent whose only
+   tool is a sandbox, streaming its generate → run → observe loop to a chat UI.
+
+## Why: CodeAct
+
+A powerful way to use a model is **CodeAct**: rather than only calling a fixed set of tools,
+let its action be *code it writes and runs* — generate a program, run it, read the output,
+repeat.
+
+CodeAct's hard requirement is an **untrusted code sandbox** — which is what this repo is:
+a fast, isolated WebAssembly interpreter for model-generated JS/TS and Python.
+[examples/ai-code-executor](examples/ai-code-executor) is a complete CodeAct agent built on it.
+
+> **References:** [ReAct](https://arxiv.org/pdf/2210.03629) (ICLR 2023) ·
+> [CodeAct](https://machinelearning.apple.com/research/codeact) (Apple, 2024 —
+> [arXiv](https://arxiv.org/pdf/2402.01030)).
+
+## Quick start
+
+The Python component's prebuilt `wasm32-wasi` packages come from the `spin-python-deps` git
+submodule, so clone with `--recursive` (or initialise it after cloning):
+
+```bash
+git submodule update --init      # populates py-sandbox/spin-python-deps
+spin up --build                  # builds both components, then serves on :3000
+# or build the Python component alone:
+cd py-sandbox && bash build.sh
+```
+
+## The sandbox HTTP API
+
+Each sandbox is a Spin component that accepts code over HTTP, runs it, and returns the
+result. `ts-sandbox` serves `POST /ts/…`; `py-sandbox` serves `POST /py/…`.
 
 | Component    | Route        | Engine                                                |
 | ------------ | ------------ | ----------------------------------------------------- |
 | `ts-sandbox` | `POST /ts/…` | `j2w` → componentize-js (StarlingMonkey/SpiderMonkey) |
 | `py-sandbox` | `POST /py/…` | componentize-py (CPython 3.12 → wasm32-wasi)          |
 
-> **Scaffold or extend an app:** this repo ships Spin templates that pull the sandbox
-> components as prebuilt Wasm from GitHub releases. `spin templates install --dir .
-> --upgrade`, then `spin new -t sandbox-app my-app` (both), or `spin new`/`spin add -t
-> sandbox-ts` / `sandbox-py` for a single component. The release workflow
-> ([.github/workflows/release.yml](.github/workflows/release.yml)) builds and publishes the
-> components. See [templates/README.md](templates/README.md).
-
-> **Deployment model:** the `POST /ts/…` and `/py/…` routes shown below are **public** in
-> this standalone app — convenient for local dev/testing. In production the sandbox is meant
-> to run as a **private component** (`route = { private = true }`) inside a consuming app and
-> be reached only via local service chaining through [`@spinframework/sandbox`](sdk) — see
-> [examples/ai-code-executor](examples/ai-code-executor).
-
-## Request / response contract
+### Request / response contract
 
 POST a strict JSON **envelope** to `/ts/...` or `/py/...`:
 
@@ -42,7 +74,7 @@ POST a strict JSON **envelope** to `/ts/...` or `/py/...`:
 }
 ```
 
-The code may be written in **either** of two shapes — both work:
+The code may be written in **either** of two shapes:
 
 - **HTTP handler** — Python defines `def handle_request(request) -> Response`; TS exports
   `default { async fetch(request) { … } }`. A synthetic request is built from `input` and
@@ -54,11 +86,7 @@ The code may be written in **either** of two shapes — both work:
   { "stdout": "…", "stderr": "…", "error": null }
   ```
 
-Syntax/runtime errors and malformed envelopes always come back as well-formed JSON. That
-covers *exceptions*, not resource exhaustion: there is no per-request CPU/wall-clock
-timeout or memory bound, so a non-terminating or memory-hungry program can still hang or
-OOM its instance — enforce a deadline and memory limit at the host/deployment layer
-(handler errors return HTTP 500; oversized bodies/code return 413).
+Syntax/runtime errors and malformed envelopes should always come back as well-formed JSON.
 
 ```bash
 # main-program (Python)
@@ -72,10 +100,10 @@ curl -s localhost:3000/ts/run -d '{
 # hi ada
 ```
 
-## Pre-installed dependencies
+### Pre-installed dependencies
 
 User code `import`s these directly (no install step). Anything outside the set raises a
-clear "module not found" error.
+ "module not found" error.
 
 - **TypeScript/JS**: `cheerio`, `node-html-parser`, `zod`, `js-yaml`, `nanoid`, `ulidx`,
   `uuid`, `lodash`, `date-fns`, `dayjs`, `@spinframework/spin-kv`. User TS is transpiled at
@@ -86,12 +114,10 @@ clear "module not found" error.
   Binary packages come prebuilt (`wasm32-wasi`) from the `py-sandbox/spin-python-deps`
   submodule; pure-python packages are pip-installed into `py-sandbox/vendor/`.
 
-## Scoped key-value store
+### Scoped key-value store
 
 There is one shared `default` store; each `sandboxId` sees only its own keys, namespaced
-with a length-prefixed separator (`"{len}:{sandboxId}:{key}"`) so that no sandbox id can be
-a key-prefix of another's. The wrapper is a **faithful drop-in for the documented Spin
-SDK**, so code generated from Spin docs works unmodified and scoped:
+with (`"{len}:{sandboxId}:{key}"`). The wrappers for both TS/JS and Python should be compatible with the Spin KV API:
 
 ```python
 from spin_sdk import key_value           # canonical Spin Python API
@@ -104,32 +130,38 @@ const store = kv.openDefault();
 store.setJson("k", { v: 1 }); store.getJson("k");
 ```
 
-## Outbound HTTP
+### Outbound HTTP
 
 The Spin manifest grants a broad outer bound (`https://*:*`) for development. On top of it,
 user code's `fetch`/`spin_sdk.http.send` is gated by the per-request `allowedHosts`
 allow-list (default-deny when empty; the per-request list can only *narrow* egress, never
-grant all — a bare `"*"` entry is ignored). Loopback / link-local / private / `.internal`
-targets are always refused even if allow-listed (SSRF backstop), and the TS `fetch` shim
-follows redirects manually so each hop is re-checked. Tighten `allowed_outbound_hosts` per
-deployment.
+expand compared to what the sandbox component allows).
 
-## Build & run
+## Deployment model
 
-The Python component's prebuilt `wasm32-wasi` packages come from the `spin-python-deps` git
-submodule, so clone with `--recursive` (or initialise it after cloning):
+The `POST /ts/…` and `/py/…` routes are **public** in the example — convenient for
+local dev and testing. In production a sandbox runs **untrusted, model-generated code**, so it
+should never be a public endpoint: run it as a **private component**
+(`route = { private = true }`) inside your app and reach it only over local **service
+chaining**, or through the SDK [`@spinframework/sandbox`](sdk).
+
+[`examples/ai-code-executor`](examples/ai-code-executor) shows the full private-component
+wiring end to end.
+
+## Scaffolding new apps
+
+Spin templates pull the sandbox components as prebuilt Wasm from GitHub releases, so you can
+add them to an app without building from source:
 
 ```bash
-git submodule update --init      # populates py-sandbox/spin-python-deps
-spin up --build                  # builds both components, then serves on :3000
-# or build the Python component alone:
-cd py-sandbox && bash build.sh
+spin templates install --dir . --upgrade
+spin new -t sandbox-app my-app     # a new app wired with both sandboxes
+spin add -t sandbox-ts             # or add a single sandbox to an existing app
+spin add -t sandbox-py
 ```
 
-The Python build (`py-sandbox/build.sh`) creates an isolated python3.12 venv with pinned
-`spin-sdk`/`componentize-py`, populates `vendor/` via `setup-vendor.sh` (copying the prebuilt
-packages from the submodule), and runs componentize-py. `vendor/` and `.venv/` are
-regenerable and git-ignored.
+The release workflow ([.github/workflows/release.yml](.github/workflows/release.yml)) builds
+and publishes the components. See [templates/README.md](templates/README.md).
 
 ## Testing
 
@@ -166,11 +198,15 @@ mislabeled). Three ways to run them:
 - **`smoke.hurl`** — a few hand-written fixtures (`tests/bodies/{ts,py}-*.json`,
   `bad-envelope.json`) for the code shapes, scoped-KV APIs, and the 400-on-bad-envelope case.
 
-## Known limitations
+## Limitations
 
-- **Component sizes** — the engines + bundled deps are large (TS ≈ 30 MB, Python ≈ 85 MB
-  after the build's debug-strip; `numpy` and `sqlalchemy` dominate the Python side). The
-  Python build strips DWARF/name sections via `wasm-tools` (~2× smaller); it is skipped with
-  a note if `wasm-tools` is not installed.
-- **Trust boundary** is the Wasm component (no filesystem; egress gated by Spin), not the
-  JS scope / Python namespace.
+- **No time or memory limits** — the sandbox enforces no additional per-request CPU, wall-clock, or
+  memory limits for the code executed by the sandbox, beyond what Spin already enforces. The only built-in caps are on
+  size: code over 5 MB (or an oversized request body) is rejected with `413`, and captured
+  stdout/stderr is truncated at 256 KB.
+- **Stateless** — each `run` is single-shot and buffered: no streaming output, no execution
+  context between runs. Only the scoped KV store persists.
+- **Fixed capabilities** — no filesystem, shell, or subprocess, and no `pip`/`npm` install at
+  runtime; the pre-bundled dependency set is the whole toolbox.
+- **Trust boundary is the Wasm component** — isolation and egress are enforced by Spin/Wasm.
+- **Component sizes** — the engines + bundled deps are large (TS ≈ 30 MB, Python ≈ 85 MB.
