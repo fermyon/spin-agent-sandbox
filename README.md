@@ -11,6 +11,13 @@ Two components:
 | `ts-sandbox` | `POST /ts/…` | `j2w` → componentize-js (StarlingMonkey/SpiderMonkey) |
 | `py-sandbox` | `POST /py/…` | componentize-py (CPython 3.12 → wasm32-wasi)          |
 
+> **Scaffold or extend an app:** this repo ships Spin templates that pull the sandbox
+> components as prebuilt Wasm from GitHub releases. `spin templates install --dir .
+> --upgrade`, then `spin new -t sandbox-app my-app` (both), or `spin new`/`spin add -t
+> sandbox-ts` / `sandbox-py` for a single component. The release workflow
+> ([.github/workflows/release.yml](.github/workflows/release.yml)) builds and publishes the
+> components. See [templates/README.md](templates/README.md).
+
 ## Request / response contract
 
 POST a strict JSON **envelope** to `/ts/...` or `/py/...`:
@@ -70,8 +77,8 @@ clear "module not found" error.
 - **Python**: `numpy`, `tabulate`, `markdown`, `jinja2`, `regex`, `beautifulsoup4`, plus
   popular extras proven to compile (`sqlalchemy`, `tiktoken`, `pydantic`, `pyyaml`,
   `charset_normalizer`, `yarl`, `multidict`, `frozenlist`, `wrapt`) and the standard library.
-  Binary packages come prebuilt (`wasm32-wasi`) from `../spin-python-deps`; pure-python
-  packages are pip-installed into `py-sandbox/vendor/`.
+  Binary packages come prebuilt (`wasm32-wasi`) from the `py-sandbox/spin-python-deps`
+  submodule; pure-python packages are pip-installed into `py-sandbox/vendor/`.
 
 ## Scoped key-value store
 
@@ -103,15 +110,20 @@ deployment.
 
 ## Build & run
 
+The Python component's prebuilt `wasm32-wasi` packages come from the `spin-python-deps` git
+submodule, so clone with `--recursive` (or initialise it after cloning):
+
 ```bash
-spin up --build          # builds both components, then serves on :3000
+git submodule update --init      # populates py-sandbox/spin-python-deps
+spin up --build                  # builds both components, then serves on :3000
 # or build the Python component alone:
 cd py-sandbox && bash build.sh
 ```
 
 The Python build (`py-sandbox/build.sh`) creates an isolated python3.12 venv with pinned
-`spin-sdk`/`componentize-py`, populates `vendor/` via `setup-vendor.sh`, and runs
-componentize-py. `vendor/` and `.venv/` are regenerable and git-ignored.
+`spin-sdk`/`componentize-py`, populates `vendor/` via `setup-vendor.sh` (copying the prebuilt
+packages from the submodule), and runs componentize-py. `vendor/` and `.venv/` are
+regenerable and git-ignored.
 
 ## Testing
 

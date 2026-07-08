@@ -1,0 +1,23 @@
+#:schema https://schemas.spinframework.dev/spin/manifest-v2/latest.json
+
+spin_manifest_version = 2
+
+[application]
+name = "{{project-name | kebab_case}}"
+version = "0.1.0"
+authors = ["{{authors}}"]
+description = "{{project-description}}"
+
+[[trigger.http]]
+route = "{{ http-path | http_wildcard }}"
+component = "{{project-name | kebab_case}}"
+
+[component.{{project-name | kebab_case}}]
+# Prebuilt component from this project's GitHub releases (built + published by
+# .github/workflows/release.yml). Update the version + digest with a new release
+# (see scripts/update-template-refs.sh). PLACEHOLDER url/digest until first release.
+source = { url = "https://github.com/lepton/wasm-sandbox/releases/download/v0.1.0/py-sandbox.wasm", digest = "sha256:0000000000000000000000000000000000000000000000000000000000000000" }
+# The component scopes KV keys per sandboxId; its fetch shim enforces the per-request
+# allow-list on top of this broad dev bound — tighten it per-deployment.
+key_value_stores = ["default"]
+allowed_outbound_hosts = ["https://*:*", "http://*:*"]

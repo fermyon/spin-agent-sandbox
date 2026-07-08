@@ -1,0 +1,16 @@
+manifest_version = "1"
+id = "sandbox-py"
+description = "Python code sandbox — runs untrusted Python over HTTP in Wasm"
+trigger_type = "http"
+tags = ["http", "sandbox", "ai", "python"]
+
+# Enables `spin add -t sandbox-py` into an existing app (in addition to `spin new`).
+[add_component]
+skip_files = ["spin.toml", ".gitignore"]
+skip_parameters = ["project-description"]
+[add_component.snippets]
+component = "component.txt"
+
+[parameters]
+project-description = { type = "string", prompt = "Description", default = "" }
+http-path = { type = "string", prompt = "HTTP path", default = "/py/...", pattern = "^/\\S*$" }

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Populate py-sandbox/vendor/ with every runtime dependency on a single module path:
-#   1. prebuilt wasm32-wasi packages copied from ../../spin-python-deps (the binary deps)
+#   1. prebuilt wasm32-wasi packages copied from spin-python-deps (the binary deps)
 #   2. pure-python packages from vendor-requirements.txt (binaries stripped so the
 #      prebuilt wasm packages always win and no macOS .so sneaks into the component)
 #
@@ -10,7 +10,9 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DEPS="$HERE/../../spin-python-deps"
+# Prebuilt wasm32-wasi packages come from the spin-python-deps git submodule in this
+# directory (run `git submodule update --init` if it is empty). SPIN_PYTHON_DEPS overrides it.
+DEPS="${SPIN_PYTHON_DEPS:-$HERE/spin-python-deps}"
 VENDOR="$HERE/vendor"
 PY="${PYTHON:-/opt/homebrew/opt/python@3.12/bin/python3.12}"
 
@@ -23,13 +25,22 @@ rm -rf "$VENDOR"
 mkdir -p "$VENDOR"
 
 echo ">> copying prebuilt wasm packages from $DEPS"
+missing=()
 for pkg in "${PREBUILT[@]}"; do
   if [ -e "$DEPS/$pkg" ]; then
     cp -R "$DEPS/$pkg" "$VENDOR/$pkg"
   else
-    echo "   WARNING: prebuilt package '$pkg' not found in $DEPS" >&2
+    echo "   ERROR: prebuilt package '$pkg' not found in $DEPS" >&2
+    missing+=("$pkg")
   fi
 done
+# Fail hard: these are required binary deps. A missing one silently produces a broken
+# component (e.g. numpy/pydantic_core absent) that would otherwise build and publish green.
+if [ "${#missing[@]}" -gt 0 ]; then
+  echo "ERROR: ${#missing[@]} required prebuilt package(s) missing from $DEPS: ${missing[*]}" >&2
+  echo "       Point SPIN_PYTHON_DEPS at a complete spin-python-deps checkout." >&2
+  exit 1
+fi
 
 echo ">> installing pure-python deps into a temp dir"
 TMP="$(mktemp -d)"

@@ -1,0 +1,4 @@
+[submodule "spin-python-deps"]
+	path = py-sandbox/spin-python-deps
+	url = https://github.com/radu-matei/spin-python-deps.git
+	branch = main
