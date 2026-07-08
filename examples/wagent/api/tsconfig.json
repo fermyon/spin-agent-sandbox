@@ -2,7 +2,7 @@
     "compilerOptions": {
         "outDir": "./dist/",
         "noImplicitAny": true,
-        "module": "es6",
+        "module": "esnext",
         "target": "es2020",
         "jsx": "react",
         "skipLibCheck": true,
@@ -13,7 +13,9 @@
         "allowJs": true,
         "strict": true,
         "noImplicitReturns": true,
-        "moduleResolution": "node"
+        "moduleResolution": "bundler",
+        "allowImportingTsExtensions": true,
+        "noEmit": true
     },
     "include": [
         "src/**/*"

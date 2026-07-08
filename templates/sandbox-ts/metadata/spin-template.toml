@@ -8,7 +8,8 @@ tags = ["http", "sandbox", "ai", "javascript", "typescript"]
 # In add mode the app-level files are skipped and only the component snippet is merged.
 [add_component]
 skip_files = ["spin.toml", ".gitignore"]
-skip_parameters = ["project-description"]
+# http-path is unused in add mode (the added component is private, no public route).
+skip_parameters = ["project-description", "http-path"]
 [add_component.snippets]
 component = "component.txt"
 

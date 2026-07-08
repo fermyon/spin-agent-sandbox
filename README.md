@@ -18,6 +18,12 @@ Two components:
 > ([.github/workflows/release.yml](.github/workflows/release.yml)) builds and publishes the
 > components. See [templates/README.md](templates/README.md).
 
+> **Deployment model:** the `POST /ts/…` and `/py/…` routes shown below are **public** in
+> this standalone app — convenient for local dev/testing. In production the sandbox is meant
+> to run as a **private component** (`route = { private = true }`) inside a consuming app and
+> be reached only via local service chaining through [`@spinframework/sandbox`](sdk) — see
+> [examples/wagent](examples/wagent).
+
 ## Request / response contract
 
 POST a strict JSON **envelope** to `/ts/...` or `/py/...`:

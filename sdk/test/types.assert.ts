@@ -10,7 +10,7 @@ import { Interpreter } from "../src/interpreter/index.ts";
 declare const itp: Interpreter;
 
 // A portable tool depends only on the interface — it accepts ANY backend that
-// implements CodeRunner (interpreter today; container / microVM tomorrow).
+// implements CodeRunner.
 async function portableTool(r: CodeRunner): Promise<Result> {
   return r.run("print(1)", { lang: "python", allowedHosts: ["api.x.com"], identity: "t" });
 }
@@ -21,8 +21,8 @@ const asRunner: CodeRunner = itp;
 void asRunner;
 
 // The interpreter has NO filesystem / sessions / exec — these must not compile.
-// A container/microVM backend would add such methods on its OWN client, never on
-// this one, so a tool that needs them is a compile error against the interpreter.
+// A heavier backend would add such methods on its OWN client, never on this one,
+// so a tool that needs them is a compile error against the interpreter.
 // @ts-expect-error interpreter has no filesystem
 itp.writeFile("/f", "x");
 // @ts-expect-error interpreter has no stateful sessions

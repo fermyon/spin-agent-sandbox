@@ -1,19 +1,35 @@
 // @spinframework/sandbox/interpreter — the Wasm code interpreter backend.
 //
-// A thin client over the wasm-sandbox Spin app's `POST /ts/run` and `/py/run`
-// routes. Inherently single-shot and buffered, which is exactly the portable
-// `core.run()` contract. From a Spin guest, `baseUrl` is typically
-// `http://<wasm-app>.spin.internal` (service chaining) or a configured URL that
-// the consuming component lists in `allowed_outbound_hosts`.
+// A thin client over a wasm-sandbox component's `POST /ts/run` (JS/TS) and `/py/run`
+// (Python) routes. Inherently single-shot and buffered, which is exactly the portable
+// `core.run()` contract.
+//
+// In the intended deployment the interpreter is TWO PRIVATE components — ts-sandbox and
+// py-sandbox — reached via service chaining. `.spin.internal` resolves to a COMPONENT id,
+// so each language has its own host: use one Interpreter per language, each `baseUrl`
+// pointed at its component (see examples/wagent/api/src/index.ts):
+//
+//   const js = new Interpreter({ baseUrl: "http://ts-sandbox.spin.internal" });
+//   const py = new Interpreter({ baseUrl: "http://py-sandbox.spin.internal" });
+//   await js.run(code, { lang: "javascript" });   // -> ts-sandbox
+//   await py.run(code, { lang: "python" });        // -> py-sandbox
+//
+// (A single combined app that routes both /ts and /py by path also works — then one
+// `baseUrl` at the app suffices — but the private two-component form is the default.)
 
 import type { Caps, CodeRunner, Result, RunOpts } from "../core/index.ts";
 import { langToRoute, withDefaults } from "../core/index.ts";
+
+// Re-exported so a consumer can name run languages (and import `Interpreter`)
+// from this one module, without also reaching into `@spinframework/sandbox/core`.
+export type { Language } from "../core/index.ts";
 
 /** A fetch implementation; defaults to the Spin guest's global `fetch`. */
 export type FetchLike = typeof fetch;
 
 export interface InterpreterOptions {
-  /** Base URL of the wasm-sandbox app, no trailing slash, e.g. "http://wasm.spin.internal". */
+  /** Base URL of the interpreter component, no trailing slash, e.g.
+   * "http://ts-sandbox.spin.internal" (use one Interpreter per language — see the module doc). */
   baseUrl: string;
   /** Override the global fetch (mainly for tests). */
   fetch?: FetchLike;
@@ -45,7 +61,9 @@ interface MainShape {
 
 interface ErrorShape {
   error?: string;
+  /** ts-sandbox keys the detail as `message`; py-sandbox keys it as `trace`. */
   message?: string;
+  trace?: string;
 }
 
 export class Interpreter implements CodeRunner {
@@ -89,17 +107,19 @@ export class Interpreter implements CodeRunner {
     if (!res.ok) {
       const e = (json ?? {}) as ErrorShape;
       const kind = e.error ?? "internal";
+      // ts-sandbox reports the detail as `message`, py-sandbox as `trace` (a traceback).
+      const detail = e.message ?? e.trace;
       if (CODE_ERROR_KINDS.has(kind)) {
         // A syntax/compile/handler error is data about the user's code.
         return {
           stdout: "",
           stderr: "",
           results: [],
-          error: { name: kind, value: e.message ?? kind, traceback: [] },
+          error: { name: kind, value: detail ?? kind, traceback: e.trace ? e.trace.split("\n") : [] },
         };
       }
       throw new Error(
-        `interpreter ${route}/run failed (${res.status}): ${e.message ?? text}`,
+        `interpreter ${route}/run failed (${res.status}): ${detail ?? (text || res.statusText || "no body")}`,
       );
     }
 

@@ -4,11 +4,6 @@
 // model writes the code, we execute it through @spinframework/sandbox and feed
 // the result back. The full transcript (reasoning + each tool call + output +
 // answer) is streamed to the UI.
-//
-// The library is extensible: when it gains a container / microVM backend, a
-// second tool can be added here the same way — the `CodeRunner` contract and the
-// wire protocol below already accommodate a heavier sandbox (startupMs / reused /
-// kept fields), which is why the interpreter simply reports them as null/false.
 
 import { Hono } from "hono";
 import { fire } from "hono/service-worker";
@@ -16,8 +11,7 @@ import type { Context } from "hono";
 import Anthropic from "@anthropic-ai/sdk";
 import * as variables from "@spinframework/spin-variables";
 
-import type { Lang } from "../../../../sdk/src/core/index.ts";
-import { Interpreter } from "../../../../sdk/src/interpreter/index.ts";
+import { Interpreter, type Language } from "@spinframework/sandbox/interpreter";
 import { log, initLogger } from "./logger";
 
 // ---- the sandbox tool the model can call ----
@@ -51,27 +45,12 @@ function systemPrompt(): string {
 
 // ---- streaming wire events (one JSON object per line, NDJSON) ----
 
-type Sandbox = "wasm_interpreter";
-
 type WireEvent =
   // An incremental slice of the model's text, streamed as it is generated.
   // `block` groups the deltas of one text block (unique within an assistant turn).
   | { t: "text_delta"; block: string; text: string }
-  | { t: "tool_start"; id: number; sandbox: Sandbox; language: string; code: string; genMs: number }
-  | {
-      t: "tool_end";
-      id: number;
-      /** null on the interpreter (no boot phase); a heavier backend times its startup here. */
-      startupMs: number | null;
-      execMs: number;
-      /** false on the interpreter (stateless); a heavier backend may reuse a kept sandbox. */
-      reused: boolean;
-      /** false on the interpreter (no lifecycle); a heavier backend may keep the sandbox. */
-      kept: boolean;
-      stdout: string;
-      stderr: string;
-      error: string | null;
-    }
+  | { t: "tool_start"; id: number; language: string; code: string; genMs: number }
+  | { t: "tool_end"; id: number; execMs: number; stdout: string; stderr: string; error: string | null }
   | { t: "done"; messages: Anthropic.MessageParam[] }
   | { t: "error"; error: string };
 
@@ -102,7 +81,7 @@ async function runAgent(prompt: string, history: Anthropic.MessageParam[], emit:
   const anthropic = new Anthropic({ apiKey });
   // The interpreter is two private, service-chained components — one per language —
   // so pick the client by the language the model chose.
-  const interpreters: Record<Lang, Interpreter> = {
+  const interpreters: Record<Language, Interpreter> = {
     javascript: new Interpreter({ baseUrl: tsUrl }),
     python: new Interpreter({ baseUrl: pyUrl }),
   };
@@ -142,18 +121,17 @@ async function runAgent(prompt: string, history: Anthropic.MessageParam[], emit:
     for (const block of res.content) {
       // Text blocks were already streamed above as text_delta events.
       if (block.type === "tool_use") {
-        const input = block.input as { language: Lang; code: string };
+        const input = block.input as { language: Language; code: string };
         const id = toolId++;
 
         // Stream the code the moment the model produces it (before it runs).
-        emit({ t: "tool_start", id, sandbox: "wasm_interpreter", language: input.language, code: input.code, genMs });
+        emit({ t: "tool_start", id, language: input.language, code: input.code, genMs });
 
         let stdout = "";
         let stderr = "";
         let error: string | null = null;
         let execMs = 0;
         try {
-          // Wasm interpreter: stateless, no startup phase.
           const t = Date.now();
           const r = await interpreters[input.language].run(input.code, { lang: input.language, allowedHosts: [] });
           execMs = Date.now() - t;
@@ -169,7 +147,7 @@ async function runAgent(prompt: string, history: Anthropic.MessageParam[], emit:
         );
 
         // Stream the output the moment the sandbox returns.
-        emit({ t: "tool_end", id, startupMs: null, execMs, reused: false, kept: false, stdout, stderr, error });
+        emit({ t: "tool_end", id, execMs, stdout, stderr, error });
         toolResults.push({
           type: "tool_result",
           tool_use_id: block.id,
@@ -201,12 +179,7 @@ app.use(async (c: Context, next) => {
 });
 
 app.get("/api/health", (c: Context) => {
-  return c.json({
-    ok: true,
-    model: variables.get("model") ?? "claude-opus-4-8",
-    // No container backend in this library; the UI's container toggle stays hidden.
-    containerEnabled: false,
-  });
+  return c.json({ ok: true, model: variables.get("model") ?? "claude-opus-4-8" });
 });
 
 // Diagnostic: proves the server flushes a streaming body incrementally.
@@ -223,12 +196,6 @@ app.get("/api/stream-test", () => {
     },
   });
   return new Response(stream, { headers: { "content-type": "text/plain", "cache-control": "no-store" } });
-});
-
-// The UI calls this on "New Chat". The interpreter is stateless (no sandbox to
-// tear down), so this is a no-op kept for UI compatibility.
-app.post("/api/reset", (c: Context) => {
-  return c.json({ destroyed: 0 });
 });
 
 app.post("/api/chat", async (c: Context) => {

@@ -1,9 +1,9 @@
 // @spinframework/sandbox/core — the portable interface + shared types.
-// No transport, no dependencies. This is the extension point: implement
-// `CodeRunner` to add a backend (interpreter today; container / microVM later).
+// No transport, no dependencies. The extension point: implement `CodeRunner` to
+// add a backend.
 
 export type {
-  Lang,
+  Language,
   Backend,
   MIMEResult,
   CodeError,
@@ -14,10 +14,10 @@ export type {
   CodeRunner,
 } from "./types.ts";
 
-import type { Lang, RunOpts } from "./types.ts";
+import type { Language, RunOpts } from "./types.ts";
 
 /** Maps a portable language to the interpreter route segment ("ts" | "py"). */
-export function langToRoute(lang: Lang | undefined): "ts" | "py" {
+export function langToRoute(lang: Language | undefined): "ts" | "py" {
   return (lang ?? "python") === "javascript" ? "ts" : "py";
 }
 

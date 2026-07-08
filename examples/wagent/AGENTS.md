@@ -10,12 +10,12 @@ Four components; only `ui` and `api` have public routes.
 - **`api/`** (public `/api/...`) — a Hono component (TypeScript → Wasm via esbuild + `j2w`).
   It runs the agent loop in [`api/src/index.ts`](api/src/index.ts): one tool
   (`run_in_wasm_interpreter`), the system prompt, and the streaming NDJSON protocol. It
-  imports the sandbox client from the repo's [`sdk/`](../../sdk) via a relative path
-  (`../../../../sdk/src/...`) and holds one `Interpreter` per language, each pointed at a
-  private interpreter component's `spin.internal` URL.
-- **`ui/`** (public `/...`) — a Nuxt SPA served by the Spin static fileserver. Copied
-  **verbatim** from the upstream example; backend-agnostic, and its container toggle stays
-  hidden because `/api/health` reports `containerEnabled: false`.
+  depends on the sandbox client [`@spinframework/sandbox`](../../sdk) (a local `file:`
+  dependency in [`api/package.json`](api/package.json)) and holds one `Interpreter` per
+  language, each pointed at a private interpreter component's `spin.internal` URL.
+- **`ui/`** (public `/...`) — a Nuxt SPA served by the Spin static fileserver. Adapted from
+  the upstream example — trimmed to the interpreter-only surface (a filesystem-assuming
+  prompt was swapped for an interpreter-friendly one).
 - **`ts-sandbox` / `py-sandbox`** (**private**, `route = { private = true }`) — this repo's
   interpreter components, built in place from `../../ts-sandbox` and `../../py-sandbox`.
   They have **no public route** — reachable only from `api` via service chaining
@@ -24,9 +24,6 @@ Four components; only `ui` and `api` have public routes.
 
 ## Invariants
 
-- **The wire protocol is a superset.** `tool_end` carries `startupMs` / `reused` / `kept`
-  even though the interpreter always sends `null` / `false`. Keep them — the UI reads them,
-  and a future container/microVM backend will populate them without a protocol change.
 - **Streaming must stay incremental.** Every `emit()` is a flush point; don't buffer the
   transcript. `GET /api/stream-test` is the check.
 - **Model output is untrusted.** The UI renders it with `html: false` + link-scheme

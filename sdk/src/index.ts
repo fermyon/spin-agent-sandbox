@@ -5,15 +5,11 @@
 // runs unchanged on any backend; the host injects the concrete client:
 //
 //   import { Interpreter } from "@spinframework/sandbox/interpreter";
-//   const runner = new Interpreter({ baseUrl: "http://wasm.spin.internal" });
+//   const runner = new Interpreter({ baseUrl: "http://ts-sandbox.spin.internal" });
 //
-// Only the Wasm code interpreter backend ships today. The library is built to be
-// EXTENDED: a container or microVM backend is a new module that implements
-// `CodeRunner` (and declares itself through `Caps`) — add it as `./container`
-// (or `./microvm`) and export it below. Nothing in `core` is interpreter-specific.
+// Only the Wasm interpreter backend ships today. To extend it, add a new module
+// that implements `CodeRunner` and declares itself through `Caps`, and export it
+// below. Nothing in `core` is interpreter-specific.
 
 export * from "./core/index.ts";
 export { Interpreter, InterpreterKV, type InterpreterOptions } from "./interpreter/index.ts";
-
-// Future backends plug in here, e.g.:
-//   export { Container, type ContainerOptions } from "./container/index.ts";

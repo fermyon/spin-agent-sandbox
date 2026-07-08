@@ -8,6 +8,9 @@ version = "0.1.0"
 authors = ["{{authors}}"]
 description = "{{project-description}}"
 
+# NOTE: PUBLIC route — this standalone app is a local dev/test harness. In production add
+# the sandbox to a consuming app with `spin add` (which puts it behind a PRIVATE route +
+# service chaining) and reach it through @spinframework/sandbox — see examples/wagent.
 [[trigger.http]]
 route = "{{ http-path | http_wildcard }}"
 component = "{{project-name | kebab_case}}"

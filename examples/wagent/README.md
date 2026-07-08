@@ -15,12 +15,9 @@ back to a chat UI.
 The two interpreters (`ts-sandbox`, `py-sandbox`) are **private components of this app** —
 `route = { private = true }`, so they have no public route and are reachable **only** from
 the `api` component via local **service chaining** (`<component>.spin.internal`). The API
-imports the sandbox client from this repo ([`../../sdk/src`](../../sdk)) and holds one
-`Interpreter` per language, each pointed at its component's internal URL, calling
-`Interpreter.run()`. The library is **extensible**: if it gains a container / microVM
-backend, a second tool drops into the same loop — the wire protocol already carries the
-`startupMs` / `reused` / `kept` fields a heavier sandbox would populate (the interpreter
-reports them as `null` / `false`), and the UI renders them when present.
+depends on the sandbox client from this repo ([`@spinframework/sandbox`](../../sdk), a local
+`file:` dependency) and holds one `Interpreter` per language, each pointed at its component's
+internal URL, calling `Interpreter.run()`.
 
 ## The tool
 
@@ -39,10 +36,11 @@ turn:
 
 - `{"t":"text_delta", block, text}` — a slice of the model's text, so the answer types out
   token-by-token (a blinking cursor marks the block still being written).
-- `{"t":"tool_start", id, sandbox, language, code, genMs}` — the code, the moment the model
+- `{"t":"tool_start", id, language, code, genMs}` — the code, the moment the model
   writes it (the card appears with "running…").
-- `{"t":"tool_end", id, startupMs, execMs, stdout, stderr, error}` — the output, the moment
-  the sandbox returns.
+- `{"t":"tool_end", id, execMs, stdout, stderr, error}` — the output,
+  the moment the sandbox returns (`genMs` = the model turn latency that produced the code,
+  `execMs` = the interpreter run).
 - `{"t":"done"}` / `{"t":"error"}`.
 
 The incremental flush is **verified**: `GET /api/stream-test` emits a line every 400 ms and
@@ -95,8 +93,8 @@ Everything is one app now — no separate interpreter to start.
 ```
 spin.toml          wires 4 components: public ui + api, private ts-sandbox + py-sandbox
 api/               Hono component — the Claude tool-use loop + the interpreter tool
-  src/index.ts     the agent; imports ../../../../sdk/src; one Interpreter client per component
-ui/                Nuxt SPA — chat with the predefined prompts (copied verbatim, backend-agnostic)
+  src/index.ts     the agent; imports @spinframework/sandbox; one Interpreter client per component
+ui/                Nuxt SPA — chat (near-verbatim from upstream; one filesystem prompt swapped)
   pages/index.vue  the chat UI
 ../../ts-sandbox   PRIVATE JS/TS interpreter — built in place, reached via ts-sandbox.spin.internal
 ../../py-sandbox   PRIVATE Python interpreter — built in place, reached via py-sandbox.spin.internal

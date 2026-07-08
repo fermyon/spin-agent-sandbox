@@ -33,6 +33,8 @@ if [ ! -x .venv/bin/componentize-py ]; then
   .venv/bin/pip install -q -r requirements.txt
 fi
 
+# vendor/ is (re)built only when absent. After changing vendor-requirements.txt or the
+# prebuilt set in setup-vendor.sh, `rm -rf vendor` so it is regenerated.
 if [ ! -d vendor ]; then
   echo ">> populating vendor/ (prebuilt wasm packages + pure-python deps)"
   PYTHON="$PWD/.venv/bin/python" bash setup-vendor.sh
@@ -47,7 +49,9 @@ echo ">> componentize"
 # change. Requires wasm-tools; skipped (with a note) if it is not installed.
 if command -v wasm-tools >/dev/null 2>&1; then
   echo ">> stripping debug info"
-  wasm-tools strip -a app.wasm -o app.wasm.tmp && mv app.wasm.tmp app.wasm
+  # Plain strip (removes DWARF `.debug_*`, ~halves a fresh 169M build to ~87M); NOT `-a`,
+  # which would also drop the name/producers/component-type custom sections of the component.
+  wasm-tools strip app.wasm -o app.wasm.tmp && mv app.wasm.tmp app.wasm
 else
   echo ">> NOTE: wasm-tools not found; skipping debug strip (install it to shrink app.wasm ~2x)" >&2
 fi

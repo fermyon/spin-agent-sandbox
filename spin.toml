@@ -10,6 +10,10 @@ log_level = { default = "info" }
 # ---------------------------------------------------------------------------
 # TypeScript / JavaScript sandbox
 # ---------------------------------------------------------------------------
+# NOTE: /ts and /py are PUBLIC here — convenient for local dev/testing (curl /ts/run,
+# /py/run). In production the sandbox is meant to be a PRIVATE component: give it
+# `route = { private = true }` and reach it only via service chaining through
+# @spinframework/sandbox (see examples/wagent).
 [[trigger.http]]
 route = "/ts/..."
 component = "ts-sandbox"

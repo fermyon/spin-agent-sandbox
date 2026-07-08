@@ -2,8 +2,8 @@
 
 An extensible TypeScript client for **sandboxed code execution**, consumed from a Spin
 application. It ships one backend today — the **Wasm code interpreter** (this repo's
-`ts-sandbox` / `py-sandbox` components) — and is built so a **container** or **microVM**
-backend can be added later without changing the portable surface.
+`ts-sandbox` / `py-sandbox` components) — and is built so another backend can be added later
+without changing the portable surface.
 
 ## The portable contract
 
@@ -21,7 +21,7 @@ async function compute(runner: CodeRunner, code: string) {
   return r.stdout;
 }
 
-const runner = new Interpreter({ baseUrl: "http://wasm-sandbox.spin.internal" });
+const runner = new Interpreter({ baseUrl: "http://py-sandbox.spin.internal" });
 console.log(await compute(runner, "print(6 * 7)"));
 ```
 
@@ -31,15 +31,27 @@ validation failures.
 
 ## Backends
 
-- **`interpreter`** — a thin client over the wasm-sandbox app's `POST /ts/run` and
-  `/py/run` routes. Single-shot, buffered, default-deny egress, plus a scoped KV store
-  (`Interpreter.kv(namespace)`). From a Spin guest, `baseUrl` is typically
-  `http://<wasm-app>.spin.internal` (service chaining) or a URL the caller lists in
-  `allowed_outbound_hosts`.
+- **`interpreter`** — a thin client over a wasm-sandbox component's `POST /ts/run` (JS/TS)
+  and `/py/run` (Python) routes. Single-shot, buffered, default-deny egress, plus a scoped
+  KV store (`Interpreter.kv(namespace)`).
+
+  The intended deployment is **two private components** (ts-sandbox, py-sandbox) reached via
+  service chaining. `.spin.internal` resolves to a **component id**, so each language has its
+  own host — use **one `Interpreter` per language**, each `baseUrl` pointed at its component:
+
+  ```ts
+  const js = new Interpreter({ baseUrl: "http://ts-sandbox.spin.internal" });
+  const py = new Interpreter({ baseUrl: "http://py-sandbox.spin.internal" });
+  await js.run(code, { lang: "javascript" }); // -> ts-sandbox
+  await py.run(code, { lang: "python" });      // -> py-sandbox
+  ```
+
+  See [`examples/wagent`](../examples/wagent). (A single combined app that routes both `/ts`
+  and `/py` by path also works — then one `baseUrl` at the app suffices.)
 
 ## Extending it
 
-The library has **no container/microVM types** — but it is designed to gain them:
+The library ships **no other-backend types** — but it is designed to gain them:
 
 - **`core`** (`./core`) is the only shared surface: `CodeRunner`, `RunOpts`, `Result`, and
   `Caps`. It carries no transport and nothing interpreter-specific.
@@ -49,9 +61,8 @@ The library has **no container/microVM types** — but it is designed to gain th
   `sessions`, `exec`, `lifecycle`, `arbitraryImage`, `realTimeout`), so a tool can branch on
   them at runtime; native TypeScript tools rely on compile-time method absence instead.
 
-To add one: create `src/container/index.ts` (or `src/microvm/…`), implement `CodeRunner`,
-declare its `Caps`, and export it from `src/index.ts`. Nothing in `core` or `interpreter`
-has to change.
+To add one: create a module under `src/`, implement `CodeRunner`, declare its `Caps`, and
+export it from `src/index.ts`. Nothing in `core` or `interpreter` has to change.
 
 ## Develop
 

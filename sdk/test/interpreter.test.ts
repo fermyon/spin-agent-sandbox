@@ -77,6 +77,23 @@ test("run() maps a compile-error HTTP 400 to Result.error", async () => {
   assert.match(res.error?.value ?? "", /SyntaxError/);
 });
 
+test("run() maps a py handler_error keyed on `trace` (not `message`) to Result.error", async () => {
+  // py-sandbox emits { error: "handler_error", trace: <traceback> } — the detail is on
+  // `trace`, not `message`, so a `message`-only read would lose the traceback.
+  const mock = mockFetch(() => ({
+    ok: false,
+    status: 500,
+    body: JSON.stringify({ error: "handler_error", trace: "Traceback...\nValueError: boom" }),
+  }));
+  const itp = new Interpreter({ baseUrl: "http://w", fetch: mock.fn });
+
+  const res = await itp.run("...", { lang: "python", identity: "h" });
+  assert.ok(res.error);
+  assert.equal(res.error?.name, "handler_error");
+  assert.match(res.error?.value ?? "", /ValueError: boom/);
+  assert.ok((res.error?.traceback.length ?? 0) > 0);
+});
+
 test("run() throws on an infrastructure error (bad envelope / internal)", async () => {
   const mock = mockFetch(() => ({
     ok: false,

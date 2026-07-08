@@ -49,7 +49,6 @@ async function handle(request: Request): Promise<Response> {
   }
   const { code, sandboxId, allowedHosts, input } = envelope;
 
-  // Transpile TS -> CJS at runtime.
   let transpiled: string;
   try {
     transpiled = transform(code, {

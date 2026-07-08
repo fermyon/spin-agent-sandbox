@@ -18,7 +18,6 @@ into the component (it only bundles the static import closure of this module; mo
 reached only via runtime exec/import would otherwise be missing).
 """
 
-# --- stdlib ---
 import io
 import sys
 import json
@@ -71,11 +70,9 @@ for _m in (
 _MAX_OUTPUT = 256 * 1024  # cap captured stdout/stderr
 
 
-# ---------------------------------------------------------------------------
 # Scoped KV install. Patches the canonical spin_sdk modules so documented usage
-# (`from spin_sdk import key_value; key_value.open_default()`) is transparently scoped.
-# The scoping logic itself lives in _kv.py.
-# ---------------------------------------------------------------------------
+# (`from spin_sdk import key_value; key_value.open_default()`) is transparently scoped;
+# the scoping logic lives in _kv.py.
 def _scoped_open_default(prefix):
     def open_default():
         return ScopedStore(_orig_kv_open_default(), prefix)
@@ -93,7 +90,6 @@ def _install_scoped_kv(sandbox_id):
     open_default = _scoped_open_default(prefix)
     open_ = _scoped_open(prefix)
 
-    # Patch the canonical module so documented usage is transparently scoped.
     _key_value.open_default = open_default
     _key_value.open = open_
 
@@ -104,10 +100,8 @@ def _install_scoped_kv(sandbox_id):
     sys.modules["spin_sdk.kv"] = mod
 
 
-# ---------------------------------------------------------------------------
 # Outbound HTTP: gate every egress path (the injected fetch and spin_sdk.http.send)
 # through the per-sandbox allow-list from _egress.host_allowed.
-# ---------------------------------------------------------------------------
 def _install_fetch(allowed_hosts):
     allowed = list(allowed_hosts or [])
 
@@ -134,9 +128,6 @@ def _install_fetch(allowed_hosts):
     return fetch
 
 
-# ---------------------------------------------------------------------------
-# Response helpers.
-# ---------------------------------------------------------------------------
 def _json(status, obj):
     return Response(status, {"content-type": "application/json"}, json.dumps(obj).encode())
 

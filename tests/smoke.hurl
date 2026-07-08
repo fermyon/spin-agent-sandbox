@@ -124,3 +124,9 @@ file,bodies/ts-egress-internal.json;
 HTTP 200
 [Asserts]
 jsonpath "$.stdout" contains "DENIED"
+
+# --- TS rejects a non-POST request with 405 (the manual method check) ---
+GET {{base_url}}/ts/run
+HTTP 405
+[Asserts]
+jsonpath "$.error" == "method_not_allowed"

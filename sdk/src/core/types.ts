@@ -1,15 +1,14 @@
 // Portable types shared by every backend. This module has NO transport and no
 // runtime dependencies — it is the extension point of the library: a backend
-// (today the Wasm code interpreter; tomorrow a container or microVM) is anything
-// that implements `CodeRunner` and honestly describes itself through `Caps`.
+// (today the Wasm interpreter) is anything that implements `CodeRunner` and
+// honestly describes itself through `Caps`.
 
 /** A language the portable core can run. */
-export type Lang = "python" | "javascript";
+export type Language = "python" | "javascript";
 
 /**
- * Which backend a runner targets. Open on purpose: the shipped backend is
- * "interpreter", but a future container / microVM backend introduces its own
- * name here without a breaking change — this is a widenable union, so known
+ * Which backend a runner targets. Open on purpose: a future backend introduces
+ * its own name here without a breaking change — a widenable union, so known
  * values still autocomplete while any string remains assignable.
  */
 export type Backend = "interpreter" | (string & {});
@@ -59,7 +58,7 @@ export interface HttpInput {
 /** Options accepted by `run()` — the portable surface every backend honors. */
 export interface RunOpts {
   /** Defaults to "python". */
-  lang?: Lang;
+  lang?: Language;
   /**
    * Per-run outbound allow-list. Default-deny: an empty/omitted list blocks all
    * egress.
@@ -84,12 +83,11 @@ export interface RunOpts {
  * contract: a tool built at runtime (e.g. from MCP) branches on these BEFORE
  * acting; native TypeScript tools rely on compile-time method absence instead.
  *
- * The interpreter sets most of these `false` today; a future container / microVM
- * backend flips the relevant ones on — no change to this shape is required to
- * add one.
+ * The interpreter sets most of these `false` today; a future backend flips the
+ * relevant ones on — no change to this shape is required to add one.
  */
 export interface Caps {
-  languages: Lang[];
+  languages: Language[];
   /** Real filesystem (write/read/mkdir/stat). Interpreter: false. */
   filesystem: boolean;
   /** Stateful REPL sessions (vars persist across calls). Interpreter: false. */
@@ -100,7 +98,7 @@ export interface Caps {
   kv: boolean;
   /** Real lifecycle (create/destroy/idle-reap/status). Interpreter: false. */
   lifecycle: boolean;
-  /** Arbitrary OCI image / dependency set. Interpreter: false (libs are frozen). */
+  /** Arbitrary dependency set beyond the frozen libs. Interpreter: false. */
   arbitraryImage: boolean;
   /** `timeoutMs` actually kills the process. Interpreter: false (best-effort). */
   realTimeout: boolean;

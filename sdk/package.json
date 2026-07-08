@@ -1,7 +1,7 @@
 {
   "name": "@spinframework/sandbox",
   "version": "0.1.0",
-  "description": "An extensible client for sandboxed code execution from a Spin application. Ships a Wasm code-interpreter backend; built to extend to container / microVM backends.",
+  "description": "An extensible client for sandboxed code execution from a Spin application. Ships a Wasm code-interpreter backend; extensible to other backends.",
   "type": "module",
   "license": "Apache-2.0",
   "exports": {
