@@ -49,6 +49,8 @@ export interface Result {
  */
 export interface HttpInput {
   method?: string;
+  /** Request path the code sees, e.g. "/api/data". Defaults to "/". */
+  path?: string;
   headers?: Record<string, string>;
   query?: Record<string, string>;
   /** A string is passed through; an object is JSON-encoded. */
@@ -115,4 +117,34 @@ export interface CodeRunner {
   backend(): Backend;
   capabilities(): Caps;
   run(code: string, opts?: RunOpts): Promise<Result>;
+}
+
+/** Metadata for a stored code entry (the source itself omitted). */
+export interface CodeMeta {
+  id: string;
+  language: Language;
+  title?: string;
+  /** Unix epoch millis when saved. */
+  createdAt: number;
+}
+
+/** A stored code entry, including its source. */
+export interface StoredCode extends CodeMeta {
+  code: string;
+}
+
+/**
+ * A pluggable store for AI-generated code: persist it, list it, load it by id (to run
+ * later). The portable seam — like `CodeRunner` for execution. Implement it over any
+ * backing store (Spin KV today); a consumer depends only on this interface.
+ */
+export interface CodeStore {
+  /** Persist code; returns its id + metadata. Pass `id` to update an existing entry in place. */
+  save(input: { id?: string; code: string; language: Language; title?: string }): Promise<CodeMeta>;
+  /** Load one entry with its source, or null if absent. */
+  get(id: string): Promise<StoredCode | null>;
+  /** List stored entries (metadata only). */
+  list(): Promise<CodeMeta[]>;
+  /** Remove an entry. */
+  delete(id: string): Promise<void>;
 }

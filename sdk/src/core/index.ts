@@ -12,6 +12,9 @@ export type {
   RunOpts,
   Caps,
   CodeRunner,
+  CodeMeta,
+  StoredCode,
+  CodeStore,
 } from "./types.ts";
 
 import type { Language, RunOpts } from "./types.ts";

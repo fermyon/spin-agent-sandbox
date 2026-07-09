@@ -19,6 +19,8 @@ together.
 3. **Examples** — [`examples/`](examples): complete agents built on the layers above.
    [`ai-code-executor`](examples/ai-code-executor) is a Claude **CodeAct** agent whose only
    tool is a sandbox, streaming its generate → run → observe loop to a chat UI.
+   [`app-builder`](examples/app-builder) has Claude generate small web apps, stores them with
+   the code store, and serves each live at its own URL.
 
 ## Why: CodeAct
 
@@ -66,6 +68,7 @@ POST a strict JSON **envelope** to `/ts/...` or `/py/...`:
   "sandboxId": "abc123",        // required — scopes the KV store
   "input": {                     // optional — the request the user code sees
     "method": "POST",
+    "path":    "/api/data",       // handler request path (default "/")
     "headers": { "content-type": "application/json" },
     "query":   { "name": "ada" },
     "body":    { "values": [1, 2, 3] }   // string passed through; object → JSON
@@ -78,7 +81,8 @@ The code may be written in **either** of two shapes:
 
 - **HTTP handler** — Python defines `def handle_request(request) -> Response`; TS exports
   `default { async fetch(request) { … } }`. A synthetic request is built from `input` and
-  passed in; the handler's `Response` is returned verbatim (status/headers/body).
+  passed in (its path is `input.path`, default `/`, so a handler can route on sub-paths); the
+  handler's `Response` is returned verbatim (status/headers/body).
 - **Main program** — a plain script that prints (the common AI-generated case). It is run
   and its output is captured:
 

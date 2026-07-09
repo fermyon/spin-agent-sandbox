@@ -7,6 +7,7 @@
 
 import { Hono } from "hono";
 import { fire } from "hono/service-worker";
+import { getCookie, setCookie } from "hono/cookie";
 import type { Context } from "hono";
 import Anthropic from "@anthropic-ai/sdk";
 import * as variables from "@spinframework/spin-variables";
@@ -172,8 +173,45 @@ app.use(async (c: Context, next) => {
   await next();
 });
 
+// ---- access-token gate ----
+// If the `access_token` variable is set, every route except health/auth requires a matching
+// `app_token` cookie (set by POST /api/auth). An empty token disables the gate (local dev).
+const AUTH_COOKIE = "app_token";
+const accessToken = () => (variables.get("access_token") ?? "").trim();
+
+app.use(async (c: Context, next) => {
+  const path = new URL(c.req.url).pathname;
+  if (path === "/api/health" || path === "/api/auth") return next();
+  const token = accessToken();
+  if (token && getCookie(c, AUTH_COOKIE) !== token) return c.text("Unauthorized", 401);
+  return next();
+});
+
 app.get("/api/health", (c: Context) => {
-  return c.json({ ok: true, model: variables.get("model") ?? "claude-opus-4-8" });
+  const token = accessToken();
+  return c.json({
+    ok: true,
+    model: variables.get("model") ?? "claude-opus-4-8",
+    authRequired: token !== "",
+    authed: token === "" || getCookie(c, AUTH_COOKIE) === token,
+  });
+});
+
+// Validate the access token and, on success, set the gate cookie.
+app.post("/api/auth", async (c: Context) => {
+  const token = accessToken();
+  if (!token) return c.json({ ok: true }); // gate disabled
+  let given = "";
+  try {
+    given = ((await c.req.json<{ token?: string }>()).token ?? "").trim();
+  } catch {
+    /* fall through to 401 */
+  }
+  if (given && given === token) {
+    setCookie(c, AUTH_COOKIE, token, { path: "/", sameSite: "Lax", maxAge: 60 * 60 * 24 * 30 });
+    return c.json({ ok: true });
+  }
+  return c.json({ ok: false, error: "invalid access token" }, 401);
 });
 
 app.post("/api/chat", async (c: Context) => {

@@ -105,6 +105,24 @@ test("run() throws on an infrastructure error (bad envelope / internal)", async 
   await assert.rejects(() => itp.run("x", { identity: "i" }), /invalid|missing code|400/);
 });
 
+test("runRaw() returns the sandbox Response verbatim and passes input.path", async () => {
+  const mock = mockFetch(() => ({ status: 201, body: "<h1>hi</h1>" }));
+  const itp = new Interpreter({ baseUrl: "http://w", fetch: mock.fn });
+
+  const resp = await itp.runRaw("export default { fetch() {} }", {
+    lang: "javascript",
+    identity: "app-1",
+    input: { path: "/foo", query: { a: "1" } },
+  });
+
+  assert.equal(resp.status, 201);
+  assert.equal(await resp.text(), "<h1>hi</h1>");
+  assert.equal(mock.calls[0].url, "http://w/ts/run");
+  const env = JSON.parse(mock.calls[0].init.body);
+  assert.equal(env.input.path, "/foo");
+  assert.equal(env.sandboxId, "app-1");
+});
+
 test("kv().setJson runs a scoped snippet against the namespace", async () => {
   const mock = mockFetch(() => ({ body: JSON.stringify({ stdout: JSON.stringify({ ok: true }), stderr: "", error: null }) }));
   const itp = new Interpreter({ baseUrl: "http://w", fetch: mock.fn });

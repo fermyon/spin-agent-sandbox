@@ -66,6 +66,19 @@ class TestBuildRequestArgs(unittest.TestCase):
         self.assertEqual(uri, "/")
         self.assertIsNone(body)
 
+    def test_path_sets_uri(self):
+        _, uri, _, _ = build_request_args({"path": "/api/data"})
+        self.assertTrue(uri.startswith("/api/data"))
+
+    def test_path_with_query(self):
+        _, uri, _, _ = build_request_args({"path": "/x", "query": {"a": 1}})
+        self.assertIn("/x", uri)
+        self.assertIn("a=1", uri)
+
+    def test_default_path_is_root(self):
+        _, uri, _, _ = build_request_args({})
+        self.assertEqual(uri, "/")
+
 
 if __name__ == "__main__":
     unittest.main()

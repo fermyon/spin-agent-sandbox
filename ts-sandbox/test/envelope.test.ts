@@ -51,6 +51,14 @@ test("buildRequest: POST passes a string body through unchanged", async () => {
   assert.equal(await req.text(), "raw");
 });
 
+test("buildRequest: input.path sets the pathname (default '/')", () => {
+  assert.equal(new URL(buildRequest({}).url).pathname, "/");
+  assert.equal(new URL(buildRequest({ path: "/api/data" }).url).pathname, "/api/data");
+  const u = new URL(buildRequest({ path: "/x", query: { a: "1" } }).url);
+  assert.equal(u.pathname, "/x");
+  assert.equal(u.searchParams.get("a"), "1");
+});
+
 test("errorResponse builds a JSON error body with the given status", async () => {
   const r = errorResponse(400, "invalid_json", "bad");
   assert.equal(r.status, 400);

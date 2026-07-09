@@ -6,19 +6,16 @@ version = "0.1.0"
 authors = ["Spin Sandbox"]
 description = "AI Code Executor — a Claude code executor that runs model-written code in private, service-chained Wasm interpreter components."
 
-# ---- Configuration as Spin application variables ----
-# Provide the API key at run time:  SPIN_VARIABLE_ANTHROPIC_API_KEY=sk-ant-...
-# The interpreter URLs default to local service chaining — the ts-sandbox and
-# py-sandbox components are PRIVATE (no public route), reachable only from inside
-# the app via `<component>.spin.internal`.
 [variables]
 log_level = { default = "info" }
 anthropic_api_key = { required = true, secret = true }
 model = { default = "claude-opus-4-8" }
 ts_interpreter_url = { default = "http://ts-sandbox.spin.internal" }
 py_interpreter_url = { default = "http://py-sandbox.spin.internal" }
+# Shared access token gating the UI + API. Empty = no gate (local dev); set to enable:
+# SPIN_VARIABLE_ACCESS_TOKEN=some-secret
+access_token = { default = "", secret = true }
 
-# ---- UI: Nuxt SPA served by the Spin static fileserver (public catch-all) ----
 [[trigger.http]]
 route = "/..."
 component = "ui"
@@ -31,14 +28,13 @@ environment = { FALLBACK_PATH = "index.html" }
 command = "npm install && npx nuxt generate"
 workdir = "ui"
 
-# ---- API: Claude + the Wasm interpreter tool (public /api) ----
 [[trigger.http]]
 route = "/api/..."
 component = "api"
 
 [component.api]
 source = "api/dist/api.wasm"
-# Reach Claude and the two private interpreter components (service chaining).
+# Reach Claude and the two private interpreter components through service chaining
 allowed_outbound_hosts = [
   "https://api.anthropic.com",
   "http://ts-sandbox.spin.internal",
@@ -50,13 +46,11 @@ anthropic_api_key = "{{ anthropic_api_key }}"
 model = "{{ model }}"
 ts_interpreter_url = "{{ ts_interpreter_url }}"
 py_interpreter_url = "{{ py_interpreter_url }}"
+access_token = "{{ access_token }}"
 [component.api.build]
 command = "npm install && npm run build"
 workdir = "api"
 
-# ---- ts-sandbox: PRIVATE JS/TS interpreter (internal-only, no public route) ----
-# Built from this repo's ts-sandbox component; reachable only at
-# http://ts-sandbox.spin.internal from the api component.
 [[trigger.http]]
 route = { private = true }
 component = "ts-sandbox"
@@ -74,7 +68,6 @@ log_level = "{{ log_level }}"
 command = "npm ci && npm run build"
 workdir = "../../ts-sandbox"
 
-# ---- py-sandbox: PRIVATE Python interpreter (internal-only, no public route) ----
 [[trigger.http]]
 route = { private = true }
 component = "py-sandbox"

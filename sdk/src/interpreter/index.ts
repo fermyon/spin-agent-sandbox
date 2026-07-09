@@ -85,8 +85,8 @@ export class Interpreter implements CodeRunner {
     return CAPS;
   }
 
-  async run(code: string, opts?: RunOpts): Promise<Result> {
-    const o = withDefaults(opts);
+  // Shared envelope + URL construction for run() / runRaw().
+  private buildEnvelope(code: string, o: RunOpts): { url: string; body: string; route: "ts" | "py" } {
     const route = langToRoute(o.lang);
     const envelope = {
       code,
@@ -94,11 +94,32 @@ export class Interpreter implements CodeRunner {
       input: o.input,
       allowedHosts: o.allowedHosts ?? [],
     };
+    return { url: `${this.baseUrl}/${route}/run`, body: JSON.stringify(envelope), route };
+  }
 
-    const res = await this.fetchImpl(`${this.baseUrl}/${route}/run`, {
+  /**
+   * Like run(), but returns the sandbox's raw HTTP Response verbatim. For the HTTP-handler
+   * shape, where the handler's Response (status/headers/body) is the payload you want — not
+   * the parsed {stdout,stderr}. Throws only on transport failure.
+   */
+  async runRaw(code: string, opts?: RunOpts): Promise<Response> {
+    const o = withDefaults(opts);
+    const { url, body } = this.buildEnvelope(code, o);
+    return this.fetchImpl(url, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(envelope),
+      body,
+    });
+  }
+
+  async run(code: string, opts?: RunOpts): Promise<Result> {
+    const o = withDefaults(opts);
+    const { url, body, route } = this.buildEnvelope(code, o);
+
+    const res = await this.fetchImpl(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body,
     });
 
     const text = await res.text();

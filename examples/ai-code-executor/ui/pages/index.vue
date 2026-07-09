@@ -1,5 +1,24 @@
 <template>
-  <div class="app">
+  <div v-if="gate === 'locked'" class="gate">
+    <div class="gate-card">
+      <h1 class="gate-title">AI Code Executor</h1>
+      <p class="gate-sub">Enter access token to continue</p>
+      <input
+        v-model="token"
+        class="gate-input"
+        type="password"
+        placeholder="Access token"
+        :disabled="gateBusy"
+        @keydown.enter.prevent="submitToken"
+      />
+      <button class="gate-btn" :disabled="!token.trim() || gateBusy" @click="submitToken">
+        {{ gateBusy ? "Checking…" : "Continue" }}
+      </button>
+      <p v-if="gateError" class="gate-err">{{ gateError }}</p>
+    </div>
+  </div>
+
+  <div v-else-if="gate === 'open'" class="app">
     <header class="topbar">
       <div class="brand"><span class="logo">AI Code Executor</span><span class="tag">writes code · runs it in a Wasm sandbox</span></div>
       <div class="actions">
@@ -327,6 +346,41 @@ const error = ref("");
 const scrollEl = ref<HTMLElement | null>(null);
 const showHelp = ref(false); // "How it works" overlay
 
+// ---- access-token gate ----
+const gate = ref<"checking" | "locked" | "open">("checking");
+const token = ref("");
+const gateBusy = ref(false);
+const gateError = ref("");
+
+async function checkAuth() {
+  try {
+    const d = await (await fetch("/api/health")).json();
+    gate.value = !d.authRequired || d.authed ? "open" : "locked";
+  } catch {
+    gate.value = "open"; // health unreachable — don't hard-lock local dev
+  }
+}
+async function submitToken() {
+  const t = token.value.trim();
+  if (!t || gateBusy.value) return;
+  gateBusy.value = true;
+  gateError.value = "";
+  try {
+    const r = await fetch("/api/auth", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token: t }),
+    });
+    if (r.ok) gate.value = "open";
+    else gateError.value = "Invalid access token";
+  } catch {
+    gateError.value = "Could not verify — try again";
+  } finally {
+    gateBusy.value = false;
+  }
+}
+checkAuth();
+
 function fmt(ms: number): string {
   if (ms == null) return "—";
   return ms >= 1000 ? (ms / 1000).toFixed(1) + "s" : Math.round(ms) + "ms";
@@ -539,4 +593,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sa
 .help-refs { margin: 14px 0 0; font-size: 12.5px; color: #8a8f98; }
 .help-refs a { color: #1d4ed8; text-decoration: none; }
 .help-refs a:hover { text-decoration: underline; }
+
+/* access-token gate */
+.gate { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #f4f4f5; padding: 20px; }
+.gate-card { width: 100%; max-width: 540px; background: #fff; border-radius: 16px; padding: 44px 40px; box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 10px 34px rgba(0,0,0,0.05); text-align: center; }
+.gate-title { margin: 0 0 10px; font-size: 28px; font-weight: 800; color: #1f2328; }
+.gate-sub { margin: 0 0 26px; color: #6b7280; font-size: 16px; }
+.gate-input { width: 100%; border: 1px solid #e2e2e2; border-radius: 10px; padding: 13px 15px; font-size: 15px; margin-bottom: 14px; }
+.gate-input:focus { outline: none; border-color: #b9c0c8; }
+.gate-btn { width: 100%; border: none; border-radius: 10px; padding: 13px; font-size: 15px; font-weight: 700; color: #fff; background: #1f2328; cursor: pointer; }
+.gate-btn:disabled { background: #8a8f98; cursor: not-allowed; }
+.gate-err { margin: 14px 0 0; color: #b42318; font-size: 14px; }
 </style>

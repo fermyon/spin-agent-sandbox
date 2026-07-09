@@ -90,6 +90,7 @@ language is only echoed into the DOM when it matches a *registered* highlight.js
 | `model` | `claude-opus-4-8` | any Claude model id |
 | `ts_interpreter_url` | `http://ts-sandbox.spin.internal` | the private JS/TS interpreter component |
 | `py_interpreter_url` | `http://py-sandbox.spin.internal` | the private Python interpreter component |
+| `access_token` | — *(empty = open)* | set `SPIN_VARIABLE_ACCESS_TOKEN=…` to gate the UI + API behind an access-token page |
 
 The interpreter URLs default to service chaining, so nothing needs to run separately — the
 interpreters are built and served as part of this app. Override them only to point at an

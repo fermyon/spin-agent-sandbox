@@ -44,7 +44,9 @@ export function validateEnvelope(parsed: any): ValidEnvelope | InvalidEnvelope {
 export function buildRequest(input: any): Request {
   input = input || {};
   const method = String(input.method || "GET").toUpperCase();
-  const url = new URL("http://sandbox.localhost/");
+  // Path the handler sees; defaults to "/". Lets a stored app route on sub-paths.
+  const rawPath = typeof input.path === "string" && input.path ? input.path : "/";
+  const url = new URL(rawPath.startsWith("/") ? rawPath : "/" + rawPath, "http://sandbox.localhost");
   for (const [k, v] of Object.entries(input.query || {})) url.searchParams.set(k, String(v));
   const init: any = { method, headers: new Headers(input.headers || {}) };
   if (input.body !== undefined && method !== "GET" && method !== "HEAD") {

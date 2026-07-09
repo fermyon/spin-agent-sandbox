@@ -41,9 +41,14 @@ def build_request_args(i):
     i = i or {}
     method = str(i.get("method", "GET")).upper()
     headers = {str(k).lower(): str(v) for k, v in (i.get("headers") or {}).items()}
+    # Path the handler sees (via request.uri); defaults to "/". Lets a stored app route.
+    raw_path = str(i.get("path") or "/")
+    if not raw_path.startswith("/"):
+        raw_path = "/" + raw_path
     q = i.get("query") or {}
     query = urllib.parse.urlencode({str(k): v for k, v in q.items()}, doseq=True)
-    uri = "/" + (f"?{query}" if query else "")
+    sep = "&" if "?" in raw_path else "?"
+    uri = raw_path + (f"{sep}{query}" if query else "")
     body = i.get("body")
     if isinstance(body, str):
         body = body.encode()
