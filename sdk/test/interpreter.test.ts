@@ -158,3 +158,117 @@ test("capabilities() reflect the interpreter's honest limits", () => {
   assert.equal(caps.realTimeout, false);
   assert.equal(caps.streaming, false);
 });
+
+test("run() bundles packageJson via bundlerUrl, then runs the returned blob", async () => {
+  const mock = mockFetch((url) =>
+    url.endsWith("/bundle")
+      ? { body: JSON.stringify({ blob: "BUNDLED();", stats: { fetches: 2 } }) }
+      : { body: JSON.stringify({ stdout: "ok", stderr: "", error: null }) },
+  );
+  const itp = new Interpreter({ baseUrl: "http://ts", bundlerUrl: "http://bundler/", fetch: mock.fn });
+
+  const res = await itp.run("import x from 'mustache'; console.log('hi')", {
+    lang: "javascript",
+    identity: "j",
+    packageJson: { dependencies: { mustache: "^4.2.0" } },
+  });
+
+  assert.equal(res.stdout, "ok");
+  // first call: bundler (source + package.json); second: sandbox
+  assert.equal(mock.calls[0].url, "http://bundler/bundle");
+  const bundleReq = JSON.parse(mock.calls[0].init.body);
+  assert.match(bundleReq.source, /mustache/);
+  assert.deepEqual(bundleReq.packageJson, { dependencies: { mustache: "^4.2.0" } });
+  // the sandbox runs the BUNDLED blob, not the original source
+  assert.equal(mock.calls[1].url, "http://ts/ts/run");
+  const runEnv = JSON.parse(mock.calls[1].init.body);
+  assert.equal(runEnv.code, "BUNDLED();");
+  assert.equal(runEnv.sandboxId, "j");
+});
+
+test("run() without packageJson makes no bundler call", async () => {
+  const mock = mockFetch(() => ({ body: JSON.stringify({ stdout: "x", stderr: "", error: null }) }));
+  const itp = new Interpreter({ baseUrl: "http://ts", bundlerUrl: "http://bundler", fetch: mock.fn });
+
+  await itp.run("console.log(1)", { lang: "javascript", identity: "j" });
+
+  assert.equal(mock.calls.length, 1);
+  assert.equal(mock.calls[0].url, "http://ts/ts/run");
+});
+
+test("packageJson without a bundlerUrl throws before any network call", async () => {
+  const mock = mockFetch(() => ({ body: "{}" }));
+  const itp = new Interpreter({ baseUrl: "http://ts", fetch: mock.fn });
+
+  await assert.rejects(
+    () => itp.run("x", { lang: "javascript", packageJson: { dependencies: {} } }),
+    /bundlerUrl/,
+  );
+  assert.equal(mock.calls.length, 0);
+});
+
+test("packageJson is rejected for python", async () => {
+  const mock = mockFetch(() => ({ body: "{}" }));
+  const itp = new Interpreter({ baseUrl: "http://py", bundlerUrl: "http://bundler", fetch: mock.fn });
+
+  await assert.rejects(
+    () => itp.run("x", { lang: "python", packageJson: { dependencies: { requests: "*" } } }),
+    /only supported for javascript/,
+  );
+  assert.equal(mock.calls.length, 0);
+});
+
+test("a bundler failure throws with its message", async () => {
+  const mock = mockFetch((url) =>
+    url.endsWith("/bundle")
+      ? { ok: false, status: 500, body: JSON.stringify({ error: "bundle_error", message: "boom" }) }
+      : { body: "{}" },
+  );
+  const itp = new Interpreter({ baseUrl: "http://ts", bundlerUrl: "http://bundler", fetch: mock.fn });
+
+  await assert.rejects(
+    () => itp.run("x", { lang: "javascript", packageJson: { dependencies: {} } }),
+    /bundler failed \(500\): boom/,
+  );
+});
+
+test("runRaw() also bundles packageJson before running", async () => {
+  const mock = mockFetch((url) =>
+    url.endsWith("/bundle") ? { body: JSON.stringify({ blob: "BLOB" }) } : { status: 200, body: "<h1>hi</h1>" },
+  );
+  const itp = new Interpreter({ baseUrl: "http://ts", bundlerUrl: "http://bundler", fetch: mock.fn });
+
+  const resp = await itp.runRaw("src", {
+    lang: "javascript",
+    packageJson: { dependencies: { m: "^1" } },
+    input: { path: "/" },
+  });
+
+  assert.equal(await resp.text(), "<h1>hi</h1>");
+  assert.equal(mock.calls[0].url, "http://bundler/bundle");
+  assert.equal(JSON.parse(mock.calls[1].init.body).code, "BLOB");
+});
+
+test("capabilities().arbitraryImage is true only when a bundlerUrl is set", () => {
+  assert.equal(new Interpreter({ baseUrl: "http://w" }).capabilities().arbitraryImage, false);
+  assert.equal(new Interpreter({ baseUrl: "http://w", bundlerUrl: "http://b" }).capabilities().arbitraryImage, true);
+});
+
+test("bundle() posts source + package.json to the bundler and returns the blob (no run)", async () => {
+  const mock = mockFetch(() => ({ body: JSON.stringify({ blob: "BUNDLED();", stats: {} }) }));
+  const itp = new Interpreter({ baseUrl: "http://ts", bundlerUrl: "http://bundler/", fetch: mock.fn });
+
+  const blob = await itp.bundle("import x from 'm'; x()", { dependencies: { m: "^1.0.0" } });
+
+  assert.equal(blob, "BUNDLED();");
+  assert.equal(mock.calls.length, 1); // only the bundler is hit; nothing is executed
+  assert.equal(mock.calls[0].url, "http://bundler/bundle");
+  const req = JSON.parse(mock.calls[0].init.body);
+  assert.match(req.source, /import x/);
+  assert.deepEqual(req.packageJson, { dependencies: { m: "^1.0.0" } });
+});
+
+test("bundle() without a bundlerUrl throws", async () => {
+  const itp = new Interpreter({ baseUrl: "http://ts" });
+  await assert.rejects(() => itp.bundle("x", { dependencies: {} }), /bundlerUrl/);
+});

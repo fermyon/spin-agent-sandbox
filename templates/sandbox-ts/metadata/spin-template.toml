@@ -1,18 +1,16 @@
 manifest_version = "1"
 id = "sandbox-ts"
-description = "JS/TS code sandbox — runs untrusted JavaScript/TypeScript over HTTP in Wasm"
+description = "JS/TS code sandbox with npm dependency support — a private code sandbox plus a private bundler, wired together"
 trigger_type = "http"
-tags = ["http", "sandbox", "ai", "javascript", "typescript"]
+tags = ["http", "sandbox", "ai", "javascript", "typescript", "bundler"]
 
 # Enables `spin add -t sandbox-ts` into an existing app (in addition to `spin new`).
-# In add mode the app-level files are skipped and only the component snippet is merged.
+# In add mode the app-level files are skipped and only the two-component snippet is merged.
 [add_component]
 skip_files = ["spin.toml", ".gitignore"]
-# http-path is unused in add mode (the added component is private, no public route).
-skip_parameters = ["project-description", "http-path"]
+skip_parameters = ["project-description"]
 [add_component.snippets]
 component = "component.txt"
 
 [parameters]
 project-description = { type = "string", prompt = "Description", default = "" }
-http-path = { type = "string", prompt = "HTTP path", default = "/ts/...", pattern = "^/\\S*$" }

@@ -57,6 +57,12 @@ export interface HttpInput {
   body?: unknown;
 }
 
+/**
+ * A package.json (or its raw JSON string) whose `dependencies` should be bundled
+ * into JS/TS code before it runs. See `RunOpts.packageJson`.
+ */
+export type PackageJson = string | { dependencies?: Record<string, string>; [key: string]: unknown };
+
 /** Options accepted by `run()` — the portable surface every backend honors. */
 export interface RunOpts {
   /** Defaults to "python". */
@@ -78,6 +84,15 @@ export interface RunOpts {
    * `Caps.realTimeout` (best-effort, host-request-bounded on the interpreter).
    */
   timeoutMs?: number;
+  /**
+   * JS/TS ONLY. npm dependencies to bundle into `code` before it runs, given as a
+   * package.json object or its raw JSON string (its `dependencies` are used). The
+   * runner must be configured with a bundler (the Interpreter's `bundlerUrl`); it
+   * sends the source + this package.json to that bundler component and runs the
+   * returned self-contained bundle. Rejected for python, whose libraries are frozen
+   * into the component. Reflected by `Caps.arbitraryImage`.
+   */
+  packageJson?: PackageJson;
 }
 
 /**
@@ -124,6 +139,8 @@ export interface CodeMeta {
   id: string;
   language: Language;
   title?: string;
+  /** JS/TS only. npm dependencies the code declared (name -> semver), for display/metadata. */
+  dependencies?: Record<string, string>;
   /** Unix epoch millis when saved. */
   createdAt: number;
 }
@@ -131,6 +148,13 @@ export interface CodeMeta {
 /** A stored code entry, including its source. */
 export interface StoredCode extends CodeMeta {
   code: string;
+  /**
+   * JS/TS only. The self-contained bundle produced from `code` + `dependencies` at save
+   * time. When present it is what runs (serveStoredCode prefers it over `code`), so an app
+   * with dependencies is bundled once at publish, not on every request. `code` stays the
+   * editable source.
+   */
+  bundled?: string;
 }
 
 /**
@@ -139,8 +163,17 @@ export interface StoredCode extends CodeMeta {
  * backing store (Spin KV today); a consumer depends only on this interface.
  */
 export interface CodeStore {
-  /** Persist code; returns its id + metadata. Pass `id` to update an existing entry in place. */
-  save(input: { id?: string; code: string; language: Language; title?: string }): Promise<CodeMeta>;
+  /** Persist code; returns its id + metadata. Pass `id` to update an existing entry in place.
+   *  `code` is the editable source; optional `bundled` is a self-contained blob (from the
+   *  bundler) that will run in its place, and `dependencies` records what it declared. */
+  save(input: {
+    id?: string;
+    code: string;
+    language: Language;
+    title?: string;
+    dependencies?: Record<string, string>;
+    bundled?: string;
+  }): Promise<CodeMeta>;
   /** Load one entry with its source, or null if absent. */
   get(id: string): Promise<StoredCode | null>;
   /** List stored entries (metadata only). */

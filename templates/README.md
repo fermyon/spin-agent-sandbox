@@ -7,11 +7,17 @@ generated app. The components are built and published by
 
 [spin-fileserver]: https://github.com/spinframework/spin-fileserver
 
-| Template       | `spin new` (new app)                 | `spin add` (existing app) | Components        |
-| -------------- | ------------------------------------ | ------------------------- | ----------------- |
-| `sandbox-ts`   | app with the JS/TS sandbox           | ✅ adds the JS/TS sandbox | ts-sandbox        |
-| `sandbox-py`   | app with the Python sandbox          | ✅ adds the Python sandbox | py-sandbox        |
-| `sandbox-app`  | app with **both** sandboxes          | —                         | ts + py           |
+| Template      | `spin new` (new app)                       | `spin add` (existing app)  | Components           |
+| ------------- | ------------------------------------------ | -------------------------- | -------------------- |
+| `sandbox-ts`  | JS/TS sandbox **+ bundler** (both private) | ✅ adds both (private)     | ts-sandbox + bundler |
+| `sandbox-py`  | app with the Python sandbox                | ✅ adds the Python sandbox | py-sandbox           |
+| `sandbox-app` | app with **both** sandboxes                | —                          | ts + py              |
+
+`sandbox-ts` gives JavaScript npm-dependency support: it wires the code sandbox together with
+its bundler (which fetches deps from esm.sh), both as **private** components. Drive them from
+your own component with `new Interpreter({ baseUrl, bundlerUrl })` and
+`run(code, { lang: "javascript", packageJson })`. The two stay separate so the "fetch npm"
+capability is isolated from the "run untrusted code" capability.
 
 ## Install
 
@@ -26,26 +32,31 @@ spin templates install --git https://github.com/lepton/wasm-sandbox --upgrade
 ## Use
 
 ```bash
-# New app with one sandbox (prompts for HTTP path, default /ts/... or /py/...):
-spin new -t sandbox-ts my-sandbox && cd my-sandbox && spin up
+# New app with the JS/TS sandbox + bundler (both private — drive them from your own component):
+spin new -t sandbox-ts my-sandbox
+
+# New app with the Python sandbox (prompts for HTTP path, default /py/...):
+spin new -t sandbox-py my-py && cd my-py && spin up
 
 # Add a sandbox to an existing app:
-spin add -t sandbox-py
+spin add -t sandbox-ts        # JS/TS sandbox + bundler (private)
+spin add -t sandbox-py        # Python sandbox
 
 # New app with both sandboxes at /ts/... and /py/...:
 spin new -t sandbox-app my-sandbox
 ```
 
 Built-in parameters `project-name` (the name you pass to `spin new`/`spin add`) and `authors`
-(from git config) populate `spin.toml`. The single-component templates use `project-name` as
-the component id; `sandbox-app` uses fixed ids `ts-sandbox` and `py-sandbox`. `spin up`
-fetches the components by URL + digest on first run.
+(from git config) populate `spin.toml`. `sandbox-py` uses `project-name` as the component id;
+`sandbox-ts` uses `project-name` for the sandbox and `project-name-bundler` for the bundler;
+`sandbox-app` uses fixed ids `ts-sandbox` and `py-sandbox`. `spin up` fetches the components by
+URL + digest on first run.
 
 ## Releasing the components (maintainers)
 
 1. Push a tag `vX.Y.Z` (or run the **Release** workflow manually for a `canary` prerelease).
-   The workflow builds both components with `spin build` and uploads `ts-sandbox.wasm`,
-   `py-sandbox.wasm`, and a `checksums-*.txt` to the release.
+   The workflow builds the components with `spin build` and uploads `ts-sandbox.wasm`,
+   `py-sandbox.wasm`, `bundler.wasm`, and a `checksums-*.txt` to the release.
 2. Point the templates at the new release (fills in real `sha256` digests):
 
    ```bash

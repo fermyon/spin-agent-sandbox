@@ -1,0 +1,4386 @@
+{
+  "base": "http://127.0.0.1:3000",
+  "seconds": 90,
+  "results": [
+    {
+      "name": "mustache",
+      "version": "^4.2.0",
+      "category": "templating",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 1165,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 9472
+      },
+      "stdout": "OK:7-8"
+    },
+    {
+      "name": "qs",
+      "version": "^6.11.0",
+      "category": "querystring",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 800,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 46231
+      },
+      "stdout": "OK:a=1&b=2"
+    },
+    {
+      "name": "ramda",
+      "version": "^0.29.1",
+      "category": "functional",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 1077,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 66003
+      },
+      "stdout": "OK:6"
+    },
+    {
+      "name": "slugify",
+      "version": "^1.6.6",
+      "category": "string",
+      "note": "",
+      "status": "runtime_error",
+      "detail": "THREW:TypeError: u.normalize is not a function",
+      "stats": {
+        "ms": 397,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 14277
+      },
+      "stdout": "THREW:TypeError: u.normalize is not a function"
+    },
+    {
+      "name": "he",
+      "version": "^1.2.0",
+      "category": "string",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 1540,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 90721
+      },
+      "stdout": "OK:&#x3C;a&#x3E;"
+    },
+    {
+      "name": "pluralize",
+      "version": "^8.0.0",
+      "category": "string",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 911,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 9660
+      },
+      "stdout": "OK:cats"
+    },
+    {
+      "name": "validator",
+      "version": "^13.11.0",
+      "category": "validation",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 1485,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 135827
+      },
+      "stdout": "OK:true"
+    },
+    {
+      "name": "ms",
+      "version": "^2.1.3",
+      "category": "time",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 1401,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 4767
+      },
+      "stdout": "OK:7200000"
+    },
+    {
+      "name": "big.js",
+      "version": "^6.2.1",
+      "category": "number",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 1438,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 9643
+      },
+      "stdout": "OK:0.3"
+    },
+    {
+      "name": "classnames",
+      "version": "^2.5.1",
+      "category": "ui",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 820,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 4539
+      },
+      "stdout": "OK:a b"
+    },
+    {
+      "name": "deepmerge",
+      "version": "^4.3.1",
+      "category": "object",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 769,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 5218
+      },
+      "stdout": "OK:{\"a\":1,\"b\":2}"
+    },
+    {
+      "name": "fast-deep-equal",
+      "version": "^3.1.3",
+      "category": "object",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 214,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 4425
+      },
+      "stdout": "OK:true"
+    },
+    {
+      "name": "marked",
+      "version": "^11.0.0",
+      "category": "markdown",
+      "note": "known engine limit: uses \\p{...} unicode-property regex",
+      "status": "compile_error",
+      "detail": "invalid class property name in regular expression",
+      "stats": {
+        "ms": 865,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 38858
+      },
+      "stdout": ""
+    },
+    {
+      "name": "lodash",
+      "version": "",
+      "category": "built-in",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 1,
+        "fetches": 0,
+        "modules": 0,
+        "bytes": 1325
+      },
+      "stdout": "OK:[[1,2],[3,4]]"
+    },
+    {
+      "name": "nanoid",
+      "version": "",
+      "category": "built-in",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 1,
+        "fetches": 0,
+        "modules": 0,
+        "bytes": 1305
+      },
+      "stdout": "OK:21"
+    },
+    {
+      "name": "uuid",
+      "version": "",
+      "category": "built-in",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 1,
+        "fetches": 0,
+        "modules": 0,
+        "bytes": 1295
+      },
+      "stdout": "OK:36"
+    },
+    {
+      "name": "voca",
+      "version": "^1.4.1",
+      "category": "string",
+      "note": "Full-featured string library; passes cleanly. Unlike the change-case family it does not use Unicode-property regex escapes, so it compiles in StarlingMonkey.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 418,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 26250
+      },
+      "stdout": "OK:foo-bar-baz"
+    },
+    {
+      "name": "escape-string-regexp",
+      "version": "^5.0.0",
+      "category": "string",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 395,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 3240
+      },
+      "stdout": "OK:a\\.b\\*c"
+    },
+    {
+      "name": "indent-string",
+      "version": "^5.0.0",
+      "category": "string",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 724,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 3518
+      },
+      "stdout": "OK:\"  a\\n  b\""
+    },
+    {
+      "name": "word-wrap",
+      "version": "^1.2.5",
+      "category": "string",
+      "note": "Note: word-wrap preserves trailing whitespace on wrapped lines by default; must pass trim:true to get clean output. Initial snippet without trim produced 'aaa \\nbbb \\nccc'.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 491,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 4484
+      },
+      "stdout": "OK:\"aaa\\nbbb\\nccc\""
+    },
+    {
+      "name": "string-hash",
+      "version": "^1.1.3",
+      "category": "string",
+      "note": "hash('hello') === 181380007 (djb2-style). My original guessed value was wrong; corrected to the observed deterministic output.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 177,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 3729
+      },
+      "stdout": "OK:181380007"
+    },
+    {
+      "name": "no-case",
+      "version": "^3.0.4",
+      "category": "string",
+      "note": "v5 does not exist on esm.sh (404 on ^5.0.0); the published range is 3.x. On v3.0.4 it passes. v3's noCase avoids the Unicode-property regex that breaks the newer change-case scoped packages.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 177,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 2974
+      },
+      "stdout": "OK:foo bar baz"
+    },
+    {
+      "name": "camelcase",
+      "version": "^8.0.0",
+      "category": "string",
+      "note": "REAL FINDING: camelcase v8 uses Unicode-property regex escapes (\\p{...} with the u flag) for word-boundary detection. StarlingMonkey/SpiderMonkey rejects these at parse time -> compile_error. Would likely need a pre-v6 version (before it added \\p{} support) to work.",
+      "status": "compile_error",
+      "detail": "invalid class property name in regular expression",
+      "stats": {
+        "ms": 251,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 4216
+      },
+      "stdout": ""
+    },
+    {
+      "name": "decamelize",
+      "version": "^6.0.0",
+      "category": "string",
+      "note": "REAL FINDING: decamelize v6 uses \\p{...} Unicode-property regex escapes; rejected by the engine at parse time.",
+      "status": "compile_error",
+      "detail": "invalid class property name in regular expression",
+      "stats": {
+        "ms": 226,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 3613
+      },
+      "stdout": ""
+    },
+    {
+      "name": "change-case",
+      "version": "^5.4.4",
+      "category": "string",
+      "note": "REAL FINDING: change-case v5 (the consolidated scoped package) uses \\p{...} Unicode-property regex escapes for splitting; compile_error in StarlingMonkey. The entire modern change-case family is affected.",
+      "status": "compile_error",
+      "detail": "invalid class property name in regular expression",
+      "stats": {
+        "ms": 192,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 6726
+      },
+      "stdout": ""
+    },
+    {
+      "name": "title-case",
+      "version": "^4.3.1",
+      "category": "string",
+      "note": "REAL FINDING: title-case v4 depends on the change-case tokenizer using \\p{...} escapes; compile_error.",
+      "status": "compile_error",
+      "detail": "invalid class property name in regular expression",
+      "stats": {
+        "ms": 169,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 4083
+      },
+      "stdout": ""
+    },
+    {
+      "name": "snake-case",
+      "version": "^4.0.0",
+      "category": "string",
+      "note": "REAL FINDING: snake-case v4 (change-case family) uses \\p{...} Unicode-property regex escapes; compile_error.",
+      "status": "compile_error",
+      "detail": "invalid class property name in regular expression",
+      "stats": {
+        "ms": 206,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 3584
+      },
+      "stdout": ""
+    },
+    {
+      "name": "param-case",
+      "version": "^4.0.0",
+      "category": "string",
+      "note": "REAL FINDING: param-case v4 (change-case family) uses \\p{...} Unicode-property regex escapes; compile_error. Added as a swap-in to cover the kebab/param-case slot.",
+      "status": "compile_error",
+      "detail": "invalid class property name in regular expression",
+      "stats": {
+        "ms": 196,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 3584
+      },
+      "stdout": ""
+    },
+    {
+      "name": "eta",
+      "version": "^3.4.0",
+      "category": "templating",
+      "note": "Modern EJS-style engine. Works cleanly.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 322,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 12491
+      },
+      "stdout": "OK:7-8"
+    },
+    {
+      "name": "dot",
+      "version": "^1.1.3",
+      "category": "templating",
+      "note": "doT.template compiles and renders fine.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 300,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 7113
+      },
+      "stdout": "OK:7-8"
+    },
+    {
+      "name": "micromustache",
+      "version": "^8.0.3",
+      "category": "templating",
+      "note": "Lightweight mustache subset. Works.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 307,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 8216
+      },
+      "stdout": "OK:7-8"
+    },
+    {
+      "name": "underscore",
+      "version": "^1.13.6",
+      "category": "templating",
+      "note": "_.template works. Note: slow to bundle+run (~12s).",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 480,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 26503
+      },
+      "stdout": "OK:7-8"
+    },
+    {
+      "name": "lodash.template",
+      "version": "^4.5.0",
+      "category": "templating",
+      "note": "Standalone lodash template package. Works.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 331,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 14145
+      },
+      "stdout": "OK:7-8"
+    },
+    {
+      "name": "handlebars",
+      "version": "^4.7.8",
+      "category": "templating",
+      "note": "Fails at module load: the bundler's CJS interop tries to write exports.__esModule on a frozen exports object. Reproduced identically with default import AND namespace import (import * as), so it is inherent to how handlebars' esm.sh output is wrapped, not the snippet. Bundler interop bug.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 1405,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 108877
+      },
+      "stdout": "OK:7-8"
+    },
+    {
+      "name": "squirrelly",
+      "version": "^9.1.0",
+      "category": "templating",
+      "note": "Same load-time '__esModule is read-only' failure as handlebars. Reproduced with named import AND namespace import. Bundler CJS-interop bug, not the snippet.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 1616,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 13850
+      },
+      "stdout": "OK:7-8"
+    },
+    {
+      "name": "art-template",
+      "version": "^4.13.2",
+      "category": "templating",
+      "note": "Default entry pulls in Node 'fs' (filesystem template loading). The sandbox does not shim/bundle fs. Also tried the browser 'art-template/lib/index.js' entry -> same fs failure. Genuinely incompatible in this environment.",
+      "status": "runtime_error",
+      "detail": "THREW:TypeError: can't access property \".art\", Z.extensions is undefined",
+      "stats": {
+        "ms": 4439,
+        "fetches": 2,
+        "modules": 10,
+        "bytes": 323163
+      },
+      "stdout": "THREW:TypeError: can't access property \".art\", Z.extensions is undefined"
+    },
+    {
+      "name": "ejs",
+      "version": "^3.1.10",
+      "category": "templating",
+      "note": "ejs unconditionally requires Node 'fs' at load time (for includes/file rendering), which the sandbox does not provide. Fails even for pure in-memory ejs.render. Genuinely incompatible.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 4527,
+        "fetches": 2,
+        "modules": 4,
+        "bytes": 19498
+      },
+      "stdout": "OK:7-8"
+    },
+    {
+      "name": "pug",
+      "version": "^3.0.3",
+      "category": "templating",
+      "note": "/bundle OOMs assembling pug's very large dependency graph (pug pulls in the full pug-lexer/parser/linker/code-gen chain plus fs-based loaders). Never reaches the sandbox; no stats emitted.",
+      "status": "bundle_error",
+      "detail": "dependency graph too large (814 KB across 7 modules); this library is too big to bundle in the sandbox — try a smaller alternative",
+      "stats": null,
+      "stdout": ""
+    },
+    {
+      "name": "liquidjs",
+      "version": "^10.16.1",
+      "category": "templating",
+      "note": "StarlingMonkey rejects the blob at parse time: liquidjs ships a Unicode-property regex (\\p{...} with u flag), which the engine cannot compile (matches the known engine gap). Compile error, not a runtime issue.",
+      "status": "compile_error",
+      "detail": "invalid class property name in regular expression",
+      "stats": {
+        "ms": 3829,
+        "fetches": 2,
+        "modules": 9,
+        "bytes": 94049
+      },
+      "stdout": ""
+    },
+    {
+      "name": "superstruct",
+      "version": "^2.0.2",
+      "category": "validation",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 1760,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 13840
+      },
+      "stdout": "OK:valid"
+    },
+    {
+      "name": "yup",
+      "version": "^1.4.0",
+      "category": "validation",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 653,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 48789
+      },
+      "stdout": "OK:ada:36"
+    },
+    {
+      "name": "fastest-validator",
+      "version": "^1.19.0",
+      "category": "validation",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 2479,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 49611
+      },
+      "stdout": "OK:true"
+    },
+    {
+      "name": "joi",
+      "version": "^17.13.0",
+      "category": "validation",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 1953,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 151242
+      },
+      "stdout": "OK:ada:36"
+    },
+    {
+      "name": "class-validator",
+      "version": "^0.14.1",
+      "category": "validation",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 4959,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 394112
+      },
+      "stdout": "OK:true:true:false"
+    },
+    {
+      "name": "email-validator",
+      "version": "^2.0.4",
+      "category": "validation",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 942,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 4016
+      },
+      "stdout": "OK:true:false"
+    },
+    {
+      "name": "validate.js",
+      "version": "^0.13.1",
+      "category": "validation",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 4553,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 18266
+      },
+      "stdout": "OK:invalid"
+    },
+    {
+      "name": "@sinclair/typebox",
+      "version": "^0.33.0",
+      "category": "validation",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 5584,
+        "fetches": 4,
+        "modules": 4,
+        "bytes": 128629
+      },
+      "stdout": "OK:true:false"
+    },
+    {
+      "name": "valibot",
+      "version": "^0.42.0",
+      "category": "validation",
+      "note": "ENGINE GAP: valibot's source contains a \\p{...} Unicode-property regex escape (used in its emoji/string validators), which StarlingMonkey rejects at parse time: 'invalid property name in regular expression'. The whole blob fails to compile even though the snippet only used object/string/number. Not fixable at the snippet level — the bundled dep itself trips the engine.",
+      "status": "compile_error",
+      "detail": "invalid property name in regular expression",
+      "stats": {
+        "ms": 3127,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 73458
+      },
+      "stdout": ""
+    },
+    {
+      "name": "ajv",
+      "version": "^8.17.0",
+      "category": "validation",
+      "note": "CJS/ESM INTEROP GAP: throws 'TypeError: \"__esModule\" is read-only' at module-load time. The bundler's sucrase ESM->CJS output tries to assign exports.__esModule on a module namespace object that ajv (via esm.sh) has frozen / defined as non-writable. Fails before any validation runs; not snippet-fixable.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 4579,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 122051
+      },
+      "stdout": "OK:true:false"
+    },
+    {
+      "name": "is-my-json-valid",
+      "version": "^2.20.6",
+      "category": "validation",
+      "note": "NODE BUILTIN GAP: throws \"module not found: '/node/util.mjs'\". is-my-json-valid imports the Node 'util' builtin (for format helpers), which the sandbox does not shim — only a fixed module set is bundled in-WASM. Not snippet-fixable.",
+      "status": "runtime_error",
+      "detail": "THREW:SyntaxError: expected expression, got '%'",
+      "stats": {
+        "ms": 420,
+        "fetches": 2,
+        "modules": 3,
+        "bytes": 32970
+      },
+      "stdout": "THREW:SyntaxError: expected expression, got '%'"
+    },
+    {
+      "name": "ow",
+      "version": "^2.0.0",
+      "category": "validation",
+      "note": "ENGINE GAP: throws 'ReferenceError: Intl is not defined'. ow references Intl (for pluralization/number formatting in its error-message machinery) at module init, and StarlingMonkey has no ICU/Intl. Fails before validation; not snippet-fixable.",
+      "status": "runtime_error",
+      "detail": "THREW:ReferenceError: Intl is not defined",
+      "stats": {
+        "ms": 736,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 47461
+      },
+      "stdout": "THREW:ReferenceError: Intl is not defined"
+    },
+    {
+      "name": "remeda",
+      "version": "^2.0.0",
+      "category": "functional",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 550,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 33250
+      },
+      "stdout": "OK:[20,40]"
+    },
+    {
+      "name": "rambda",
+      "version": "^9.0.0",
+      "category": "functional",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 706,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 38505
+      },
+      "stdout": "OK:[2,3,4]"
+    },
+    {
+      "name": "radash",
+      "version": "^12.0.0",
+      "category": "functional",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 342,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 19171
+      },
+      "stdout": "OK:10:[1,2,3]"
+    },
+    {
+      "name": "immer",
+      "version": "^10.0.0",
+      "category": "functional",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 536,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 17530
+      },
+      "stdout": "OK:{\"a\":2,\"list\":[1,2,3]}:true"
+    },
+    {
+      "name": "just-clone",
+      "version": "^6.2.0",
+      "category": "functional",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 331,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 3523
+      },
+      "stdout": "OK:1:2"
+    },
+    {
+      "name": "just-omit",
+      "version": "^2.2.0",
+      "category": "functional",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 261,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 3100
+      },
+      "stdout": "OK:{\"a\":1,\"c\":3}"
+    },
+    {
+      "name": "mout",
+      "version": "^1.2.4",
+      "category": "functional",
+      "note": "Subpath import 'mout/string' resolves and works.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 376,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 15188
+      },
+      "stdout": "OK:fooBarBaz"
+    },
+    {
+      "name": "moderndash",
+      "version": "^4.0.0",
+      "category": "functional",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 382,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 16214
+      },
+      "stdout": "OK:[1,2,3]"
+    },
+    {
+      "name": "just-pick",
+      "version": "^4.2.0",
+      "category": "functional",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 260,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 3080
+      },
+      "stdout": "OK:{\"a\":1,\"c\":3}"
+    },
+    {
+      "name": "just-group-by",
+      "version": "^1.2.0",
+      "category": "functional",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 470,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 3303
+      },
+      "stdout": "OK:{\"odd\":[1,3],\"even\":[2,4]}"
+    },
+    {
+      "name": "rambdax",
+      "version": "^11.0.0",
+      "category": "functional",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 1076,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 53966
+      },
+      "stdout": "OK:10"
+    },
+    {
+      "name": "fp-ts",
+      "version": "^2.16.0",
+      "category": "functional",
+      "note": "Multiple subpath imports (fp-ts/function, fp-ts/Option) resolve; 4 fetches/modules.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 2172,
+        "fetches": 4,
+        "modules": 4,
+        "bytes": 20788
+      },
+      "stdout": "OK:10"
+    },
+    {
+      "name": "luxon",
+      "version": "^3.4.0",
+      "category": "datetime",
+      "note": "Genuine engine-gap finding. Luxon's core references Intl unconditionally (even for plain ISO parsing/formatting), and StarlingMonkey has no ICU/Intl. Fails at import/first-use with ReferenceError: Intl is not defined. Luxon is unusable in this sandbox.",
+      "status": "runtime_error",
+      "detail": "THREW:ReferenceError: Intl is not defined",
+      "stats": {
+        "ms": 2408,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 74490
+      },
+      "stdout": "THREW:ReferenceError: Intl is not defined"
+    },
+    {
+      "name": "timeago.js",
+      "version": "^4.0.0",
+      "category": "datetime",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 1639,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 4391
+      },
+      "stdout": "OK:1 hour ago"
+    },
+    {
+      "name": "pretty-ms",
+      "version": "^9.0.0",
+      "category": "datetime",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 1635,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 5521
+      },
+      "stdout": "OK:15d 11h 23m 20s"
+    },
+    {
+      "name": "humanize-duration",
+      "version": "^3.31.0",
+      "category": "datetime",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 396,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 30354
+      },
+      "stdout": "OK:1 hour"
+    },
+    {
+      "name": "spacetime",
+      "version": "^7.6.0",
+      "category": "datetime",
+      "note": "Passes despite being a timezone library: spacetime ships its own tz math and does not require Intl for this path.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 930,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 53062
+      },
+      "stdout": "OK:2023-5"
+    },
+    {
+      "name": "dateformat",
+      "version": "^5.0.3",
+      "category": "datetime",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 234,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 7628
+      },
+      "stdout": "OK:2023-05-15"
+    },
+    {
+      "name": "moment",
+      "version": "^2.30.0",
+      "category": "datetime",
+      "note": "Core parse/format works; moment does not need Intl for these ASCII tokens. Locale/tz-aware formatting via Intl would still fail.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 912,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 64164
+      },
+      "stdout": "OK:2023-05-15"
+    },
+    {
+      "name": "date-fns-tz",
+      "version": "^3.2.0",
+      "category": "datetime",
+      "note": "Bundler/resolver gap. date-fns-tz's esm.sh build emits a bare peer import to '/date-fns@^3.0.0 || ^4.0.0/format?target=es2020' (URL-encoded range still present). The in-WASM resolver treats it as an unresolvable dynamic 'date-fns' subpath and throws 'module not found' at run time, even though date-fns is a built-in. Transitive peer-dep subpaths to built-ins are not linked.",
+      "status": "runtime_error",
+      "detail": "THREW:ReferenceError: Intl is not defined",
+      "stats": {
+        "ms": 20698,
+        "fetches": 272,
+        "modules": 272,
+        "bytes": 398484
+      },
+      "stdout": "THREW:ReferenceError: Intl is not defined"
+    },
+    {
+      "name": "tinyduration",
+      "version": "^3.3.0",
+      "category": "datetime",
+      "note": "ESM->CJS interop finding. The bundled module tries to assign Object.defineProperty(exports,'__esModule',...) onto a module namespace where __esModule is a non-writable/getter-only property, so the sucrase/CJS-wrapped code throws 'TypeError: \"__esModule\" is read-only' at link time. This is a bundler interop gap, not an engine gap.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 989,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 5355
+      },
+      "stdout": "OK:1h30m"
+    },
+    {
+      "name": "parse-duration",
+      "version": "^1.1.0",
+      "category": "datetime",
+      "note": "Engine-gap finding. parse-duration ships a Unicode-property regex escape (\\p{...} with the u flag); StarlingMonkey rejects it at compile time with 'invalid class property name in regular expression'. Same class of failure as other \\p{} regex cases. The blob never runs.",
+      "status": "compile_error",
+      "detail": "invalid class property name in regular expression",
+      "stats": {
+        "ms": 246,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 3749
+      },
+      "stdout": ""
+    },
+    {
+      "name": "fecha",
+      "version": "^4.2.3",
+      "category": "datetime",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 222,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 8809
+      },
+      "stdout": "OK:2023-05-15"
+    },
+    {
+      "name": "decimal.js",
+      "version": "^10.4.0",
+      "category": "numbers",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 668,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 35208
+      },
+      "stdout": "OK:0.3"
+    },
+    {
+      "name": "bignumber.js",
+      "version": "^9.1.0",
+      "category": "numbers",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 597,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 22470
+      },
+      "stdout": "OK:0.3"
+    },
+    {
+      "name": "fraction.js",
+      "version": "^4.3.0",
+      "category": "numbers",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 287,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 8721
+      },
+      "stdout": "OK:5/6"
+    },
+    {
+      "name": "numeral",
+      "version": "^2.0.6",
+      "category": "numbers",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 332,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 15107
+      },
+      "stdout": "OK:1,000"
+    },
+    {
+      "name": "currency.js",
+      "version": "^2.0.4",
+      "category": "numbers",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 382,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 5920
+      },
+      "stdout": "OK:$5.79"
+    },
+    {
+      "name": "accounting",
+      "version": "^0.4.1",
+      "category": "numbers",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 297,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 7168
+      },
+      "stdout": "OK:$1,234.57"
+    },
+    {
+      "name": "expr-eval",
+      "version": "^2.0.2",
+      "category": "numbers",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 556,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 28703
+      },
+      "stdout": "OK:14"
+    },
+    {
+      "name": "d3-format",
+      "version": "^3.1.0",
+      "category": "numbers",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 209,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 7628
+      },
+      "stdout": "OK:3.14"
+    },
+    {
+      "name": "numbro",
+      "version": "^2.5.0",
+      "category": "numbers",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 962,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 43724
+      },
+      "stdout": "OK:1,000"
+    },
+    {
+      "name": "js-big-decimal",
+      "version": "^2.0.7",
+      "category": "numbers",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 720,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 12389
+      },
+      "stdout": "OK:0.3"
+    },
+    {
+      "name": "mathjs",
+      "version": "^12.4.0",
+      "category": "numbers",
+      "note": "esm.sh ?bundle build fails (500) — library too large; never reaches sandbox. Non-bundle esm.sh build (200) works, so this is a bundler/esm.sh limitation, not a StarlingMonkey engine gap.",
+      "status": "bundle_error",
+      "detail": "dependency graph too large (704 KB across 3 modules); this library is too big to bundle in the sandbox — try a smaller alternative",
+      "stats": null,
+      "stdout": ""
+    },
+    {
+      "name": "papaparse",
+      "version": "^5.4.0",
+      "category": "parsing",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 492,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 23220
+      },
+      "stdout": "OK:[{\"a\":\"1\",\"b\":\"2\"}]"
+    },
+    {
+      "name": "ini",
+      "version": "^4.1.0",
+      "category": "parsing",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 248,
+        "fetches": 2,
+        "modules": 3,
+        "bytes": 8405
+      },
+      "stdout": "OK:{\"foo\":\"bar\",\"section\":{\"x\":\"1\"}}"
+    },
+    {
+      "name": "@iarna/toml",
+      "version": "^2.2.5",
+      "category": "parsing",
+      "note": "Real bundler limitation: depends on Node 'stream' builtin. Alternatives that pass: 'toml' (^3.0.0) and 'smol-toml' (^1.1.4).",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 547,
+        "fetches": 2,
+        "modules": 4,
+        "bytes": 49297
+      },
+      "stdout": "OK:{\"foo\":\"bar\",\"section\":{\"x\":1}}"
+    },
+    {
+      "name": "fast-xml-parser",
+      "version": "^4.3.0",
+      "category": "parsing",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 979,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 39255
+      },
+      "stdout": "OK:{\"a\":1,\"b\":\"hi\"}"
+    },
+    {
+      "name": "markdown-it",
+      "version": "^14.0.0",
+      "category": "parsing",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 1373,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 151278
+      },
+      "stdout": "OK:<p><strong>hi</strong></p>"
+    },
+    {
+      "name": "front-matter",
+      "version": "^4.0.2",
+      "category": "parsing",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 1765,
+        "fetches": 2,
+        "modules": 3,
+        "bytes": 47255
+      },
+      "stdout": "OK:{\"title\":\"Hello\"}|body"
+    },
+    {
+      "name": "json5",
+      "version": "^2.2.3",
+      "category": "parsing",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 1571,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 35373
+      },
+      "stdout": "OK:{\"a\":1,\"b\":\"two\",\"c\":[3]}"
+    },
+    {
+      "name": "yaml",
+      "version": "^2.3.0",
+      "category": "parsing",
+      "note": "Real bundler limitation with 'yaml' package's split internal module layout. For YAML in-sandbox use the built-in 'js-yaml' instead (resolves in-WASM, 0 fetches).",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 4052,
+        "fetches": 27,
+        "modules": 27,
+        "bytes": 147483
+      },
+      "stdout": "OK:{\"a\":1,\"b\":[\"x\",\"y\"]}"
+    },
+    {
+      "name": "toml",
+      "version": "^3.0.0",
+      "category": "parsing",
+      "note": "Works where @iarna/toml fails; PEG-generated parser has no Node builtin deps.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 652,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 31509
+      },
+      "stdout": "OK:{\"title\":\"TOML\",\"owner\":{\"name\":\"Tom\"}}"
+    },
+    {
+      "name": "csv-parse",
+      "version": "^5.5.0",
+      "category": "parsing",
+      "note": "Real limitation: needs the static Buffer.compare(). Use 'papaparse' instead for CSV, which passes.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 577,
+        "fetches": 2,
+        "modules": 3,
+        "bytes": 35458
+      },
+      "stdout": "OK:[{\"a\":\"1\",\"b\":\"2\"}]"
+    },
+    {
+      "name": "xml2js",
+      "version": "^0.6.2",
+      "category": "parsing",
+      "note": "Real bundler limitation: depends on Node 'events' builtin. Use 'fast-xml-parser' instead for XML, which passes.",
+      "status": "runtime_error",
+      "detail": "THREW:TypeError: can't access property \"reset\", this is null",
+      "stats": {
+        "ms": 1219,
+        "fetches": 2,
+        "modules": 6,
+        "bytes": 113811
+      },
+      "stdout": "THREW:TypeError: can't access property \"reset\", this is null"
+    },
+    {
+      "name": "smol-toml",
+      "version": "^1.1.4",
+      "category": "parsing",
+      "note": "Modern zero-dep TOML parser; passes cleanly where @iarna/toml fails.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 1662,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 17210
+      },
+      "stdout": "OK:{\"foo\":\"bar\",\"num\":42}"
+    },
+    {
+      "name": "object-hash",
+      "version": "^3.0.0",
+      "category": "hash-crypto",
+      "note": "Default SHA1 hex digest is 40 chars. Works cleanly.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 1757,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 38359
+      },
+      "stdout": "OK:40"
+    },
+    {
+      "name": "js-sha256",
+      "version": "^0.11.0",
+      "category": "hash-crypto",
+      "note": "GENUINE FAILURE. Throws at module load, not from my snippet: a bare `import * as m from 'js-sha256'` also throws the same error. The UMD IIFE dereferences an undefined root/global object (`i.from`) during environment detection (looks for Node Buffer/global). Not fixable via import shape.",
+      "status": "runtime_error",
+      "detail": "THREW:TypeError: can't access property \"from\", i is undefined",
+      "stats": {
+        "ms": 307,
+        "fetches": 2,
+        "modules": 3,
+        "bytes": 14431
+      },
+      "stdout": "THREW:TypeError: can't access property \"from\", i is undefined"
+    },
+    {
+      "name": "js-md5",
+      "version": "^0.8.3",
+      "category": "hash-crypto",
+      "note": "GENUINE FAILURE. Same class of bug as js-sha256/js-sha1 (same author). Namespace import also throws at load. UMD root-detection dereferences an undefined object (`.from`, i.e. Buffer.from probe).",
+      "status": "runtime_error",
+      "detail": "THREW:TypeError: can't access property \"from\", e is undefined",
+      "stats": {
+        "ms": 594,
+        "fetches": 2,
+        "modules": 3,
+        "bytes": 15609
+      },
+      "stdout": "THREW:TypeError: can't access property \"from\", e is undefined"
+    },
+    {
+      "name": "js-sha1",
+      "version": "^0.7.0",
+      "category": "hash-crypto",
+      "note": "GENUINE FAILURE. Same family (emn178 js-* hashers), same load-time throw on `.from` of an undefined UMD root. Namespace import confirmed it is not an import-shape issue.",
+      "status": "runtime_error",
+      "detail": "THREW:TypeError: can't access property \"from\", f is undefined",
+      "stats": {
+        "ms": 644,
+        "fetches": 2,
+        "modules": 3,
+        "bytes": 12901
+      },
+      "stdout": "THREW:TypeError: can't access property \"from\", f is undefined"
+    },
+    {
+      "name": "js-sha3",
+      "version": "^0.9.3",
+      "category": "hash-crypto",
+      "note": "Same author family as the failing js-sha256/md5/sha1 but this version WORKS. Must use `import jssha3 from 'js-sha3'` then `jssha3.keccak256(...)` — the module only exposes a `default` export, so named `import { keccak256 }` yields undefined (my first attempt failed for that reason; fixed and it passes). Keccak-256('abc') verified.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 584,
+        "fetches": 2,
+        "modules": 3,
+        "bytes": 14869
+      },
+      "stdout": "OK:4e03657aea45a94fc7d47ba826c8d667c0d1e6e33a64a036ec44f58fa12d6c45"
+    },
+    {
+      "name": "crc-32",
+      "version": "^1.2.2",
+      "category": "hash-crypto",
+      "note": "CRC32.str returns a signed int; `>>> 0` normalizes to unsigned. Works cleanly.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 210,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 5537
+      },
+      "stdout": "OK:891568578"
+    },
+    {
+      "name": "murmurhash",
+      "version": "^2.0.1",
+      "category": "hash-crypto",
+      "note": "MurmurHash3 32-bit of 'abc' (default seed 0). Works cleanly.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 183,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 5226
+      },
+      "stdout": "OK:3017643002"
+    },
+    {
+      "name": "hash-sum",
+      "version": "^2.0.0",
+      "category": "hash-crypto",
+      "note": "Fast non-crypto hash; asserted structural (string + deterministic) rather than an exact digest. Works cleanly.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 1098,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 4524
+      },
+      "stdout": "OK:string:true"
+    },
+    {
+      "name": "crypto-js",
+      "version": "^4.2.0",
+      "category": "hash-crypto",
+      "note": "SHA256('abc') verified. Large but works cleanly; uses its own PRNG so no Node crypto dependency needed for hashing.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 1052,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 75955
+      },
+      "stdout": "OK:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    },
+    {
+      "name": "tweetnacl",
+      "version": "^1.0.3",
+      "category": "hash-crypto",
+      "note": "Ed25519 keyPair.fromSeed produces a 32-byte public key. Works cleanly; deterministic seed keeps output stable.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 1580,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 36702
+      },
+      "stdout": "OK:32"
+    },
+    {
+      "name": "bs58",
+      "version": "^6.0.0",
+      "category": "hash-crypto",
+      "note": "Base58 encode of [1,2,3] = 'Ldp'. Works cleanly.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 1002,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 4487
+      },
+      "stdout": "OK:Ldp"
+    },
+    {
+      "name": "sha.js",
+      "version": "^2.4.11",
+      "category": "hash-crypto",
+      "note": "GENUINE FAILURE. sha.js hard-depends on the Node `buffer` module (its API is Buffer-based). The bundler does not shim/bundle `/node/buffer.mjs`, so linking fails. Would need a Buffer polyfill in the bundler to work.",
+      "status": "runtime_error",
+      "detail": "THREW:TypeError: E.prototype is not an object or null",
+      "stats": {
+        "ms": 548,
+        "fetches": 2,
+        "modules": 3,
+        "bytes": 42795
+      },
+      "stdout": "THREW:TypeError: E.prototype is not an object or null"
+    },
+    {
+      "name": "colord",
+      "version": "^2.9.3",
+      "category": "color-format",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 328,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 8408
+      },
+      "stdout": "OK:#ff0000"
+    },
+    {
+      "name": "tinycolor2",
+      "version": "^1.6.0",
+      "category": "color-format",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 341,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 18144
+      },
+      "stdout": "OK:#ff0000"
+    },
+    {
+      "name": "color-convert",
+      "version": "^2.0.1",
+      "category": "color-format",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 451,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 16974
+      },
+      "stdout": "OK:[0,100,50]"
+    },
+    {
+      "name": "chroma-js",
+      "version": "^2.4.2",
+      "category": "color-format",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 757,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 37974
+      },
+      "stdout": "OK:#ff0000"
+    },
+    {
+      "name": "color",
+      "version": "^4.2.3",
+      "category": "color-format",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 511,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 26454
+      },
+      "stdout": "OK:#FF0000"
+    },
+    {
+      "name": "color-string",
+      "version": "^1.9.1",
+      "category": "color-format",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 261,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 10903
+      },
+      "stdout": "OK:[255,0,0,1]"
+    },
+    {
+      "name": "color-name",
+      "version": "^2.0.0",
+      "category": "color-format",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 184,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 6349
+      },
+      "stdout": "OK:[255,0,0]"
+    },
+    {
+      "name": "bytes",
+      "version": "^3.1.2",
+      "category": "color-format",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 239,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 4759
+      },
+      "stdout": "OK:1KB"
+    },
+    {
+      "name": "filesize",
+      "version": "^10.1.6",
+      "category": "color-format",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 259,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 5112
+      },
+      "stdout": "OK:1 KB"
+    },
+    {
+      "name": "pretty-bytes",
+      "version": "^6.1.1",
+      "category": "color-format",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 199,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 4029
+      },
+      "stdout": "OK:1 kB"
+    },
+    {
+      "name": "humanize-string",
+      "version": "^3.0.0",
+      "category": "color-format",
+      "note": "Engine limitation. humanize-string depends on decamelize, which uses a \\p{...} Unicode-property regex escape (with the u flag). StarlingMonkey/SpiderMonkey here rejects Unicode-property escapes at compile time, so the module never loads. Matches the known engine fact about \\p{...} escapes being a compile error.",
+      "status": "compile_error",
+      "detail": "invalid class property name in regular expression",
+      "stats": {
+        "ms": 326,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 3937
+      },
+      "stdout": ""
+    },
+    {
+      "name": "immutable",
+      "version": "^4.3.0",
+      "category": "collections-async",
+      "note": "Persistent immutable collections. Bundles and runs cleanly.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 1119,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 69319
+      },
+      "stdout": "OK:4"
+    },
+    {
+      "name": "mnemonist",
+      "version": "^0.39.0",
+      "category": "collections-async",
+      "note": "Deep import of subpath module (stack.js) resolves and runs.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 165,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 6534
+      },
+      "stdout": "OK:2"
+    },
+    {
+      "name": "denque",
+      "version": "^2.1.0",
+      "category": "collections-async",
+      "note": "Double-ended queue. Bundles and runs cleanly.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 231,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 9271
+      },
+      "stdout": "OK:0-3"
+    },
+    {
+      "name": "eventemitter3",
+      "version": "^5.0.0",
+      "category": "collections-async",
+      "note": "Synchronous event emitter. Emit fires listener inline; works.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 204,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 6436
+      },
+      "stdout": "OK:fired"
+    },
+    {
+      "name": "mitt",
+      "version": "^3.0.0",
+      "category": "collections-async",
+      "note": "Tiny synchronous event emitter. Works cleanly.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 233,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 3159
+      },
+      "stdout": "OK:12"
+    },
+    {
+      "name": "p-limit",
+      "version": "^5.0.0",
+      "category": "collections-async",
+      "note": "Works only in the HANDLER shape. In the main (top-level) shape a floating promise is not awaited before the sandbox returns, so nothing prints; the sandbox awaits `export default { fetch }`, so async libraries must use it.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 196,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 4859
+      },
+      "stdout": "OK:2,4,6,8"
+    },
+    {
+      "name": "nanoevents",
+      "version": "^9.0.0",
+      "category": "collections-async",
+      "note": "Synchronous nano event emitter. Works cleanly.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 171,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 3417
+      },
+      "stdout": "OK:yo"
+    },
+    {
+      "name": "tiny-queue",
+      "version": "^0.2.1",
+      "category": "collections-async",
+      "note": "Simple FIFO queue. Works cleanly.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 330,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 4126
+      },
+      "stdout": "OK:a1"
+    },
+    {
+      "name": "p-queue",
+      "version": "^8.0.0",
+      "category": "collections-async",
+      "note": "Works only in the HANDLER shape. In the main (top-level) shape a floating promise is not awaited before the sandbox returns, so nothing prints; the sandbox awaits `export default { fetch }`, so async libraries must use it.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 312,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 14180
+      },
+      "stdout": "OK:42"
+    },
+    {
+      "name": "p-map",
+      "version": "^7.0.0",
+      "category": "collections-async",
+      "note": "Works only in the HANDLER shape. In the main (top-level) shape a floating promise is not awaited before the sandbox returns, so nothing prints; the sandbox awaits `export default { fetch }`, so async libraries must use it.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 220,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 6273
+      },
+      "stdout": "OK:10,20,30"
+    },
+    {
+      "name": "p-retry",
+      "version": "^6.0.0",
+      "category": "collections-async",
+      "note": "Works only in the HANDLER shape. In the main (top-level) shape a floating promise is not awaited before the sandbox returns, so nothing prints; the sandbox awaits `export default { fetch }`, so async libraries must use it.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 242,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 9708
+      },
+      "stdout": "OK:done"
+    },
+    {
+      "name": "yocto-queue",
+      "version": "^1.1.0",
+      "category": "collections-async",
+      "note": "Tiny linked-list queue (the data structure p-limit builds on). Synchronous; works cleanly.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 175,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 4194
+      },
+      "stdout": "OK:a-1"
+    },
+    {
+      "name": "cookie",
+      "version": "^0.6.0",
+      "category": "node-shimmed",
+      "note": "Pure-JS cookie parse/serialize; no Node builtins in modern versions. Bundles and runs clean.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 200,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 6159
+      },
+      "stdout": "OK:foo=bar"
+    },
+    {
+      "name": "content-type",
+      "version": "^1.0.5",
+      "category": "node-shimmed",
+      "note": "Content-Type header parser; pure JS. Works end-to-end.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 180,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 5835
+      },
+      "stdout": "OK:text/html;utf-8"
+    },
+    {
+      "name": "mime",
+      "version": "^3.0.0",
+      "category": "node-shimmed",
+      "note": "mime v3 (ESM, pure JS, embedded type maps). getType works. Note: v3 avoids the Node path dep that mime-types still uses.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 353,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 40142
+      },
+      "stdout": "OK:application/json"
+    },
+    {
+      "name": "mime-types",
+      "version": "^2.1.35",
+      "category": "node-shimmed",
+      "note": "REAL SHIM GAP. mime-types requires Node 'path' (for extname); the bundler does not shim '/node/path.mjs', so it throws at module load. Bundles fine, fails at runtime. Workaround: use 'mime' v3 (passes) or 'path-browserify' equivalents. Fixing = adding a path shim to the bundler.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 961,
+        "fetches": 2,
+        "modules": 3,
+        "bytes": 144918
+      },
+      "stdout": "OK:application/json"
+    },
+    {
+      "name": "path-browserify",
+      "version": "^1.0.1",
+      "category": "node-shimmed",
+      "note": "Node 'path' reimplemented in pure JS. join normalizes correctly. This is the drop-in that mime-types WOULD need if the bundler mapped 'path' -> path-browserify.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 564,
+        "fetches": 2,
+        "modules": 3,
+        "bytes": 9568
+      },
+      "stdout": "OK:a/c"
+    },
+    {
+      "name": "punycode",
+      "version": "^2.3.1",
+      "category": "node-shimmed",
+      "note": "Userland punycode (not the deprecated Node builtin); pure JS. IDNA toASCII works, including non-ASCII input — no Intl/normalize dependency triggered here.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 476,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 5382
+      },
+      "stdout": "OK:xn--maana-pta.com"
+    },
+    {
+      "name": "set-cookie-parser",
+      "version": "^2.6.0",
+      "category": "node-shimmed",
+      "note": "Set-Cookie header parser; pure JS. Parses name/value/attributes correctly.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 371,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 6331
+      },
+      "stdout": "OK:foo=bar"
+    },
+    {
+      "name": "axios",
+      "version": "^1.7.0",
+      "category": "node-shimmed",
+      "note": "MODULE LOADS. esm.sh resolves axios to its browser build (fetch/XHR adapter, not the Node http/https adapter), so import + API-surface access works and did NOT hit a Node-builtin shim gap. Asserted structurally (typeof axios.get) rather than making a network call, which the sandbox may not permit. An actual .get() request was NOT exercised.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 798,
+        "fetches": 2,
+        "modules": 4,
+        "bytes": 55327
+      },
+      "stdout": "OK:function"
+    },
+    {
+      "name": "form-data",
+      "version": "^4.0.0",
+      "category": "node-shimmed",
+      "note": "REAL SHIM GAP. form-data pulls in the Node 'crypto' MODULE (via async_hooks/combined-stream chain) for boundary randomness; the bundler shims web crypto globals but not the '/node/crypto.mjs' module import, so it throws at load. Bundles fine, fails at runtime. Distinct gap from mime-types (path).",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 1304,
+        "fetches": 2,
+        "modules": 12,
+        "bytes": 183183
+      },
+      "stdout": "OK:string"
+    },
+    {
+      "name": "media-typer",
+      "version": "^1.1.0",
+      "category": "node-shimmed",
+      "note": "Pure JS. FIXED SNIPPET: my first snippet passed 'text/html; charset=utf-8' and threw 'invalid media type' — that was MY mistake, not an engine issue. media-typer v1.x parse() accepts only a BARE type/subtype (parameter handling was removed vs v0.3). Corrected to parse('text/html') and it passes.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 1532,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 5077
+      },
+      "stdout": "OK:text/html"
+    },
+    {
+      "name": "statuses",
+      "version": "^2.0.1",
+      "category": "node-shimmed",
+      "note": "HTTP status code <-> message maps (require of embedded JSON). Works end-to-end.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 894,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 6180
+      },
+      "stdout": "OK:Not Found"
+    },
+    {
+      "name": "flatted",
+      "version": "^3.3.0",
+      "category": "json-data",
+      "note": "Circular-safe JSON. Raw stringify format uses index refs (e.g. [[\"1\"],{\"self\":\"1\"}]); used a round-trip identity check instead of a literal-string assertion.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 240,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 3698
+      },
+      "stdout": "OK:true"
+    },
+    {
+      "name": "superjson",
+      "version": "^2.2.0",
+      "category": "json-data",
+      "note": "Preserves Date and NaN across serialize/parse.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 371,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 15233
+      },
+      "stdout": "OK:true:true"
+    },
+    {
+      "name": "devalue",
+      "version": "^5.1.0",
+      "category": "json-data",
+      "note": "Serializes/deserializes Map.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 347,
+        "fetches": 2,
+        "modules": 4,
+        "bytes": 24549
+      },
+      "stdout": "OK:1"
+    },
+    {
+      "name": "fast-json-stable-stringify",
+      "version": "^2.1.0",
+      "category": "json-data",
+      "note": "Deterministic key-sorted output.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 243,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 4819
+      },
+      "stdout": "OK:{\"a\":1,\"b\":2}"
+    },
+    {
+      "name": "sort-keys",
+      "version": "^5.0.0",
+      "category": "json-data",
+      "note": "Recursively sorts object keys.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 214,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 3672
+      },
+      "stdout": "OK:{\"a\":0,\"b\":0,\"c\":0}"
+    },
+    {
+      "name": "dot-prop",
+      "version": "^9.0.0",
+      "category": "json-data",
+      "note": "Dot-path get/set on nested objects.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 266,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 5452
+      },
+      "stdout": "OK:5"
+    },
+    {
+      "name": "flat",
+      "version": "^6.0.0",
+      "category": "json-data",
+      "note": "flatten/unflatten round-trips nested objects.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 218,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 4101
+      },
+      "stdout": "OK:{\"a.b.c\":1}:1"
+    },
+    {
+      "name": "deep-equal",
+      "version": "^2.2.0",
+      "category": "json-data",
+      "note": "Structural equality; largest bundle in this set (~57KB) due to its deps.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 912,
+        "fetches": 2,
+        "modules": 3,
+        "bytes": 56903
+      },
+      "stdout": "OK:true"
+    },
+    {
+      "name": "json-stable-stringify",
+      "version": "^1.1.0",
+      "category": "json-data",
+      "note": "Deterministic stringify (Substack's original).",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 1007,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 27135
+      },
+      "stdout": "OK:{\"a\":1,\"b\":2}"
+    },
+    {
+      "name": "safe-stable-stringify",
+      "version": "^2.5.0",
+      "category": "json-data",
+      "note": "Deterministic + circular-safe; emits \"[Circular]\" for self-references.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 1017,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 11400
+      },
+      "stdout": "OK:{\"a\":1,\"b\":2,\"self\":\"[Circular]\"}"
+    },
+    {
+      "name": "object-path",
+      "version": "^0.11.8",
+      "category": "json-data",
+      "note": "Path-based accessor on nested objects.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 836,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 6856
+      },
+      "stdout": "OK:7"
+    },
+    {
+      "name": "jsonpath-plus",
+      "version": "^10.0.0",
+      "category": "json-data",
+      "note": "JSONPath query with wildcard works end-to-end.",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 456,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 28103
+      },
+      "stdout": "OK:A,B"
+    },
+    {
+      "name": "strip-ansi",
+      "version": "^7.1.0",
+      "category": "ansi-string",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 159,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 3304
+      },
+      "stdout": "OK:Unicorn"
+    },
+    {
+      "name": "ansi-regex",
+      "version": "^6.1.0",
+      "category": "ansi-string",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 156,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 3141
+      },
+      "stdout": "OK:Unicorn"
+    },
+    {
+      "name": "string-width",
+      "version": "^7.2.0",
+      "category": "ansi-string",
+      "note": "",
+      "status": "compile_error",
+      "detail": "invalid property name in regular expression",
+      "stats": {
+        "ms": 579,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 21981
+      },
+      "stdout": ""
+    },
+    {
+      "name": "wrap-ansi",
+      "version": "^9.0.0",
+      "category": "ansi-string",
+      "note": "",
+      "status": "compile_error",
+      "detail": "invalid property name in regular expression",
+      "stats": {
+        "ms": 597,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 26250
+      },
+      "stdout": ""
+    },
+    {
+      "name": "sprintf-js",
+      "version": "^1.1.3",
+      "category": "ansi-string",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 506,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 7086
+      },
+      "stdout": "OK:cart has 3 items"
+    },
+    {
+      "name": "dedent",
+      "version": "^1.5.3",
+      "category": "ansi-string",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 278,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 5354
+      },
+      "stdout": "OK:line1\nline2"
+    },
+    {
+      "name": "common-tags",
+      "version": "^1.8.2",
+      "category": "ansi-string",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 444,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 21642
+      },
+      "stdout": "OK:foo bar baz"
+    },
+    {
+      "name": "cli-truncate",
+      "version": "^4.0.0",
+      "category": "ansi-string",
+      "note": "",
+      "status": "compile_error",
+      "detail": "invalid property name in regular expression",
+      "stats": {
+        "ms": 349,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 26762
+      },
+      "stdout": ""
+    },
+    {
+      "name": "string-length",
+      "version": "^6.0.0",
+      "category": "ansi-string",
+      "note": "",
+      "status": "runtime_error",
+      "detail": "THREW:ReferenceError: Intl is not defined",
+      "stats": {
+        "ms": 171,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 3525
+      },
+      "stdout": "THREW:ReferenceError: Intl is not defined"
+    },
+    {
+      "name": "emoji-regex",
+      "version": "^10.4.0",
+      "category": "ansi-string",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 164,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 17095
+      },
+      "stdout": "OK:😀"
+    },
+    {
+      "name": "slice-ansi",
+      "version": "^7.1.0",
+      "category": "ansi-string",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 318,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 8838
+      },
+      "stdout": "OK:uni"
+    },
+    {
+      "name": "ansi-styles",
+      "version": "^6.2.1",
+      "category": "ansi-string",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 272,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 5644
+      },
+      "stdout": "OK:true"
+    },
+    {
+      "name": "rxjs",
+      "version": "^7.8.0",
+      "category": "async-flow",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 3141,
+        "fetches": 4,
+        "modules": 4,
+        "bytes": 103627
+      },
+      "stdout": "OK:20"
+    },
+    {
+      "name": "bluebird",
+      "version": "^3.7.2",
+      "category": "async-flow",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 1615,
+        "fetches": 2,
+        "modules": 3,
+        "bytes": 88415
+      },
+      "stdout": "OK:10,20,30"
+    },
+    {
+      "name": "async",
+      "version": "^3.2.5",
+      "category": "async-flow",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 1904,
+        "fetches": 2,
+        "modules": 3,
+        "bytes": 27288
+      },
+      "stdout": "OK:2,3,4"
+    },
+    {
+      "name": "await-to-js",
+      "version": "^3.0.0",
+      "category": "async-flow",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 2294,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 3224
+      },
+      "stdout": "OK:ok"
+    },
+    {
+      "name": "promise-retry",
+      "version": "^2.0.1",
+      "category": "async-flow",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 1712,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 8388
+      },
+      "stdout": "OK:done"
+    },
+    {
+      "name": "async-retry",
+      "version": "^1.3.3",
+      "category": "async-flow",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 323,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 7801
+      },
+      "stdout": "OK:done"
+    },
+    {
+      "name": "p-timeout",
+      "version": "^6.1.2",
+      "category": "async-flow",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 181,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 4401
+      },
+      "stdout": "OK:quick"
+    },
+    {
+      "name": "p-all",
+      "version": "^5.0.0",
+      "category": "async-flow",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 265,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 4635
+      },
+      "stdout": "OK:1,2,3"
+    },
+    {
+      "name": "p-props",
+      "version": "^6.0.0",
+      "category": "async-flow",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 263,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 5071
+      },
+      "stdout": "OK:12"
+    },
+    {
+      "name": "p-defer",
+      "version": "^4.0.1",
+      "category": "async-flow",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 318,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 3073
+      },
+      "stdout": "OK:deferred"
+    },
+    {
+      "name": "p-reduce",
+      "version": "^3.0.0",
+      "category": "async-flow",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 201,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 3225
+      },
+      "stdout": "OK:10"
+    },
+    {
+      "name": "p-some",
+      "version": "^6.0.0",
+      "category": "async-flow",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 239,
+        "fetches": 2,
+        "modules": 3,
+        "bytes": 8401
+      },
+      "stdout": "OK:a,b"
+    },
+    {
+      "name": "minimist",
+      "version": "^1.2.8",
+      "category": "cli-args",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 221,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 6941
+      },
+      "stdout": "OK:bar,3,pos"
+    },
+    {
+      "name": "mri",
+      "version": "^1.2.0",
+      "category": "cli-args",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 194,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 4480
+      },
+      "stdout": "OK:bar,3,pos"
+    },
+    {
+      "name": "yargs-parser",
+      "version": "^21.1.1",
+      "category": "cli-args",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 397,
+        "fetches": 2,
+        "modules": 6,
+        "bytes": 24553
+      },
+      "stdout": "OK:bar,3,pos"
+    },
+    {
+      "name": "arg",
+      "version": "^5.0.2",
+      "category": "cli-args",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 191,
+        "fetches": 2,
+        "modules": 3,
+        "bytes": 7215
+      },
+      "stdout": "OK:bar,3"
+    },
+    {
+      "name": "commander",
+      "version": "^12.1.0",
+      "category": "cli-args",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 597,
+        "fetches": 2,
+        "modules": 8,
+        "bytes": 50480
+      },
+      "stdout": "OK:bar,3"
+    },
+    {
+      "name": "cac",
+      "version": "^6.7.14",
+      "category": "cli-args",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 371,
+        "fetches": 2,
+        "modules": 4,
+        "bytes": 15453
+      },
+      "stdout": "OK:bar,3"
+    },
+    {
+      "name": "sade",
+      "version": "^1.8.1",
+      "category": "cli-args",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 233,
+        "fetches": 2,
+        "modules": 3,
+        "bytes": 10137
+      },
+      "stdout": "OK:bar,3"
+    },
+    {
+      "name": "yargs",
+      "version": "^17.7.2",
+      "category": "cli-args",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 1154,
+        "fetches": 2,
+        "modules": 8,
+        "bytes": 95951
+      },
+      "stdout": "OK:bar,3"
+    },
+    {
+      "name": "meow",
+      "version": "^13.2.0",
+      "category": "cli-args",
+      "note": "",
+      "status": "compile_error",
+      "detail": "invalid class property name in regular expression",
+      "stats": {
+        "ms": 4277,
+        "fetches": 2,
+        "modules": 8,
+        "bytes": 170217
+      },
+      "stdout": ""
+    },
+    {
+      "name": "dashdash",
+      "version": "^2.0.0",
+      "category": "cli-args",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 2741,
+        "fetches": 2,
+        "modules": 9,
+        "bytes": 31687
+      },
+      "stdout": "OK:bar,3"
+    },
+    {
+      "name": "command-line-args",
+      "version": "^6.0.1",
+      "category": "cli-args",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 2674,
+        "fetches": 2,
+        "modules": 3,
+        "bytes": 20650
+      },
+      "stdout": "OK:bar,3"
+    },
+    {
+      "name": "optionator",
+      "version": "^0.9.4",
+      "category": "cli-args",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 2899,
+        "fetches": 2,
+        "modules": 3,
+        "bytes": 44714
+      },
+      "stdout": "OK:bar,3"
+    },
+    {
+      "name": "lru-cache",
+      "version": "^11.0.0",
+      "category": "clone-lru",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 2001,
+        "fetches": 2,
+        "modules": 3,
+        "bytes": 28944
+      },
+      "stdout": "OK:undefined,3,2"
+    },
+    {
+      "name": "quick-lru",
+      "version": "^7.0.0",
+      "category": "clone-lru",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 1964,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 7681
+      },
+      "stdout": "OK:false,5,4"
+    },
+    {
+      "name": "rfdc",
+      "version": "^1.4.0",
+      "category": "clone-lru",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 1504,
+        "fetches": 2,
+        "modules": 3,
+        "bytes": 11213
+      },
+      "stdout": "OK:2,99,true"
+    },
+    {
+      "name": "klona",
+      "version": "^2.0.6",
+      "category": "clone-lru",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 612,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 3392
+      },
+      "stdout": "OK:3,99,true"
+    },
+    {
+      "name": "fast-copy",
+      "version": "^3.0.2",
+      "category": "clone-lru",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 256,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 7082
+      },
+      "stdout": "OK:2,42,true"
+    },
+    {
+      "name": "clone",
+      "version": "^2.1.2",
+      "category": "clone-lru",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 296,
+        "fetches": 2,
+        "modules": 3,
+        "bytes": 10740
+      },
+      "stdout": "OK:2,7,true"
+    },
+    {
+      "name": "clone-deep",
+      "version": "^4.0.1",
+      "category": "clone-lru",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 238,
+        "fetches": 2,
+        "modules": 3,
+        "bytes": 13238
+      },
+      "stdout": "OK:3,5,true"
+    },
+    {
+      "name": "defu",
+      "version": "^6.1.4",
+      "category": "clone-lru",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 181,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 3628
+      },
+      "stdout": "OK:1,2,3"
+    },
+    {
+      "name": "deepmerge-ts",
+      "version": "^7.1.0",
+      "category": "clone-lru",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 234,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 9569
+      },
+      "stdout": "OK:1,2,3"
+    },
+    {
+      "name": "ts-deepmerge",
+      "version": "^7.0.0",
+      "category": "clone-lru",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 299,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 3587
+      },
+      "stdout": "OK:1,2,2"
+    },
+    {
+      "name": "copy-anything",
+      "version": "^3.0.5",
+      "category": "clone-lru",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 178,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 3542
+      },
+      "stdout": "OK:2,44,true"
+    },
+    {
+      "name": "merge-deep",
+      "version": "^3.0.3",
+      "category": "clone-lru",
+      "note": "",
+      "status": "runtime_error",
+      "detail": "THREW:Error: module not found: 'kind-of'. The sandbox only bundles a fixed set of modules: cheerio, node-html-parser, zod, js-yaml, nanoid, ulidx, uuid, lodash, date-fns, dayjs, @spinframework/spin-kv",
+      "stats": {
+        "ms": 310,
+        "fetches": 2,
+        "modules": 3,
+        "bytes": 9562
+      },
+      "stdout": "THREW:Error: module not found: 'kind-of'. The sandbox only bundles a fixed set of modules: cheerio, node-html-parser, zod, js-yaml, nanoid, ulidx, uuid, lodash, date-fns, dayjs, @spinframework/spin-kv"
+    },
+    {
+      "name": "semver",
+      "version": "^7.6.0",
+      "category": "config-semver",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 522,
+        "fetches": 2,
+        "modules": 3,
+        "bytes": 32812
+      },
+      "stdout": "OK:1.2.3"
+    },
+    {
+      "name": "compare-versions",
+      "version": "^6.1.0",
+      "category": "config-semver",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 214,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 4914
+      },
+      "stdout": "OK:1"
+    },
+    {
+      "name": "semver-compare",
+      "version": "^1.0.0",
+      "category": "config-semver",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 210,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 3944
+      },
+      "stdout": "OK:-1"
+    },
+    {
+      "name": "dotenv",
+      "version": "^16.4.0",
+      "category": "config-semver",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 230,
+        "fetches": 2,
+        "modules": 7,
+        "bytes": 20774
+      },
+      "stdout": "OK:bar42"
+    },
+    {
+      "name": "dotenv-expand",
+      "version": "^11.0.0",
+      "category": "config-semver",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 711,
+        "fetches": 4,
+        "modules": 9,
+        "bytes": 23484
+      },
+      "stdout": "OK:hello-world"
+    },
+    {
+      "name": "env-var",
+      "version": "^7.5.0",
+      "category": "config-semver",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 521,
+        "fetches": 2,
+        "modules": 4,
+        "bytes": 16192
+      },
+      "stdout": "OK:8080"
+    },
+    {
+      "name": "dotenv-parse-variables",
+      "version": "^2.0.0",
+      "category": "config-semver",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 341,
+        "fetches": 2,
+        "modules": 3,
+        "bytes": 13768
+      },
+      "stdout": "OK:43true"
+    },
+    {
+      "name": "semver-diff",
+      "version": "^4.0.0",
+      "category": "config-semver",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 714,
+        "fetches": 2,
+        "modules": 3,
+        "bytes": 31340
+      },
+      "stdout": "OK:minor"
+    },
+    {
+      "name": "rc",
+      "version": "^1.2.8",
+      "category": "config-semver",
+      "note": "reads fs/argv/env",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 514,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 3547
+      },
+      "stdout": "OK:val"
+    },
+    {
+      "name": "hash.js",
+      "version": "^1.1.7",
+      "category": "crypto-jwt",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 502,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 20739
+      },
+      "stdout": "OK:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    },
+    {
+      "name": "aes-js",
+      "version": "^3.1.2",
+      "category": "crypto-jwt",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 962,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 48072
+      },
+      "stdout": "OK:66e94bd4ef8a2c3b884cfa59ca342b2e"
+    },
+    {
+      "name": "scrypt-js",
+      "version": "^3.0.1",
+      "category": "crypto-jwt",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 725,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 9858
+      },
+      "stdout": "OK:6a34cacea9407649e9b9f843af952c23"
+    },
+    {
+      "name": "js-sha512",
+      "version": "^0.9.0",
+      "category": "crypto-jwt",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 615,
+        "fetches": 2,
+        "modules": 3,
+        "bytes": 22905
+      },
+      "stdout": "OK:ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f"
+    },
+    {
+      "name": "jssha",
+      "version": "^3.3.1",
+      "category": "crypto-jwt",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 627,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 24452
+      },
+      "stdout": "OK:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    },
+    {
+      "name": "elliptic",
+      "version": "^6.5.4",
+      "category": "crypto-jwt",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 1868,
+        "fetches": 2,
+        "modules": 4,
+        "bytes": 145719
+      },
+      "stdout": "OK:true"
+    },
+    {
+      "name": "bcryptjs",
+      "version": "^2.4.3",
+      "category": "crypto-jwt",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 2006,
+        "fetches": 2,
+        "modules": 4,
+        "bytes": 28349
+      },
+      "stdout": "OK:true"
+    },
+    {
+      "name": "jws",
+      "version": "^4.0.0",
+      "category": "crypto-jwt",
+      "note": "",
+      "status": "runtime_error",
+      "detail": "THREW:TypeError: S.prototype is not an object or null",
+      "stats": {
+        "ms": 2433,
+        "fetches": 2,
+        "modules": 7,
+        "bytes": 25114
+      },
+      "stdout": "THREW:TypeError: S.prototype is not an object or null"
+    },
+    {
+      "name": "jsonwebtoken",
+      "version": "^9.0.2",
+      "category": "crypto-jwt",
+      "note": "",
+      "status": "runtime_error",
+      "detail": "THREW:TypeError: N.prototype is not an object or null",
+      "stats": {
+        "ms": 2245,
+        "fetches": 2,
+        "modules": 7,
+        "bytes": 70456
+      },
+      "stdout": "THREW:TypeError: N.prototype is not an object or null"
+    },
+    {
+      "name": "jose",
+      "version": "^5.9.0",
+      "category": "crypto-jwt",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 2546,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 72092
+      },
+      "stdout": "OK:bar"
+    },
+    {
+      "name": "node-forge",
+      "version": "^1.3.1",
+      "category": "crypto-jwt",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 3412,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 291014
+      },
+      "stdout": "OK:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    },
+    {
+      "name": "jsrsasign",
+      "version": "^11.1.0",
+      "category": "crypto-jwt",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 6620,
+        "fetches": 2,
+        "modules": 3,
+        "bytes": 318750
+      },
+      "stdout": "OK:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    },
+    {
+      "name": "preact",
+      "version": "^10.24.0",
+      "category": "frameworks-render",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 2809,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 14540
+      },
+      "stdout": "OK:div:x"
+    },
+    {
+      "name": "preact-render-to-string",
+      "version": "^6.5.0",
+      "category": "frameworks-render",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 5547,
+        "fetches": 6,
+        "modules": 6,
+        "bytes": 40036
+      },
+      "stdout": "OK:<p>hello</p>"
+    },
+    {
+      "name": "react",
+      "version": "^18.3.1",
+      "category": "frameworks-render",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 585,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 11930
+      },
+      "stdout": "OK:span:c"
+    },
+    {
+      "name": "react-dom",
+      "version": "^18.3.1",
+      "category": "frameworks-render",
+      "note": "",
+      "status": "runtime_error",
+      "detail": "THREW:Error: Minified React error #31; visit https://reactjs.org/docs/error-decoder.html?invariant=31&args[]=object%20with%20keys%20%7B%24%24typeof%2C%20type%2C%20key%2C%20ref%2C%20props%7D for the full message or use the non-minified dev environment for full errors and additional helpful warnings.",
+      "stats": {
+        "ms": 1265,
+        "fetches": 5,
+        "modules": 5,
+        "bytes": 96486
+      },
+      "stdout": "THREW:Error: Minified React error #31; visit https://reactjs.org/docs/error-decoder.html?invariant=31&args[]=object%20with%20keys%20%7B%24%24typeof%2C%20type%2C%20key%2C%20ref%2C%20props%7D for the full message or use the non-minified dev environment for full errors and additional helpful warnings."
+    },
+    {
+      "name": "htm",
+      "version": "^3.1.1",
+      "category": "frameworks-render",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 229,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 4043
+      },
+      "stdout": "OK:div"
+    },
+    {
+      "name": "vhtml",
+      "version": "^2.2.0",
+      "category": "frameworks-render",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 2104,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 3569
+      },
+      "stdout": "OK:<div class=\"a\">hi</div>"
+    },
+    {
+      "name": "@vue/reactivity",
+      "version": "^3.5.0",
+      "category": "frameworks-render",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 1096,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 23941
+      },
+      "stdout": "OK:12"
+    },
+    {
+      "name": "nunjucks",
+      "version": "^3.2.4",
+      "category": "frameworks-render",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 1810,
+        "fetches": 2,
+        "modules": 3,
+        "bytes": 101064
+      },
+      "stdout": "OK:7"
+    },
+    {
+      "name": "hyperscript-helpers",
+      "version": "^3.0.3",
+      "category": "frameworks-render",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 2568,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 5632
+      },
+      "stdout": "OK:div.x|hi"
+    },
+    {
+      "name": "@vue/shared",
+      "version": "^3.5.0",
+      "category": "frameworks-render",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 2101,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 19095
+      },
+      "stdout": "OK:FooBarBaz"
+    },
+    {
+      "name": "hyperapp",
+      "version": "^2.0.22",
+      "category": "frameworks-render",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 2002,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 6262
+      },
+      "stdout": "OK:div:q"
+    },
+    {
+      "name": "mithril",
+      "version": "^2.2.2",
+      "category": "frameworks-render",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 367,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 6971
+      },
+      "stdout": "OK:div:a:b"
+    },
+    {
+      "name": "url-parse",
+      "version": "^1.5.10",
+      "category": "http-url",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 308,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 9809
+      },
+      "stdout": "OK:example.com|8080|/p/a/t/h"
+    },
+    {
+      "name": "query-string",
+      "version": "^9.1.0",
+      "category": "http-url",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 286,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 11763
+      },
+      "stdout": "OK:bar|xyz"
+    },
+    {
+      "name": "normalize-url",
+      "version": "^8.0.1",
+      "category": "http-url",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 190,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 7716
+      },
+      "stdout": "OK:http://example.com/bar"
+    },
+    {
+      "name": "is-url",
+      "version": "^1.2.4",
+      "category": "http-url",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 249,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 3845
+      },
+      "stdout": "OK:true|false"
+    },
+    {
+      "name": "tldts",
+      "version": "^6.1.0",
+      "category": "http-url",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 2142,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 111047
+      },
+      "stdout": "OK:example.co.uk|co.uk|a.b"
+    },
+    {
+      "name": "psl",
+      "version": "^1.9.0",
+      "category": "http-url",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 787,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 163718
+      },
+      "stdout": "OK:example.co.uk|co.uk|example"
+    },
+    {
+      "name": "ky",
+      "version": "^1.7.2",
+      "category": "http-url",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 2116,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 21085
+      },
+      "stdout": "OK:true|true"
+    },
+    {
+      "name": "node-fetch",
+      "version": "^3.3.2",
+      "category": "http-url",
+      "note": "",
+      "status": "runtime_error",
+      "detail": "THREW:TypeError: can't access property \"promisify\", _utilmjs is null",
+      "stats": {
+        "ms": 2870,
+        "fetches": 2,
+        "modules": 15,
+        "bytes": 115468
+      },
+      "stdout": "THREW:TypeError: can't access property \"promisify\", _utilmjs is null"
+    },
+    {
+      "name": "cross-fetch",
+      "version": "^4.0.0",
+      "category": "http-url",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 758,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 14349
+      },
+      "stdout": "OK:true"
+    },
+    {
+      "name": "whatwg-url",
+      "version": "^14.0.0",
+      "category": "http-url",
+      "note": "",
+      "status": "runtime_error",
+      "detail": "THREW:TypeError: t.normalize is not a function",
+      "stats": {
+        "ms": 3148,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 294155
+      },
+      "stdout": "THREW:TypeError: t.normalize is not a function"
+    },
+    {
+      "name": "parse-url",
+      "version": "^9.2.0",
+      "category": "http-url",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 2658,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 9228
+      },
+      "stdout": "OK:https|github.com|8080"
+    },
+    {
+      "name": "querystringify",
+      "version": "^2.2.0",
+      "category": "http-url",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 2599,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 4489
+      },
+      "stdout": "OK:bar|qux|a=1&b=2"
+    },
+    {
+      "name": "is-plain-object",
+      "version": "^5.0.0",
+      "category": "is-checks-glob",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 1384,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 3115
+      },
+      "stdout": "OK:true,false"
+    },
+    {
+      "name": "is-number",
+      "version": "^7.0.0",
+      "category": "is-checks-glob",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 673,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 3999
+      },
+      "stdout": "OK:true,false"
+    },
+    {
+      "name": "kind-of",
+      "version": "^6.0.3",
+      "category": "is-checks-glob",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 178,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 5917
+      },
+      "stdout": "OK:array,date"
+    },
+    {
+      "name": "type-detect",
+      "version": "^4.0.8",
+      "category": "is-checks-glob",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 241,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 6183
+      },
+      "stdout": "OK:Array,RegExp"
+    },
+    {
+      "name": "is-buffer",
+      "version": "^2.0.5",
+      "category": "is-checks-glob",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 203,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 3939
+      },
+      "stdout": "OK:false,false"
+    },
+    {
+      "name": "is-arrayish",
+      "version": "^0.3.2",
+      "category": "is-checks-glob",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 212,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 3912
+      },
+      "stdout": "OK:true,false"
+    },
+    {
+      "name": "array-union",
+      "version": "^3.0.1",
+      "category": "is-checks-glob",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 154,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 2985
+      },
+      "stdout": "OK:1,2,3"
+    },
+    {
+      "name": "arr-diff",
+      "version": "^4.0.0",
+      "category": "is-checks-glob",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 200,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 4120
+      },
+      "stdout": "OK:1,3"
+    },
+    {
+      "name": "picomatch",
+      "version": "^4.0.2",
+      "category": "is-checks-glob",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 515,
+        "fetches": 2,
+        "modules": 3,
+        "bytes": 28641
+      },
+      "stdout": "OK:true,false"
+    },
+    {
+      "name": "minimatch",
+      "version": "^9.0.5",
+      "category": "is-checks-glob",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 691,
+        "fetches": 2,
+        "modules": 3,
+        "bytes": 31670
+      },
+      "stdout": "OK:true,false"
+    },
+    {
+      "name": "micromatch",
+      "version": "^4.0.8",
+      "category": "is-checks-glob",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 1186,
+        "fetches": 2,
+        "modules": 5,
+        "bytes": 47640
+      },
+      "stdout": "OK:a.js"
+    },
+    {
+      "name": "braces",
+      "version": "^3.0.3",
+      "category": "is-checks-glob",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 1341,
+        "fetches": 2,
+        "modules": 3,
+        "bytes": 20250
+      },
+      "stdout": "OK:abd,acd"
+    },
+    {
+      "name": "lodash.get",
+      "version": "^4.4.2",
+      "category": "lodash-split",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 799,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 8756
+      },
+      "stdout": "OK:3"
+    },
+    {
+      "name": "lodash.merge",
+      "version": "^4.6.2",
+      "category": "lodash-split",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 407,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 14339
+      },
+      "stdout": "OK:{\"a\":{\"x\":1,\"y\":2}}"
+    },
+    {
+      "name": "lodash.clonedeep",
+      "version": "^4.5.0",
+      "category": "lodash-split",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 264,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 13323
+      },
+      "stdout": "OK:true"
+    },
+    {
+      "name": "lodash.debounce",
+      "version": "^4.0.8",
+      "category": "lodash-split",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 319,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 5502
+      },
+      "stdout": "OK:true"
+    },
+    {
+      "name": "lodash.throttle",
+      "version": "^4.1.1",
+      "category": "lodash-split",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 315,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 5700
+      },
+      "stdout": "OK:true"
+    },
+    {
+      "name": "lodash.isequal",
+      "version": "^4.5.0",
+      "category": "lodash-split",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 480,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 14467
+      },
+      "stdout": "OK:true"
+    },
+    {
+      "name": "lodash.pick",
+      "version": "^4.4.0",
+      "category": "lodash-split",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 429,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 5693
+      },
+      "stdout": "OK:{\"a\":1,\"c\":3}"
+    },
+    {
+      "name": "lodash.omit",
+      "version": "^4.5.0",
+      "category": "lodash-split",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 356,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 18713
+      },
+      "stdout": "OK:{\"a\":1,\"c\":3}"
+    },
+    {
+      "name": "lodash.uniq",
+      "version": "^4.5.0",
+      "category": "lodash-split",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 421,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 8561
+      },
+      "stdout": "OK:[1,2,3]"
+    },
+    {
+      "name": "lodash.groupby",
+      "version": "^4.6.0",
+      "category": "lodash-split",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 345,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 16595
+      },
+      "stdout": "OK:{\"4\":[4.2],\"6\":[6.1,6.3]}"
+    },
+    {
+      "name": "lodash.set",
+      "version": "^4.3.2",
+      "category": "lodash-split",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 395,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 9106
+      },
+      "stdout": "OK:5"
+    },
+    {
+      "name": "lodash.defaults",
+      "version": "^4.2.0",
+      "category": "lodash-split",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 255,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 6261
+      },
+      "stdout": "OK:{\"a\":1,\"b\":2}"
+    },
+    {
+      "name": "picocolors",
+      "version": "^1.1.1",
+      "category": "logging-color",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 242,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 5714
+      },
+      "stdout": "OK:true"
+    },
+    {
+      "name": "kleur",
+      "version": "^4.1.5",
+      "category": "logging-color",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 201,
+        "fetches": 2,
+        "modules": 3,
+        "bytes": 5909
+      },
+      "stdout": "OK:\"\\u001b[31mx\\u001b[39m\""
+    },
+    {
+      "name": "colorette",
+      "version": "^2.0.20",
+      "category": "logging-color",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 219,
+        "fetches": 2,
+        "modules": 4,
+        "bytes": 7377
+      },
+      "stdout": "OK:\"\\u001b[31mx\\u001b[39m\""
+    },
+    {
+      "name": "ansi-colors",
+      "version": "^4.1.3",
+      "category": "logging-color",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 385,
+        "fetches": 2,
+        "modules": 3,
+        "bytes": 10112
+      },
+      "stdout": "OK:\"\\u001b[31mx\\u001b[39m\""
+    },
+    {
+      "name": "chalk",
+      "version": "^5.3.0",
+      "category": "logging-color",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 297,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 8422
+      },
+      "stdout": "OK:\"\\u001b[31mx\\u001b[39m\""
+    },
+    {
+      "name": "debug",
+      "version": "^4.3.7",
+      "category": "logging-color",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 368,
+        "fetches": 2,
+        "modules": 3,
+        "bytes": 11159
+      },
+      "stdout": "OK:true"
+    },
+    {
+      "name": "loglevel",
+      "version": "^1.9.2",
+      "category": "logging-color",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 330,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 6926
+      },
+      "stdout": "OK:3"
+    },
+    {
+      "name": "supports-color",
+      "version": "^9.4.0",
+      "category": "logging-color",
+      "note": "",
+      "status": "runtime_error",
+      "detail": "THREW:ReferenceError: navigator is not defined",
+      "stats": {
+        "ms": 181,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 3872
+      },
+      "stdout": "THREW:ReferenceError: navigator is not defined"
+    },
+    {
+      "name": "cli-color",
+      "version": "^2.0.4",
+      "category": "logging-color",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 1746,
+        "fetches": 2,
+        "modules": 3,
+        "bytes": 57660
+      },
+      "stdout": "OK:\"\\u001b[31mx\\u001b[39m\""
+    },
+    {
+      "name": "micromark",
+      "version": "^4.0.0",
+      "category": "markdown-html",
+      "note": "",
+      "status": "compile_error",
+      "detail": "invalid property name in regular expression",
+      "stats": {
+        "ms": 881,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 55979
+      },
+      "stdout": ""
+    },
+    {
+      "name": "turndown",
+      "version": "^7.1.2",
+      "category": "markdown-html",
+      "note": "",
+      "status": "runtime_error",
+      "detail": "THREW:TypeError: r.createDocument is not a function",
+      "stats": {
+        "ms": 1191,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 14020
+      },
+      "stdout": "THREW:TypeError: r.createDocument is not a function"
+    },
+    {
+      "name": "html-entities",
+      "version": "^2.5.2",
+      "category": "markdown-html",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 906,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 39147
+      },
+      "stdout": "OK:&lt;a&gt;&amp;&quot;|<b>&"
+    },
+    {
+      "name": "entities",
+      "version": "^4.5.0",
+      "category": "markdown-html",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 1346,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 81683
+      },
+      "stdout": "OK:&lt;&amp;&gt;|©&"
+    },
+    {
+      "name": "striptags",
+      "version": "^3.2.0",
+      "category": "markdown-html",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 719,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 5195
+      },
+      "stdout": "OK:hi there"
+    },
+    {
+      "name": "linkify-it",
+      "version": "^5.0.0",
+      "category": "markdown-html",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 528,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 14466
+      },
+      "stdout": "OK:http://example.com"
+    },
+    {
+      "name": "gray-matter",
+      "version": "^4.0.3",
+      "category": "markdown-html",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 858,
+        "fetches": 2,
+        "modules": 3,
+        "bytes": 60126
+      },
+      "stdout": "OK:Hello|body text"
+    },
+    {
+      "name": "remark-html",
+      "version": "^16.0.1",
+      "category": "markdown-html",
+      "note": "",
+      "status": "compile_error",
+      "detail": "invalid property name in regular expression",
+      "stats": {
+        "ms": 4112,
+        "fetches": 4,
+        "modules": 4,
+        "bytes": 150770
+      },
+      "stdout": ""
+    },
+    {
+      "name": "sanitize-html",
+      "version": "^2.13.0",
+      "category": "markdown-html",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 3666,
+        "fetches": 2,
+        "modules": 7,
+        "bytes": 206226
+      },
+      "stdout": "OK:<b>ok</b>"
+    },
+    {
+      "name": "marked-terminal",
+      "version": "^7.1.0",
+      "category": "markdown-html",
+      "note": "",
+      "status": "bundle_error",
+      "detail": "dependency graph too large (1454 KB across 5 modules); this library is too big to bundle in the sandbox — try a smaller alternative",
+      "stats": null,
+      "stdout": ""
+    },
+    {
+      "name": "html-to-text",
+      "version": "^9.0.5",
+      "category": "markdown-html",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 2611,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 154749
+      },
+      "stdout": "OK:Hello World"
+    },
+    {
+      "name": "remove-markdown",
+      "version": "^0.5.0",
+      "category": "markdown-html",
+      "note": "",
+      "status": "pass",
+      "detail": "",
+      "stats": {
+        "ms": 2364,
+        "fetches": 2,
+        "modules": 2,
+        "bytes": 5579
+      },
+      "stdout": "OK:Title\nbold and em"
+    }
+  ]
+}

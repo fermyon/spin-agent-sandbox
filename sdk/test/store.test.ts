@@ -109,3 +109,38 @@ test("serveStoredCode: routes by stored language, scopes identity, denies egress
   const missing = await serveStoredCode(store, interpreters, "nope", {});
   assert.equal(missing.status, 404);
 });
+
+test("pre-bundled app: save keeps source + bundle + deps; serveStoredCode runs the bundle", async () => {
+  const { interpreter } = fakeKvInterpreter();
+  let n = 0;
+  const store = new KvCodeStore({ interpreter, namespace: "apps", newId: () => `id${++n}`, now: () => 0 });
+
+  const meta = await store.save({
+    code: "import M from 'mustache'; export default { fetch(){} }",
+    language: "javascript",
+    title: "greeter",
+    dependencies: { mustache: "^4.2.0" },
+    bundled: "BUNDLED_BLOB();",
+  });
+
+  // dependencies are metadata (surface in list()); source is kept for editing; bundle is stored
+  assert.deepEqual((await store.list())[0].dependencies, { mustache: "^4.2.0" });
+  const rec = await store.get(meta.id);
+  assert.match(rec?.code ?? "", /import M from 'mustache'/);
+  assert.equal(rec?.bundled, "BUNDLED_BLOB();");
+
+  // serveStoredCode runs the BUNDLE, not the source
+  const seen: string[] = [];
+  const mk = () => ({ runRaw: async (code: string) => { seen.push(code); return new Response("ok"); } });
+  await serveStoredCode(store, { javascript: mk(), python: mk() } as any, meta.id, { method: "GET", path: "/" });
+  assert.equal(seen[0], "BUNDLED_BLOB();");
+});
+
+test("serveStoredCode falls back to the source when there is no bundle", async () => {
+  const record: StoredCode = { id: "y", language: "javascript", createdAt: 0, code: "SOURCE();" };
+  const store = { get: async (id: string) => (id === "y" ? record : null) } as unknown as CodeStore;
+  const seen: string[] = [];
+  const mk = () => ({ runRaw: async (code: string) => { seen.push(code); return new Response("ok"); } });
+  await serveStoredCode(store, { javascript: mk(), python: mk() } as any, "y", {});
+  assert.equal(seen[0], "SOURCE();");
+});

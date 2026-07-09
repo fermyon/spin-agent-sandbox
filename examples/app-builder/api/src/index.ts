@@ -24,13 +24,24 @@ const CREATE_APP_TOOL: Anthropic.Tool = {
     "Publish a complete, self-contained web app. The app is ONE HTTP handler that serves its HTML UI " +
     "at path '/' and any JSON API at sub-paths; it is stored and served live at its own URL. " +
     "JavaScript: `export default { async fetch(request) { … return new Response(html, { headers: { 'content-type': 'text/html' } }); } }`. " +
-    "Python: `def handle_request(request): return Response(200, {'content-type': 'text/html'}, html.encode())`.",
+    "Python: `def handle_request(request): return Response(200, {'content-type': 'text/html'}, html.encode())`. " +
+    "For a JavaScript app you may pull additional npm packages by listing them in `dependencies` " +
+    "(name -> semver); they are bundled into the app at publish time. Import them with ESM `import` " +
+    "(e.g. `import { marked } from 'marked'`), NOT `require()`. Python cannot add packages.",
   input_schema: {
     type: "object",
     properties: {
       language: { type: "string", enum: ["javascript", "python"] },
       title: { type: "string", description: "A short title for the app." },
       code: { type: "string", description: "The full single-file HTTP-handler program." },
+      dependencies: {
+        type: "object",
+        description:
+          "JavaScript only. Extra npm dependencies to bundle into the app, as name -> semver range, " +
+          'e.g. { "marked": "^11.0.0" }. Omit for Python or when only the pre-bundled libraries are used. ' +
+          "Use each dep via ESM `import` (e.g. `import { marked } from 'marked'`), not `require()`.",
+        additionalProperties: { type: "string" },
+      },
     },
     required: ["language", "title", "code"],
   },
@@ -49,6 +60,10 @@ function systemPrompt(): string {
     "3. Use RELATIVE URLs everywhere in the HTML — `fetch('data')`, `href='style.css'` — never a leading '/'.",
     "   The app is mounted under a base path, so absolute paths break.",
     "4. Inline all CSS and JS in the HTML. No external requests, no CDN — the sandbox denies network by default.",
+    "   JavaScript only: to use an npm library beyond the pre-bundled set (lodash, zod, date-fns, dayjs, cheerio,",
+    "   uuid, nanoid), list it in create_app's `dependencies` (name -> semver) and import it with ESM `import`",
+    "   (e.g. `import { marked } from 'marked'`), NOT `require()`. It is bundled into the app at publish time",
+    "   (not fetched at runtime). Python cannot add packages.",
     "5. To persist state across requests (counters, saved items, notes), use the app's private key-value",
     "   store — Spin's DEFAULT store, which is automatically scoped to this app and durable across requests:",
     "   - JS: `import { openDefault } from '@spinframework/spin-kv'; const store = openDefault();` then",
@@ -122,8 +137,11 @@ function extractField(buf: string, key: string): { value: string; complete: bool
 function makeStore() {
   const tsUrl = variables.get("ts_interpreter_url") ?? "http://ts-sandbox.spin.internal";
   const pyUrl = variables.get("py_interpreter_url") ?? "http://py-sandbox.spin.internal";
+  const bundlerUrl = variables.get("bundler_url") ?? "http://bundler.spin.internal";
+  // The JS interpreter also knows the bundler, so apps can pull extra npm deps, bundled once
+  // at publish (see create_app below).
   const interpreters: Record<Language, Interpreter> = {
-    javascript: new Interpreter({ baseUrl: tsUrl }),
+    javascript: new Interpreter({ baseUrl: tsUrl, bundlerUrl }),
     python: new Interpreter({ baseUrl: pyUrl }),
   };
   const store = new KvCodeStore({ interpreter: interpreters.javascript, namespace: "apps" });
@@ -141,7 +159,7 @@ async function runAgent(
   const apiKey = variables.get("anthropic_api_key") ?? "";
   const model = variables.get("model") ?? "claude-opus-4-8";
   const anthropic = new Anthropic({ apiKey });
-  const { store } = makeStore();
+  const { store, interpreters } = makeStore();
   let appId = session.id;
 
   // Continue the conversation, or seed a fresh edit session with the app's current code.
@@ -210,13 +228,32 @@ async function runAgent(
     for (let idx = 0; idx < res.content.length; idx++) {
       const block = res.content[idx];
       if (block.type === "tool_use" && block.name === "create_app") {
-        const input = block.input as { language: Language; title: string; code: string };
+        const input = block.input as {
+          language: Language;
+          title: string;
+          code: string;
+          dependencies?: Record<string, string>;
+        };
         const blockId = `${turn}-${idx}`; // same index as the streamed content block
         emit({ t: "tool_saving", block: blockId });
         // The code being replaced (when editing), so the UI can show a diff.
         const before = appId ? await store.get(appId) : null;
+        // JS apps with extra deps are bundled ONCE here at publish; the store keeps the source
+        // (for editing/diffs) and the self-contained bundle (what serveStoredCode runs).
+        const deps =
+          input.language === "javascript" && input.dependencies && Object.keys(input.dependencies).length
+            ? input.dependencies
+            : undefined;
+        const bundled = deps ? await interpreters.javascript.bundle(input.code, { dependencies: deps }) : undefined;
         // Save at the app's id when editing (update in place); otherwise mint a new one.
-        const meta = await store.save({ id: appId, code: input.code, language: input.language, title: input.title });
+        const meta = await store.save({
+          id: appId,
+          code: input.code,
+          language: input.language,
+          title: input.title,
+          dependencies: deps,
+          bundled,
+        });
         appId = meta.id; // subsequent turns in this session edit the same app
         const url = `/a/${meta.id}/`;
         log.info(`saved app id=${meta.id} lang=${input.language} bytes=${input.code.length}`);

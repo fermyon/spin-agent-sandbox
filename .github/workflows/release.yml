@@ -68,7 +68,8 @@ jobs:
           mkdir -p _dist
           cp ts-sandbox/dist/ts-sandbox.wasm _dist/ts-sandbox.wasm
           cp py-sandbox/app.wasm             _dist/py-sandbox.wasm
-          ( cd _dist && sha256sum ts-sandbox.wasm py-sandbox.wasm > "checksums-${RELEASE_VERSION}.txt" )
+          cp ts-sandbox/bundler/dist/bundler.wasm _dist/bundler.wasm
+          ( cd _dist && sha256sum ts-sandbox.wasm py-sandbox.wasm bundler.wasm > "checksums-${RELEASE_VERSION}.txt" )
           echo "----- checksums -----"
           cat "_dist/checksums-${RELEASE_VERSION}.txt"
 
@@ -88,4 +89,5 @@ jobs:
           files: |
             _dist/ts-sandbox.wasm
             _dist/py-sandbox.wasm
+            _dist/bundler.wasm
             _dist/checksums-*.txt

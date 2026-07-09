@@ -33,16 +33,25 @@ export class KvCodeStore implements CodeStore {
     this.now = opts.now ?? (() => Date.now());
   }
 
-  async save(input: { id?: string; code: string; language: Language; title?: string }): Promise<CodeMeta> {
+  async save(input: {
+    id?: string;
+    code: string;
+    language: Language;
+    title?: string;
+    dependencies?: Record<string, string>;
+    bundled?: string;
+  }): Promise<CodeMeta> {
     const id = input.id ?? this.newId();
     const existing = input.id ? await this.get(id) : null;
     const meta: CodeMeta = {
       id,
       language: input.language,
       title: input.title,
+      dependencies: input.dependencies,
       createdAt: existing?.createdAt ?? this.now(), // preserve the original time on update
     };
-    await this.kv.setJson(recordKey(id), { ...meta, code: input.code } satisfies StoredCode);
+    // `code` is the editable source; `bundled` (when present) is what serveStoredCode runs.
+    await this.kv.setJson(recordKey(id), { ...meta, code: input.code, bundled: input.bundled } satisfies StoredCode);
     // Maintain a metadata index for cheap list() — replace in place on update, append on
     // create. Read-modify-write: fine for a single control-plane; concurrent saves could drop
     // an index entry — the record itself is never lost, it is keyed by unique id.
@@ -72,7 +81,8 @@ export class KvCodeStore implements CodeStore {
 /**
  * Load stored code by id and run it as an HTTP handler, returning the sandbox's raw Response
  * (status/headers/body) verbatim. Picks the interpreter by the stored language, scopes the
- * app's own KV to its id, and denies egress by default (empty allow-list).
+ * app's own KV to its id, and denies egress by default (empty allow-list). Runs the
+ * pre-bundled blob when present (an app with dependencies is bundled once at save time).
  */
 export async function serveStoredCode(
   store: CodeStore,
@@ -82,7 +92,7 @@ export async function serveStoredCode(
 ): Promise<Response> {
   const record = await store.get(id);
   if (!record) return new Response("not found", { status: 404 });
-  return interpreters[record.language].runRaw(record.code, {
+  return interpreters[record.language].runRaw(record.bundled ?? record.code, {
     lang: record.language,
     input: req,
     identity: `code:${id}`,

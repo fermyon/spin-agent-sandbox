@@ -1,7 +1,21 @@
-# Added as a PRIVATE component — no public route. It runs untrusted code, so it is only
-# reachable from other components in this app via service chaining
-# (http://{{project-name | kebab_case}}.spin.internal), which is how @spinframework/sandbox
-# is meant to consume it. Do not give it a public route.
+# Adds TWO private components: the JS/TS code sandbox and its dependency bundler. Both are
+# PRIVATE (service-chained), so neither is publicly routable — the sandbox runs untrusted
+# code, the bundler fetches arbitrary npm from esm.sh. Keeping them separate isolates the
+# "fetch npm" capability from the "run untrusted code" capability. Reach them from your own
+# component through @spinframework/sandbox:
+#
+#   import { Interpreter } from "@spinframework/sandbox/interpreter";
+#   const js = new Interpreter({
+#     baseUrl:    "http://{{project-name | kebab_case}}.spin.internal",
+#     bundlerUrl: "http://{{project-name | kebab_case}}-bundler.spin.internal",
+#   });
+#   await js.run(code, { lang: "javascript", packageJson: { dependencies: { /* ... */ } } });
+#
+# Add BOTH of these to your calling component's `allowed_outbound_hosts`:
+#   "http://{{project-name | kebab_case}}.spin.internal"
+#   "http://{{project-name | kebab_case}}-bundler.spin.internal"
+
+# --- JS/TS sandbox: runs untrusted code (no esm.sh egress of its own) ---
 [[trigger.http]]
 route = { private = true }
 component = "{{project-name | kebab_case}}"
@@ -12,3 +26,12 @@ key_value_stores = ["default"]
 allowed_outbound_hosts = ["https://*:*", "http://*:*"]
 [component.{{project-name | kebab_case}}.variables]
 log_level = "info"
+
+# --- Bundler: fetches npm deps from esm.sh, runs no user code ---
+[[trigger.http]]
+route = { private = true }
+component = "{{project-name | kebab_case}}-bundler"
+
+[component.{{project-name | kebab_case}}-bundler]
+source = { url = "https://github.com/lepton/wasm-sandbox/releases/download/v0.1.0/bundler.wasm", digest = "sha256:0000000000000000000000000000000000000000000000000000000000000000" }
+allowed_outbound_hosts = ["https://esm.sh", "https://*.esm.sh"]

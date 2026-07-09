@@ -9,6 +9,7 @@ export type {
   CodeError,
   Result,
   HttpInput,
+  PackageJson,
   RunOpts,
   Caps,
   CodeRunner,

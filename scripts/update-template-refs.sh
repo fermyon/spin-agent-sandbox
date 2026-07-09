@@ -19,7 +19,7 @@ sha256() {
   else shasum -a 256 "$1" | cut -d' ' -f1; fi
 }
 
-for comp in ts-sandbox py-sandbox; do
+for comp in ts-sandbox py-sandbox bundler; do
   url="https://github.com/$REPO/releases/download/$VERSION/$comp.wasm"
   echo ">> $comp -> $url"
   tmp="$(mktemp)"

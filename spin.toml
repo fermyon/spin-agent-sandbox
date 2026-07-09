@@ -33,6 +33,27 @@ command = "npm ci && npm run build"
 workdir = "ts-sandbox"
 
 # ---------------------------------------------------------------------------
+# Dependency bundler (runs in StarlingMonkey — no Node, no esbuild at runtime)
+# ---------------------------------------------------------------------------
+# Turns (source + package.json) into ONE self-contained CJS blob the ts-sandbox can
+# execute unchanged. Fetches deps from esm.sh, substitutes curated Node shims, transpiles
+# with sucrase and links via a URL-resolving require(). The sandbox's 14 pre-bundled
+# packages are left as bare require() so they resolve to the in-WASM copies.
+#   curl -sX POST localhost:3000/bundle -d '{"source":"...","packageJson":{"dependencies":{...}}}'
+[[trigger.http]]
+route = "/bundle/..."
+component = "bundler"
+
+[component.bundler]
+source = "ts-sandbox/bundler/dist/bundler.wasm"
+exclude_files = ["**/node_modules"]
+# Only esm.sh — trusted build infra, kept separate from the sandbox's per-request egress.
+allowed_outbound_hosts = ["https://esm.sh", "https://*.esm.sh"]
+[component.bundler.build]
+command = "npm ci && npm run build"
+workdir = "ts-sandbox/bundler"
+
+# ---------------------------------------------------------------------------
 # Python sandbox
 # ---------------------------------------------------------------------------
 [[trigger.http]]

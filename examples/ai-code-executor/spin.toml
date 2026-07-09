@@ -12,6 +12,7 @@ anthropic_api_key = { required = true, secret = true }
 model = { default = "claude-opus-4-8" }
 ts_interpreter_url = { default = "http://ts-sandbox.spin.internal" }
 py_interpreter_url = { default = "http://py-sandbox.spin.internal" }
+bundler_url = { default = "http://bundler.spin.internal" }
 # Shared access token gating the UI + API. Empty = no gate (local dev); set to enable:
 # SPIN_VARIABLE_ACCESS_TOKEN=some-secret
 access_token = { default = "", secret = true }
@@ -34,11 +35,12 @@ component = "api"
 
 [component.api]
 source = "api/dist/api.wasm"
-# Reach Claude and the two private interpreter components through service chaining
+# Reach Claude, the two private interpreter components, and the bundler via service chaining
 allowed_outbound_hosts = [
   "https://api.anthropic.com",
   "http://ts-sandbox.spin.internal",
   "http://py-sandbox.spin.internal",
+  "http://bundler.spin.internal",
 ]
 [component.api.variables]
 log_level = "{{ log_level }}"
@@ -46,6 +48,7 @@ anthropic_api_key = "{{ anthropic_api_key }}"
 model = "{{ model }}"
 ts_interpreter_url = "{{ ts_interpreter_url }}"
 py_interpreter_url = "{{ py_interpreter_url }}"
+bundler_url = "{{ bundler_url }}"
 access_token = "{{ access_token }}"
 [component.api.build]
 command = "npm install && npm run build"
@@ -80,3 +83,18 @@ allowed_outbound_hosts = ["https://*:*", "http://*:*"]
 command = "bash build.sh"
 workdir = "../../py-sandbox"
 watch = ["*.py", "requirements.txt"]
+
+# Private bundler for JavaScript npm dependencies: the SDK POSTs (source + package.json)
+# here and runs the returned self-contained bundle. It fetches deps from esm.sh and runs no
+# user code, so it stays isolated from the code-executing sandboxes.
+[[trigger.http]]
+route = { private = true }
+component = "bundler"
+
+[component.bundler]
+source = "../../ts-sandbox/bundler/dist/bundler.wasm"
+exclude_files = ["**/node_modules"]
+allowed_outbound_hosts = ["https://esm.sh", "https://*.esm.sh"]
+[component.bundler.build]
+command = "npm ci && npm run build"
+workdir = "../../ts-sandbox/bundler"

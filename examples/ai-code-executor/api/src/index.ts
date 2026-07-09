@@ -22,12 +22,24 @@ const INTERPRETER_TOOL: Anthropic.Tool = {
     "Best for quick computations, math, data transformations, parsing, and string/JSON work. " +
     "Pre-bundled libraries are available (Python: numpy, pydantic, regex, beautifulsoup4, " +
     "jinja2, markdown, tabulate, tiktoken; JavaScript: lodash, zod, date-fns, dayjs, cheerio, uuid, nanoid). " +
-    "NO filesystem, NO shell, NO pip/npm install, stateless. Print results to stdout.",
+    "For JavaScript you may pull ADDITIONAL npm packages by listing them in `dependencies` " +
+    "(name -> semver); they are fetched and bundled in before the code runs. Import them with ESM " +
+    "`import` syntax (e.g. `import M from 'mustache'`), NOT `require()` — `require` returns the module " +
+    "namespace, so the package's API would be under `.default`. Python cannot add packages. " +
+    "NO filesystem, NO shell, stateless. Print results to stdout.",
   input_schema: {
     type: "object",
     properties: {
       language: { type: "string", enum: ["python", "javascript"] },
       code: { type: "string", description: "The full program to run. Print results to stdout." },
+      dependencies: {
+        type: "object",
+        description:
+          "JavaScript only. Extra npm dependencies to bundle in, as name -> semver range, " +
+          'e.g. { "mustache": "^4.2.0" }. Omit for Python or when only the pre-bundled libraries are used. ' +
+          "Use each dep via ESM `import` (e.g. `import M from 'mustache'`), not `require()`.",
+        additionalProperties: { type: "string" },
+      },
     },
     required: ["language", "code"],
   },
@@ -74,12 +86,14 @@ async function runAgent(prompt: string, history: Anthropic.MessageParam[], emit:
   const model = variables.get("model") ?? "claude-opus-4-8";
   const tsUrl = variables.get("ts_interpreter_url") ?? "http://ts-sandbox.spin.internal";
   const pyUrl = variables.get("py_interpreter_url") ?? "http://py-sandbox.spin.internal";
+  const bundlerUrl = variables.get("bundler_url") ?? "http://bundler.spin.internal";
 
   const anthropic = new Anthropic({ apiKey });
-  // The interpreter is two private, service-chained components — one per language —
-  // so pick the client by the language the model chose.
+  // The interpreter is two private, service-chained components — one per language — so pick
+  // the client by the language the model chose. The JS interpreter also knows the bundler, so
+  // model code can pull extra npm dependencies (see the tool's `dependencies` field).
   const interpreters: Record<Language, Interpreter> = {
-    javascript: new Interpreter({ baseUrl: tsUrl }),
+    javascript: new Interpreter({ baseUrl: tsUrl, bundlerUrl }),
     python: new Interpreter({ baseUrl: pyUrl }),
   };
 
@@ -118,7 +132,7 @@ async function runAgent(prompt: string, history: Anthropic.MessageParam[], emit:
     for (const block of res.content) {
       // Text blocks were already streamed above as text_delta events.
       if (block.type === "tool_use") {
-        const input = block.input as { language: Language; code: string };
+        const input = block.input as { language: Language; code: string; dependencies?: Record<string, string> };
         const id = toolId++;
 
         // Stream the code the moment the model produces it (before it runs).
@@ -130,7 +144,15 @@ async function runAgent(prompt: string, history: Anthropic.MessageParam[], emit:
         let execMs = 0;
         try {
           const t = Date.now();
-          const r = await interpreters[input.language].run(input.code, { lang: input.language, allowedHosts: [] });
+          const r = await interpreters[input.language].run(input.code, {
+            lang: input.language,
+            allowedHosts: [],
+            // JS only: pull the model's requested npm deps (bundled in before the code runs).
+            packageJson:
+              input.language === "javascript" && input.dependencies && Object.keys(input.dependencies).length
+                ? { dependencies: input.dependencies }
+                : undefined,
+          });
           execMs = Date.now() - t;
           stdout = r.stdout;
           stderr = r.stderr;

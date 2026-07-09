@@ -1,0 +1,23 @@
+{
+  "name": "bundler",
+  "version": "1.0.0",
+  "description": "In-Wasm dependency bundler for the TS sandbox — runs in StarlingMonkey (no Node, no esbuild at runtime)",
+  "scripts": {
+    "build": "node build.mjs && mkdirp dist && j2w -i build/bundle.js --initLocation http://bundler.localhost -o dist/bundler.wasm",
+    "build:debug": "node build.mjs && mkdirp dist && j2w -d -i build/bundle.js --initLocation http://bundler.localhost -o dist/bundler.wasm",
+    "test": "node test/integration-run.mjs",
+    "test:integration": "node test/integration-run.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "devDependencies": {
+    "esbuild": "^0.25.8",
+    "mkdirp": "^3.0.1",
+    "typescript": "^5.5.0"
+  },
+  "dependencies": {
+    "@spinframework/build-tools": "^1.0.7",
+    "@spinframework/wasi-http-proxy": "^1.0.0",
+    "sucrase": "^3.35.0"
+  }
+}

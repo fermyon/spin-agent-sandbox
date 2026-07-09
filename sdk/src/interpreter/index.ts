@@ -16,8 +16,15 @@
 //
 // (A single combined app that routes both /ts and /py by path also works — then one
 // `baseUrl` at the app suffices — but the private two-component form is the default.)
+//
+// JavaScript can pull npm dependencies beyond the frozen libs by giving the JS Interpreter
+// a `bundlerUrl` (the bundler component) and passing `packageJson` to run():
+//
+//   const js = new Interpreter({ baseUrl: "http://ts-sandbox.spin.internal",
+//                                bundlerUrl: "http://bundler.spin.internal" });
+//   await js.run(code, { lang: "javascript", packageJson: { dependencies: { mustache: "^4.2.0" } } });
 
-import type { Caps, CodeRunner, Result, RunOpts } from "../core/index.ts";
+import type { Caps, CodeRunner, PackageJson, Result, RunOpts } from "../core/index.ts";
 import { langToRoute, withDefaults } from "../core/index.ts";
 
 // Re-exported so a consumer can name run languages (and import `Interpreter`)
@@ -31,6 +38,11 @@ export interface InterpreterOptions {
   /** Base URL of the interpreter component, no trailing slash, e.g.
    * "http://ts-sandbox.spin.internal" (use one Interpreter per language — see the module doc). */
   baseUrl: string;
+  /** Optional. Base URL of the bundler component, e.g. "http://bundler.spin.internal".
+   * Enables `RunOpts.packageJson` for JavaScript: the source + package.json are POSTed to
+   * `${bundlerUrl}/bundle` and the returned self-contained bundle is what runs. Without it,
+   * passing `packageJson` throws. Python is unaffected (its libraries are frozen in). */
+  bundlerUrl?: string;
   /** Override the global fetch (mainly for tests). */
   fetch?: FetchLike;
   /** Override sandbox-id generation for runs without an explicit identity. */
@@ -68,11 +80,13 @@ interface ErrorShape {
 
 export class Interpreter implements CodeRunner {
   private readonly baseUrl: string;
+  private readonly bundlerUrl?: string;
   private readonly fetchImpl: FetchLike;
   private readonly newId: () => string;
 
   constructor(opts: InterpreterOptions) {
     this.baseUrl = opts.baseUrl.replace(/\/+$/, "");
+    this.bundlerUrl = opts.bundlerUrl ? opts.bundlerUrl.replace(/\/+$/, "") : undefined;
     this.fetchImpl = opts.fetch ?? (globalThis.fetch as FetchLike);
     this.newId = opts.newId ?? defaultNewId;
   }
@@ -82,7 +96,55 @@ export class Interpreter implements CodeRunner {
   }
 
   capabilities(): Caps {
-    return CAPS;
+    // A configured bundler lets JavaScript pull dependencies beyond the frozen libs.
+    return this.bundlerUrl ? { ...CAPS, arbitraryImage: true } : CAPS;
+  }
+
+  /**
+   * Bundle npm dependencies into `code` WITHOUT running it, returning the self-contained
+   * bundle. JavaScript only; requires a `bundlerUrl`. Use it to pre-bundle code you will
+   * store and run later (see @spinframework/sandbox/store), so it is bundled once at publish
+   * rather than on every request.
+   */
+  async bundle(code: string, packageJson: PackageJson): Promise<string> {
+    if (!this.bundlerUrl) {
+      throw new Error("bundle() requires the Interpreter to have a bundlerUrl");
+    }
+    return this.postBundle(code, packageJson);
+  }
+
+  // POST source + package.json to the bundler component; return the self-contained bundle.
+  private async postBundle(code: string, packageJson: PackageJson): Promise<string> {
+    const res = await this.fetchImpl(`${this.bundlerUrl}/bundle`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ source: code, packageJson }),
+    });
+    const text = await res.text();
+    const json = safeJson(text) as { blob?: string; error?: string; message?: string } | null;
+    if (!res.ok || !json || typeof json.blob !== "string") {
+      const detail = json?.message ?? json?.error ?? (text || res.statusText || "no body");
+      throw new Error(`bundler failed (${res.status}): ${detail}`);
+    }
+    return json.blob;
+  }
+
+  /**
+   * If the run requests dependencies (`packageJson`), bundle them into `code` via the
+   * bundler component and return the self-contained bundle; otherwise return `code`
+   * unchanged. JavaScript only — python and a missing bundler are hard errors.
+   */
+  private async maybeBundle(code: string, o: RunOpts): Promise<string> {
+    if (o.packageJson === undefined) return code;
+    if (o.lang !== "javascript") {
+      throw new Error("packageJson (dependencies) is only supported for javascript");
+    }
+    if (!this.bundlerUrl) {
+      throw new Error(
+        "packageJson was provided but this Interpreter has no bundlerUrl; construct it with { bundlerUrl }",
+      );
+    }
+    return this.postBundle(code, o.packageJson);
   }
 
   // Shared envelope + URL construction for run() / runRaw().
@@ -104,7 +166,8 @@ export class Interpreter implements CodeRunner {
    */
   async runRaw(code: string, opts?: RunOpts): Promise<Response> {
     const o = withDefaults(opts);
-    const { url, body } = this.buildEnvelope(code, o);
+    const bundled = await this.maybeBundle(code, o);
+    const { url, body } = this.buildEnvelope(bundled, o);
     return this.fetchImpl(url, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -114,7 +177,8 @@ export class Interpreter implements CodeRunner {
 
   async run(code: string, opts?: RunOpts): Promise<Result> {
     const o = withDefaults(opts);
-    const { url, body, route } = this.buildEnvelope(code, o);
+    const bundled = await this.maybeBundle(code, o);
+    const { url, body, route } = this.buildEnvelope(bundled, o);
 
     const res = await this.fetchImpl(url, {
       method: "POST",

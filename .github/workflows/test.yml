@@ -1,0 +1,32 @@
+name: bundler tests
+
+# Real Wasm components (bundler + ts-sandbox) chained via `spin up`.
+# See ts-sandbox/bundler/test/README.md. The broad library compatibility sweep lives in
+# ts-sandbox/bundler/test/compat and is run manually.
+on:
+  push:
+    branches: [main]
+    paths: ["ts-sandbox/**", ".github/workflows/test.yml"]
+  pull_request:
+    paths: ["ts-sandbox/**", ".github/workflows/test.yml"]
+  workflow_dispatch:
+
+jobs:
+  integration:
+    name: integration (real components)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install Spin
+        uses: fermyon/actions/spin/setup@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build components (ts-sandbox + bundler)
+        run: spin build -c ts-sandbox -c bundler
+      - name: Integration tests (bundler -> sandbox)
+        # Reaches esm.sh at runtime; starts `spin up` on the trimmed test manifest,
+        # runs test/integration.test.mjs, tears down.
+        run: node ts-sandbox/bundler/test/integration-run.mjs
