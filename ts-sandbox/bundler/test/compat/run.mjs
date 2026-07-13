@@ -101,6 +101,14 @@ function classify(entry, bundleRes, runRes) {
     return rec;
   }
 
+  // A 5xx with no JSON envelope means the sandbox component itself crashed/trapped (e.g. OOM on
+  // a very large blob) rather than returning a handler Response — classify it as a crash.
+  if (runRes.status >= 500 && (!runRes.isJson || !r || String(r).trim() === "")) {
+    rec.status = "sandbox_crash";
+    rec.detail = `sandbox returned HTTP ${runRes.status} with no body (blob too large/complex to run)`;
+    return rec;
+  }
+
   // Handler-shape response (non-JSON or JSON without stdout field): treat body as output.
   if (!runRes.isJson || (r && typeof r === "object" && !("stdout" in r) && !("error" in r))) {
     const body = typeof r === "string" ? r : JSON.stringify(r);
@@ -133,13 +141,13 @@ function matches(entry, out) {
 }
 const firstLine = (s) => String(s || "").split("\n")[0].slice(0, 300);
 
-// Wrap the user IIFE inside the bundler's blob in try/catch so any SYNCHRONOUS throw — at
-// module load time (a dependency's factory) OR in the user body — prints its real message.
-// (SpiderMonkey's error.stack omits the message, so an uncaught throw shows only frames.)
-// The bundler emits the user code as exactly one `(function(module, exports, require){...})(...)`
-// IIFE at the end of the blob; we wrap that whole expression. Compile errors still fail at
-// parse (before this runs) and are classified separately. Async rejections aren't caught here.
-const IIFE_MARK = "(function(module, exports, require){";
+// Wrap the user IIFE inside the bundler's blob in try/catch so a throw — at module load time (a
+// dependency's factory) OR in the user body, sync OR async — prints its real message. (SpiderMonkey's
+// error.stack omits the message, so an uncaught throw shows only frames.) The bundler emits the user
+// code as exactly one `await (async function(module, exports, require){...})(...)` at the end of the
+// blob; we wrap that whole awaited expression, so `await` inside the try catches async rejections too.
+// Compile errors still fail at parse (before this runs) and are classified separately.
+const IIFE_MARK = "await (async function(module, exports, require){";
 function wrapBlob(blob) {
   const idx = blob.lastIndexOf(IIFE_MARK);
   if (idx < 0) return blob;
@@ -178,7 +186,7 @@ async function pool(items, n, fn) {
 }
 
 function report(results) {
-  const order = ["pass", "wrong_output", "runtime_error", "compile_error", "transpile_err", "run_reject", "bundle_error", "net_error"];
+  const order = ["pass", "wrong_output", "runtime_error", "compile_error", "transpile_err", "run_reject", "sandbox_crash", "bundle_error", "net_error"];
   const counts = {};
   for (const r of results) counts[r.status] = (counts[r.status] || 0) + 1;
   const total = results.length;

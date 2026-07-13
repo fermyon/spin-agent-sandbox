@@ -26,12 +26,21 @@ const INTERPRETER_TOOL: Anthropic.Tool = {
     "(name -> semver); they are fetched and bundled in before the code runs. Import them with ESM " +
     "`import` syntax (e.g. `import M from 'mustache'`), NOT `require()` — `require` returns the module " +
     "namespace, so the package's API would be under `.default`. Python cannot add packages. " +
-    "NO filesystem, NO shell, stateless. Print results to stdout.",
+    "NO filesystem, NO shell, stateless. Print results to stdout. " +
+    "Network egress is DENIED by default. If the code calls an external API/tool with `fetch`, " +
+    "list the hosts it will reach in `allowedHosts` (e.g. [\"api.github.com\"]); only those are permitted.",
   input_schema: {
     type: "object",
     properties: {
       language: { type: "string", enum: ["python", "javascript"] },
-      code: { type: "string", description: "The full program to run. Print results to stdout." },
+      code: {
+        type: "string",
+        description:
+          "The full program to run. Print results to stdout. Top-level `await` IS supported " +
+          "(write `const res = await fetch(url)` directly, with or without `dependencies`). Do NOT wrap " +
+          "async work in a floating `(async () => { … })()` IIFE — its promise is discarded before output " +
+          "is captured; use top-level `await` (or `await` the async call) instead.",
+      },
       dependencies: {
         type: "object",
         description:
@@ -39,6 +48,14 @@ const INTERPRETER_TOOL: Anthropic.Tool = {
           'e.g. { "mustache": "^4.2.0" }. Omit for Python or when only the pre-bundled libraries are used. ' +
           "Use each dep via ESM `import` (e.g. `import M from 'mustache'`), not `require()`.",
         additionalProperties: { type: "string" },
+      },
+      allowedHosts: {
+        type: "array",
+        items: { type: "string" },
+        description:
+          "Outbound hosts the code is allowed to reach with `fetch` (default-deny; omit for no network). " +
+          'Give hostnames, optionally with a port or a leading "*." wildcard, e.g. ' +
+          '["api.github.com", "*.openai.com"]. Internal/loopback/metadata hosts are always blocked.',
       },
     },
     required: ["language", "code"],
@@ -58,7 +75,17 @@ type WireEvent =
   // An incremental slice of the model's text, streamed as it is generated.
   // `block` groups the deltas of one text block (unique within an assistant turn).
   | { t: "text_delta"; block: string; text: string }
-  | { t: "tool_start"; id: number; language: string; code: string; genMs: number }
+  | {
+      t: "tool_start";
+      id: number;
+      language: string;
+      code: string;
+      // Extra npm packages the model asked to bundle in (name -> semver), and the outbound
+      // hosts it allow-listed for this run — shown in the UI alongside the code.
+      packages?: Record<string, string>;
+      allowedHosts?: string[];
+      genMs: number;
+    }
   | { t: "tool_end"; id: number; execMs: number; stdout: string; stderr: string; error: string | null }
   | { t: "done"; messages: Anthropic.MessageParam[] }
   | { t: "error"; error: string };
@@ -132,11 +159,20 @@ async function runAgent(prompt: string, history: Anthropic.MessageParam[], emit:
     for (const block of res.content) {
       // Text blocks were already streamed above as text_delta events.
       if (block.type === "tool_use") {
-        const input = block.input as { language: Language; code: string; dependencies?: Record<string, string> };
+        const input = block.input as { language: Language; code: string; dependencies?: Record<string, string>; allowedHosts?: string[] };
         const id = toolId++;
 
-        // Stream the code the moment the model produces it (before it runs).
-        emit({ t: "tool_start", id, language: input.language, code: input.code, genMs });
+        // Stream the code the moment the model produces it (before it runs), along with the
+        // extra packages and allow-listed hosts it requested, so the UI can show them.
+        emit({
+          t: "tool_start",
+          id,
+          language: input.language,
+          code: input.code,
+          packages: input.language === "javascript" ? input.dependencies : undefined,
+          allowedHosts: Array.isArray(input.allowedHosts) && input.allowedHosts.length ? input.allowedHosts : undefined,
+          genMs,
+        });
 
         let stdout = "";
         let stderr = "";
@@ -146,7 +182,8 @@ async function runAgent(prompt: string, history: Anthropic.MessageParam[], emit:
           const t = Date.now();
           const r = await interpreters[input.language].run(input.code, {
             lang: input.language,
-            allowedHosts: [],
+            // The model lists the hosts its code may call; egress is default-deny otherwise.
+            allowedHosts: Array.isArray(input.allowedHosts) ? input.allowedHosts : [],
             // JS only: pull the model's requested npm deps (bundled in before the code runs).
             packageJson:
               input.language === "javascript" && input.dependencies && Object.keys(input.dependencies).length

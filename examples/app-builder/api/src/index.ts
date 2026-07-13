@@ -27,7 +27,9 @@ const CREATE_APP_TOOL: Anthropic.Tool = {
     "Python: `def handle_request(request): return Response(200, {'content-type': 'text/html'}, html.encode())`. " +
     "For a JavaScript app you may pull additional npm packages by listing them in `dependencies` " +
     "(name -> semver); they are bundled into the app at publish time. Import them with ESM `import` " +
-    "(e.g. `import { marked } from 'marked'`), NOT `require()`. Python cannot add packages.",
+    "(e.g. `import { marked } from 'marked'`), NOT `require()`. Python cannot add packages. " +
+    "The app's network egress is DENIED by default. If the app calls an external API/tool with `fetch`, " +
+    "list the hosts it will reach in `allowedHosts` (e.g. [\"api.openweathermap.org\"]); only those are permitted.",
   input_schema: {
     type: "object",
     properties: {
@@ -41,6 +43,14 @@ const CREATE_APP_TOOL: Anthropic.Tool = {
           'e.g. { "marked": "^11.0.0" }. Omit for Python or when only the pre-bundled libraries are used. ' +
           "Use each dep via ESM `import` (e.g. `import { marked } from 'marked'`), not `require()`.",
         additionalProperties: { type: "string" },
+      },
+      allowedHosts: {
+        type: "array",
+        items: { type: "string" },
+        description:
+          "Outbound hosts the app is allowed to reach with `fetch` (default-deny; omit for no network). " +
+          'Give hostnames, optionally with a port or a leading "*." wildcard, e.g. ' +
+          '["api.openweathermap.org", "*.githubusercontent.com"]. Internal/loopback/metadata hosts are always blocked.',
       },
     },
     required: ["language", "title", "code"],
@@ -59,7 +69,10 @@ function systemPrompt(): string {
     "2. Put any API on sub-paths (e.g. '/data') returning JSON.",
     "3. Use RELATIVE URLs everywhere in the HTML — `fetch('data')`, `href='style.css'` — never a leading '/'.",
     "   The app is mounted under a base path, so absolute paths break.",
-    "4. Inline all CSS and JS in the HTML. No external requests, no CDN — the sandbox denies network by default.",
+    "4. Inline all CSS and JS in the HTML; do not load assets from a CDN. Outbound network is DENIED by default,",
+    "   so a browser `fetch` to a third party will fail — but the app's server-side handler MAY call an external",
+    "   API if you list its hosts in create_app's `allowedHosts` (e.g. [\"api.openweathermap.org\"]); proxy such",
+    "   calls through your own sub-path (e.g. '/data') rather than from the browser.",
     "   JavaScript only: to use an npm library beyond the pre-bundled set (lodash, zod, date-fns, dayjs, cheerio,",
     "   uuid, nanoid), list it in create_app's `dependencies` (name -> semver) and import it with ESM `import`",
     "   (e.g. `import { marked } from 'marked'`), NOT `require()`. It is bundled into the app at publish time",
@@ -233,6 +246,7 @@ async function runAgent(
           title: string;
           code: string;
           dependencies?: Record<string, string>;
+          allowedHosts?: string[];
         };
         const blockId = `${turn}-${idx}`; // same index as the streamed content block
         emit({ t: "tool_saving", block: blockId });
@@ -245,6 +259,9 @@ async function runAgent(
             ? input.dependencies
             : undefined;
         const bundled = deps ? await interpreters.javascript.bundle(input.code, { dependencies: deps }) : undefined;
+        // The model lists the hosts the app may call; egress is default-deny otherwise. Stored with
+        // the app so serveStoredCode applies it on every request.
+        const allowedHosts = Array.isArray(input.allowedHosts) ? input.allowedHosts : undefined;
         // Save at the app's id when editing (update in place); otherwise mint a new one.
         const meta = await store.save({
           id: appId,
@@ -252,6 +269,7 @@ async function runAgent(
           language: input.language,
           title: input.title,
           dependencies: deps,
+          allowedHosts,
           bundled,
         });
         appId = meta.id; // subsequent turns in this session edit the same app

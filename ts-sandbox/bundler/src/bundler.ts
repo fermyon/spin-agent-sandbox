@@ -19,14 +19,25 @@ const BUILTINS = [
 const BSET = new Set(BUILTINS);
 const ESM = "https://esm.sh";
 const MAX_MODULES = 300;
-// Source-size budgets. Very large libraries (mathjs, pug) otherwise exhaust the StarlingMonkey
-// heap while transpiling and surface as an opaque "out of memory". We stop first (before the
-// expensive sucrase pass) and return a clear, actionable error. A single ~800 KB module already
-// triggers the OOM in this build, so the per-module cap is what actually catches those; passing
-// libraries here top out well under 200 KB.
+// Source-size budgets. Very large libraries otherwise exhaust memory and surface as an opaque
+// "out of memory". Two independent limits: the per-module cap catches a single huge minified
+// module that OOMs the bundler's own sucrase pass; the total cap bounds the assembled blob.
+//
+// Calibrated by measurement under a 128 MB instance cap (Spin/hosted default): with the sandbox's
+// skip-transpile marker in place, the 128 MB SANDBOX runs ~720 KB blobs (resend, elysia) that used
+// to crash it. The remaining wall is the BUNDLER: bundling that tier needs ~256 MB (the bundler is
+// trusted build infra — no untrusted execution — so it can be provisioned above the 128 MB sandbox).
+// At a uniform 128 MB the bundler is the tighter limit (~600 KB); provision it higher to reach these.
+//
+// The per-module cap stays low: skip-transpile only removes the SANDBOX's re-parse, not the
+// bundler's own per-module sucrase, which still OOMs on a single ~800 KB minified module (pug).
+// The total cap is what skip-transpile lets us raise, since the sandbox can now run larger blobs.
 const MAX_MODULE_BYTES = 700 * 1024;
-const MAX_TOTAL_BYTES = 2 * 1024 * 1024;
-const tooLarge = (bytes: number, mods: number) =>
+const MAX_TOTAL_BYTES = 1 * 1024 * 1024;
+const moduleTooLarge = (kb: number, url: string) =>
+  `module too large to transpile (${kb} KB: ${url.split("/").pop()}); this library has a single ` +
+  `oversized module — try a smaller alternative`;
+const graphTooLarge = (bytes: number, mods: number) =>
   `dependency graph too large (${Math.round(bytes / 1024)} KB across ${mods} modules); this library is ` +
   `too big to bundle in the sandbox — try a smaller alternative`;
 
@@ -65,10 +76,15 @@ function requireSpecs(cjs: string): string[] {
 // outputs later run `exports.__esModule = X`, which otherwise throws "'__esModule' is read-only"
 // against the default non-writable value descriptor (StarlingMonkey enforces the strict-mode assign).
 const toCjs = (esm: string) =>
-  sucrase(stripImportMeta(esm), { transforms: ["imports"], preserveDynamicImport: false }).code.replace(
-    /Object\.defineProperty\(exports, "__esModule", \{value: true\}\)/g,
-    'Object.defineProperty(exports, "__esModule", {value: true, writable: true, configurable: true})'
-  );
+  sucrase(stripImportMeta(esm), { transforms: ["imports"], preserveDynamicImport: false }).code
+    .replace(
+      /Object\.defineProperty\(exports, "__esModule", \{value: true\}\)/g,
+      'Object.defineProperty(exports, "__esModule", {value: true, writable: true, configurable: true})'
+    )
+    // sucrase drops the space in `return await x?.y()` when it rewrites the optional chain into
+    // its `_asyncOptionalChain` helper, emitting an invalid `returnawait ...` token. Restore it.
+    // (`returnawait` is never a real identifier, so this is safe.)
+    .replace(/\breturnawait\b/g, "return await");
 
 function esmUrl(spec: string, deps: Record<string, string>): string {
   const root = rootOf(spec);
@@ -101,8 +117,10 @@ export async function bundle(userSource: string, deps: Record<string, string>): 
     const text = await res.text();
     fetches++;
     totalBytes += text.length;
-    // Stop before sucrase touches a module large enough to OOM the engine.
-    if (text.length > MAX_MODULE_BYTES || totalBytes > MAX_TOTAL_BYTES) throw new Error(tooLarge(totalBytes, mods.size));
+    // Stop before sucrase touches a module large enough to OOM the engine, and before the assembled
+    // graph grows past what the sandbox can compile.
+    if (text.length > MAX_MODULE_BYTES) throw new Error(moduleTooLarge(Math.round(text.length / 1024), url));
+    if (totalBytes > MAX_TOTAL_BYTES) throw new Error(graphTooLarge(totalBytes, mods.size));
     const finalUrl = res.url || url;
     const rec: Mod = { base: finalUrl, cjs: toCjs(text) };
     mods.set(url, rec);
@@ -131,11 +149,19 @@ export async function bundle(userSource: string, deps: Record<string, string>): 
     .join(",\n");
   const entryLiteral = [...entry.entries()].map(([k, v]) => `${JSON.stringify(k)}: ${JSON.stringify(v)}`).join(", ");
 
-  // The assembled blob. It runs through the UNCHANGED sandbox: sucrase(no-op) -> AsyncFunction.
-  // Note: no regex is used inside the blob (indexOf checks) to keep it robust across the
-  // sandbox's second sucrase pass. `require` here is the sandbox's host registry (builtins).
+  // The assembled blob. The first-line marker tells the sandbox this is already CommonJS so it
+  // skips its own sucrase pass (avoiding a second full parse of the whole blob — the peak-memory
+  // step on large blobs). `require` here is the sandbox's host registry (builtins). No regex is used
+  // inside the blob (indexOf checks) to stay robust if the sandbox ever does transpile it.
+  //
+  // The user code runs in an `await (async function(){...})()`: the sandbox runs the blob as its
+  // AsyncFunction body, so (1) top-level `await` in the user source is valid (it sits inside an
+  // async function) and (2) awaiting the IIFE makes the sandbox wait for the user's async work to
+  // finish before it captures stdout — without this, top-level await was a compile error under the
+  // bundler path and floating async work was cut off before its output flushed.
   const blob =
-`const __B = new Set(${JSON.stringify(BUILTINS)});
+`//__spin_bundled_cjs__
+const __B = new Set(${JSON.stringify(BUILTINS)});
 const __rootOf = function(s){ return s.charAt(0) === "@" ? s.split("/").slice(0,2).join("/") : s.split("/")[0]; };
 const __isBare = function(s){ return !(s.charAt(0) === "/" || s.slice(0,2) === "./" || s.slice(0,3) === "../" || s.indexOf("://") >= 0); };
 const __entry = { ${entryLiteral} };
@@ -160,7 +186,7 @@ function __require(spec, base){
   __cache[r.key] = m.exports;
   return m.exports;
 }
-(function(module, exports, require){
+await (async function(module, exports, require){
 ${userCjs}
 })(module, exports, function(s){ return __require(s, null); });
 `;

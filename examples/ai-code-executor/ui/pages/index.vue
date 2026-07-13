@@ -53,6 +53,18 @@
                   <span class="lang">{{ s.language }}</span>
                   <span class="meta">{{ metaLabel(s) }}</span>
                 </div>
+                <!-- Extra npm packages bundled in + outbound hosts the model allow-listed for this run. -->
+                <div
+                  v-if="(s.packages && Object.keys(s.packages).length) || (s.allowedHosts && s.allowedHosts.length)"
+                  class="tool-deps"
+                >
+                  <span v-for="(ver, name) in (s.packages || {})" :key="'p' + name" class="chip pkg" title="npm package bundled in">
+                    <span class="chip-ico">📦</span>{{ name }}<span class="chip-ver">{{ ver }}</span>
+                  </span>
+                  <span v-for="h in (s.allowedHosts || [])" :key="'h' + h" class="chip host" title="allowed outbound host">
+                    <span class="chip-ico">🌐</span>{{ h }}
+                  </span>
+                </div>
                 <pre class="code"><code class="hljs" v-html="highlightCode(s.code, s.language)"></code></pre>
                 <pre v-if="s.stdout" class="out">{{ s.stdout }}</pre>
                 <pre v-if="s.stderr" class="out err">{{ s.stderr }}</pre>
@@ -288,6 +300,9 @@ type Step =
       id: number;
       language: string;
       code: string;
+      // Extra npm packages bundled in (name -> semver) and outbound hosts allow-listed for this run.
+      packages?: Record<string, string>;
+      allowedHosts?: string[];
       stdout: string;
       stderr: string;
       error: string | null;
@@ -425,6 +440,8 @@ function apply(a: Assistant, ev: any) {
       id: ev.id,
       language: ev.language,
       code: ev.code,
+      packages: ev.packages,
+      allowedHosts: ev.allowedHosts,
       genMs: ev.genMs,
       execMs: 0,
       stdout: "",
@@ -565,6 +582,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sa
 .code code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 /* the tool-card code is highlighted; drop highlight.js's own block padding/bg so the card controls layout */
 .code code.hljs { padding: 0; background: transparent; }
+/* Packages bundled in + hosts allow-listed for this run, shown between the head and the code. */
+.tool-deps { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 12px; border-bottom: 1px solid #f0f0f0; background: #fcfcfd; }
+.chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 500; padding: 3px 9px; border-radius: 999px; border: 1px solid transparent; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.chip-ico { font-size: 11px; }
+.chip.pkg { background: #eef7f0; color: #226b39; border-color: #dcefe1; }
+.chip.pkg .chip-ver { color: #6f9a7e; margin-left: 4px; font-weight: 400; }
+.chip.host { background: #fff5e8; color: #9a5b06; border-color: #f6e2c6; }
 .out { margin: 0; padding: 10px 14px; border-top: 1px solid #f2f2f2; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; white-space: pre-wrap; background: #f9fafb; }
 
 .composer { display: flex; gap: 10px; align-items: flex-end; padding: 14px 20px; border-top: 1px solid #ececec; background: #fff; }

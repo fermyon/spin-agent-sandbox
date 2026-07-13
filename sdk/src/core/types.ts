@@ -141,6 +141,9 @@ export interface CodeMeta {
   title?: string;
   /** JS/TS only. npm dependencies the code declared (name -> semver), for display/metadata. */
   dependencies?: Record<string, string>;
+  /** Outbound host allow-list the stored code runs with when served (default-deny when
+   * empty/omitted). `serveStoredCode` passes these through to the sandbox envelope. */
+  allowedHosts?: string[];
   /** Unix epoch millis when saved. */
   createdAt: number;
 }
@@ -172,6 +175,8 @@ export interface CodeStore {
     language: Language;
     title?: string;
     dependencies?: Record<string, string>;
+    /** Outbound host allow-list the served app runs with (default-deny when empty/omitted). */
+    allowedHosts?: string[];
     bundled?: string;
   }): Promise<CodeMeta>;
   /** Load one entry with its source, or null if absent. */

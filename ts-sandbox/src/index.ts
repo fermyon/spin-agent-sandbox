@@ -49,14 +49,23 @@ async function handle(request: Request): Promise<Response> {
   }
   const { code, sandboxId, allowedHosts, input } = envelope;
 
+  // A blob produced by the bundler is already CommonJS (no ESM imports, no TS) and carries this
+  // marker on its first line. Skip the sucrase pass for it: re-transpiling only re-parses the whole
+  // blob a second time (sucrase then AsyncFunction), which is the peak-memory step on large blobs.
+  const PREBUNDLED_MARKER = "//__spin_bundled_cjs__";
+
   let transpiled: string;
-  try {
-    transpiled = transform(code, {
-      transforms: ["typescript", "imports"],
-      preserveDynamicImport: false,
-    }).code;
-  } catch (e: any) {
-    return errorResponse(400, "transpile_error", String(e && e.message ? e.message : e));
+  if (code.startsWith(PREBUNDLED_MARKER)) {
+    transpiled = code;
+  } else {
+    try {
+      transpiled = transform(code, {
+        transforms: ["typescript", "imports"],
+        preserveDynamicImport: false,
+      }).code;
+    } catch (e: any) {
+      return errorResponse(400, "transpile_error", String(e && e.message ? e.message : e));
+    }
   }
 
   const out: string[] = [];

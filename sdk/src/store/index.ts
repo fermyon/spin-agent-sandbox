@@ -39,6 +39,7 @@ export class KvCodeStore implements CodeStore {
     language: Language;
     title?: string;
     dependencies?: Record<string, string>;
+    allowedHosts?: string[];
     bundled?: string;
   }): Promise<CodeMeta> {
     const id = input.id ?? this.newId();
@@ -48,6 +49,7 @@ export class KvCodeStore implements CodeStore {
       language: input.language,
       title: input.title,
       dependencies: input.dependencies,
+      allowedHosts: input.allowedHosts,
       createdAt: existing?.createdAt ?? this.now(), // preserve the original time on update
     };
     // `code` is the editable source; `bundled` (when present) is what serveStoredCode runs.
@@ -81,8 +83,9 @@ export class KvCodeStore implements CodeStore {
 /**
  * Load stored code by id and run it as an HTTP handler, returning the sandbox's raw Response
  * (status/headers/body) verbatim. Picks the interpreter by the stored language, scopes the
- * app's own KV to its id, and denies egress by default (empty allow-list). Runs the
- * pre-bundled blob when present (an app with dependencies is bundled once at save time).
+ * app's own KV to its id, and applies the app's stored outbound allow-list (default-deny when
+ * the app declared none). Runs the pre-bundled blob when present (an app with dependencies is
+ * bundled once at save time).
  */
 export async function serveStoredCode(
   store: CodeStore,
@@ -96,6 +99,6 @@ export async function serveStoredCode(
     lang: record.language,
     input: req,
     identity: `code:${id}`,
-    allowedHosts: [],
+    allowedHosts: record.allowedHosts ?? [],
   });
 }
