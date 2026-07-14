@@ -1,6 +1,6 @@
 """Outbound egress control (pure; no spin_sdk import so it is unit-testable).
 
-Per-sandbox allow-list, layered on the broad Spin manifest bound. `host_allowed` is the
+Per-sandbox allow-list, layered on the broad bound set in the Spin manifest. `host_allowed` is the
 gate applied to every outbound request the sandbox makes.
 """
 
@@ -16,7 +16,7 @@ _SHARED_V4 = ipaddress.ip_network("100.64.0.0/10")
 
 def is_internal_host(host):
     """Loopback / link-local / private / internal targets are never reachable, even if
-    explicitly allow-listed — the primary SSRF backstop (cloud metadata at
+    explicitly allow-listed: the primary SSRF backstop (cloud metadata at
     169.254.169.254, *.spin.internal service chaining, etc.)."""
     h = (host or "").lower().strip(".")
     if h in ("", "localhost") or h.endswith((".localhost", ".internal", ".local")):
@@ -25,6 +25,11 @@ def is_internal_host(host):
         ip = ipaddress.ip_address(h.strip("[]"))
     except ValueError:
         return False
+    # Classify an IPv4-mapped IPv6 address (::ffff:a.b.c.d) by its embedded IPv4, so a
+    # mapped internal target is blocked too. Mirrors the TS backstop's toIPv4Address path.
+    mapped = getattr(ip, "ipv4_mapped", None)
+    if mapped is not None:
+        ip = mapped
     if ip.version == 4 and ip in _SHARED_V4:
         return True
     return (

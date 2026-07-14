@@ -13,14 +13,14 @@ export default {
         const url = new URL(request.url);
         const noteId: string | null = url.searchParams.get("id");
 
-        // GET ?id=... — read one note
+        // GET ?id=..., read one note
         if (request.method === "GET" && noteId) {
             const note = (await store.getJson(`note:${noteId}`)) as Note | null;
             if (!note) return Response.json({ error: "not found" }, { status: 404 });
             return Response.json(note);
         }
 
-        // GET — list all notes
+        // GET, list all notes
         if (request.method === "GET") {
             const keys: string[] = await store.getKeys();
             const notes: Note[] = [];
@@ -32,7 +32,7 @@ export default {
             return Response.json(notes);
         }
 
-        // POST — create a note
+        // POST, create a note
         if (request.method === "POST") {
             const body = (await request.json()) as { text?: string };
             const id: string = crypto.randomUUID().slice(0, 8);

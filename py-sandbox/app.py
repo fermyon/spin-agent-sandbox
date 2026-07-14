@@ -1,7 +1,7 @@
-"""py-sandbox — executes dynamic Python code received as a JSON envelope.
+"""py-sandbox: executes dynamic Python code received as a JSON envelope.
 
 Request (POST, body = strict JSON envelope):
-    {code: str, sandboxId: str, input?: {method?, headers?, query?, body?}, allowedHosts?: [str]}
+    {code: str, sandboxId: str, input?: {method?, path?, headers?, query?, body?}, allowedHosts?: [str]}
 
 The user `code` is exec'd in a fresh namespace. Two code shapes are supported:
     - handler: code defines `handle_request(request) -> Response`. A synthetic
@@ -21,7 +21,6 @@ reached only via runtime exec/import would otherwise be missing).
 import io
 import sys
 import json
-import math  # noqa: F401  (commonly used by user code)
 import types
 import traceback
 
@@ -194,6 +193,11 @@ def _run(env):
         _spin_http.send = _orig_send  # don't leak the per-request allow-list
         _key_value.open_default = _orig_kv_open_default  # don't leak the per-sandbox prefix
         _key_value.open = _orig_kv_open
+        # Restore the spin_sdk.kv alias too, so its open*/open_default don't keep the prefix.
+        _kv_alias = sys.modules.get("spin_sdk.kv")
+        if _kv_alias is not None:
+            _kv_alias.open_default = _orig_kv_open_default
+            _kv_alias.open = _orig_kv_open
 
 
 def _parse_envelope(request):
@@ -206,6 +210,9 @@ def _parse_envelope(request):
 class IncomingHandler(IncomingHandler):
     def handle_request(self, request: Request) -> Response:
         try:
+            if request.method.upper() != "POST":
+                return _json(405, {"error": "method_not_allowed",
+                                   "message": "send the code envelope as a POST body"})
             env, err = _parse_envelope(request)
             if err is not None:
                 return err

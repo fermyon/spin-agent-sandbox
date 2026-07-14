@@ -64,6 +64,7 @@ test("run() surfaces a runtime error string as Result.error (data, not throw)", 
 });
 
 test("run() maps a compile-error HTTP 400 to Result.error", async () => {
+  // compile_error with the detail on `message` is the ts-sandbox shape, so this is a JS run.
   const mock = mockFetch(() => ({
     ok: false,
     status: 400,
@@ -71,14 +72,14 @@ test("run() maps a compile-error HTTP 400 to Result.error", async () => {
   }));
   const itp = new Interpreter({ baseUrl: "http://w", fetch: mock.fn });
 
-  const res = await itp.run("def(", { lang: "python", identity: "c" });
+  const res = await itp.run("def(", { lang: "javascript", identity: "c" });
   assert.ok(res.error);
   assert.equal(res.error?.name, "compile_error");
   assert.match(res.error?.value ?? "", /SyntaxError/);
 });
 
 test("run() maps a py handler_error keyed on `trace` (not `message`) to Result.error", async () => {
-  // py-sandbox emits { error: "handler_error", trace: <traceback> } — the detail is on
+  // py-sandbox emits { error: "handler_error", trace: <traceback> }: the detail is on
   // `trace`, not `message`, so a `message`-only read would lose the traceback.
   const mock = mockFetch(() => ({
     ok: false,

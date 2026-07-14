@@ -4,7 +4,7 @@ spin_manifest_version = 2
 name = "ai-code-executor"
 version = "0.1.0"
 authors = ["Spin Sandbox"]
-description = "AI Code Executor — a Claude code executor that runs model-written code in private, service-chained Wasm interpreter components."
+description = "AI Code Executor: a Claude agent that runs model-written code in private, service-chained Wasm interpreter components."
 
 [variables]
 log_level = { default = "info" }

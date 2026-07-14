@@ -1,7 +1,7 @@
 # Shared helpers for the example-driven test scripts (run-examples.sh, gen-bodies.sh).
 
 # TS if the source looks like JS/TS; otherwise Python. Route by CONTENT, not the
-# .py/.ts extension — some example files are deliberately mislabeled.
+# .py/.ts extension: some example files are deliberately mislabeled.
 detect_lang() {
   if grep -qE 'export default|console\.log\(|=>' "$1"; then echo ts; else echo py; fi
 }
@@ -26,6 +26,6 @@ is_main_shape() {
   ! grep -qE 'def handle_request|export default' "$1"
 }
 
-# Examples intentionally set aside (not asserted). None currently — every example is expected
+# Examples intentionally set aside (not asserted). None currently; every example is expected
 # to pass. Add cases here (e.g. `3.py) return 0 ;;`) to pin a known failure.
 is_known_fail() { case "$1" in *) return 1 ;; esac; }

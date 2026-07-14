@@ -1,5 +1,5 @@
 // Portable types shared by every backend. This module has NO transport and no
-// runtime dependencies — it is the extension point of the library: a backend
+// runtime dependencies; it is the extension point of the library: a backend
 // (today the Wasm interpreter) is anything that implements `CodeRunner` and
 // honestly describes itself through `Caps`.
 
@@ -8,7 +8,7 @@ export type Language = "python" | "javascript";
 
 /**
  * Which backend a runner targets. Open on purpose: a future backend introduces
- * its own name here without a breaking change — a widenable union, so known
+ * its own name here without a breaking change (it is a widenable union), so known
  * values still autocomplete while any string remains assignable.
  */
 export type Backend = "interpreter" | (string & {});
@@ -21,7 +21,7 @@ export interface MIMEResult {
 
 /**
  * A failure raised by the code inside the sandbox (or a run timeout). This is
- * DATA about the user's code, never a thrown error — `run()` only throws for
+ * DATA about the user's code, never a thrown error; `run()` only throws for
  * transport/auth/validation failures.
  */
 export interface CodeError {
@@ -63,7 +63,7 @@ export interface HttpInput {
  */
 export type PackageJson = string | { dependencies?: Record<string, string>; [key: string]: unknown };
 
-/** Options accepted by `run()` — the portable surface every backend honors. */
+/** Options accepted by `run()`, the portable surface every backend honors. */
 export interface RunOpts {
   /** Defaults to "python". */
   lang?: Language;
@@ -80,8 +80,9 @@ export interface RunOpts {
   /** HTTP-style input made available to the code. */
   input?: HttpInput;
   /**
-   * Wall-clock bound. Whether it actually kills the process is reported by
-   * `Caps.realTimeout` (best-effort, host-request-bounded on the interpreter).
+   * Requested wall-clock bound, for backends that honor it. The interpreter does not
+   * enforce it (it sends no timeout to the sandbox), which `Caps.realTimeout: false`
+   * reports; a request deadline there is the host/deployment layer's job.
    */
   timeoutMs?: number;
   /**
@@ -101,7 +102,7 @@ export interface RunOpts {
  * acting; native TypeScript tools rely on compile-time method absence instead.
  *
  * The interpreter sets most of these `false` today; a future backend flips the
- * relevant ones on — no change to this shape is required to add one.
+ * relevant ones on; no change to this shape is required to add one.
  */
 export interface Caps {
   languages: Language[];
@@ -119,7 +120,7 @@ export interface Caps {
   arbitraryImage: boolean;
   /** `timeoutMs` actually kills the process. Interpreter: false (best-effort). */
   realTimeout: boolean;
-  /** Live incremental output. Interpreter: false — `run()` is buffered. */
+  /** Live incremental output. Interpreter: false, `run()` is buffered. */
   streaming: boolean;
 }
 
@@ -162,7 +163,7 @@ export interface StoredCode extends CodeMeta {
 
 /**
  * A pluggable store for AI-generated code: persist it, list it, load it by id (to run
- * later). The portable seam — like `CodeRunner` for execution. Implement it over any
+ * later). The portable seam, like `CodeRunner` for execution. Implement it over any
  * backing store (Spin KV today); a consumer depends only on this interface.
  */
 export interface CodeStore {

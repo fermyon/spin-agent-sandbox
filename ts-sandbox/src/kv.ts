@@ -1,4 +1,4 @@
-// Scoped key-value store: one shared `default` store, each sandbox sees only its own
+// Scoped key-value store: one shared `default` store; each sandbox sees only its own
 // keys. Pure logic (no Spin imports) so it is unit-testable with a fake store; the real
 // `@spinframework/spin-kv` module is injected by index.ts.
 

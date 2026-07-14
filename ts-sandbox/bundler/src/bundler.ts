@@ -4,14 +4,15 @@
 // For each bare specifier in the user source, fetch its (near-)standalone esm.sh module,
 // close the graph over esm.sh's own polyfill URLs (substituting curated Node shims that
 // sucrase can transpile cleanly), convert each module ESM->CJS with sucrase, and stitch a
-// single blob whose require() resolves module specifiers at RUNTIME via the URL API — no
-// fragile string rewriting. The sandbox's 14 built-ins are left as bare require() so they
-// fall through to the in-WASM registry.
+// single blob whose require() resolves module specifiers at RUNTIME via the URL API, with no
+// fragile string rewriting. The sandbox's pre-bundled packages (BUILTINS below) are left as
+// bare require() so they fall through to the in-WASM registry.
 
 import { transform as sucrase } from "sucrase";
 import { resolveShim } from "./shims";
 
-// The ts-sandbox's pre-bundled packages — kept as bare require() (host registry).
+// The ts-sandbox's pre-bundled packages, kept as bare require() (host registry). Must stay in
+// sync with ts-sandbox/src/registry.ts.
 const BUILTINS = [
   "cheerio", "node-html-parser", "zod", "js-yaml", "nanoid", "ulidx", "uuid",
   "lodash", "date-fns", "dayjs", "@spinframework/spin-kv",
@@ -26,7 +27,7 @@ const MAX_MODULES = 300;
 // Calibrated by measurement under a 128 MB instance cap (Spin/hosted default): with the sandbox's
 // skip-transpile marker in place, the 128 MB SANDBOX runs ~720 KB blobs (resend, elysia) that used
 // to crash it. The remaining wall is the BUNDLER: bundling that tier needs ~256 MB (the bundler is
-// trusted build infra — no untrusted execution — so it can be provisioned above the 128 MB sandbox).
+// trusted build infra that executes no untrusted code, so it can be provisioned above the 128 MB sandbox).
 // At a uniform 128 MB the bundler is the tighter limit (~600 KB); provision it higher to reach these.
 //
 // The per-module cap stays low: skip-transpile only removes the SANDBOX's re-parse, not the
@@ -36,24 +37,14 @@ const MAX_MODULE_BYTES = 700 * 1024;
 const MAX_TOTAL_BYTES = 1 * 1024 * 1024;
 const moduleTooLarge = (kb: number, url: string) =>
   `module too large to transpile (${kb} KB: ${url.split("/").pop()}); this library has a single ` +
-  `oversized module — try a smaller alternative`;
+  `oversized module; try a smaller alternative`;
 const graphTooLarge = (bytes: number, mods: number) =>
   `dependency graph too large (${Math.round(bytes / 1024)} KB across ${mods} modules); this library is ` +
-  `too big to bundle in the sandbox — try a smaller alternative`;
+  `too big to bundle in the sandbox; try a smaller alternative`;
 
 const rootOf = (s: string) => (s.startsWith("@") ? s.split("/").slice(0, 2).join("/") : s.split("/")[0]);
 const isBuiltin = (s: string) => BSET.has(rootOf(s));
 const isBare = (s: string) => !(s.startsWith("/") || s.startsWith("./") || s.startsWith("../") || /^https?:\/\//.test(s));
-
-// Detect import/require specifiers. Over-detection is harmless (worst case: one extra fetch).
-const IMPORT_RE = /(?:import\s+(?:[\s\S]*?\sfrom\s*)?|export\s+[\s\S]*?\sfrom\s*|require\s*\(\s*|import\s*\(\s*)['"]([^'"]+)['"]/g;
-function specifiers(src: string): string[] {
-  const out = new Set<string>();
-  IMPORT_RE.lastIndex = 0;
-  let m: RegExpExecArray | null;
-  while ((m = IMPORT_RE.exec(src))) out.add(m[1]);
-  return [...out];
-}
 
 const stripImportMeta = (t: string) =>
   t.replace(/import\.meta\.url/g, JSON.stringify(ESM + "/")).replace(/import\.meta/g, "({})");
@@ -61,7 +52,7 @@ const stripImportMeta = (t: string) =>
 // Collect the `require("...")` specifiers from already-transpiled CJS. We scan the CJS
 // (not the raw ESM) because esm.sh's minified bundle output uses forms with no whitespace
 // after the keyword (`import*as X from"..."`, `export{x}from"..."`) that a raw-ESM regex
-// misses — sucrase normalizes all of them to plain require() calls, so this catches them all.
+// misses; sucrase normalizes all of them to plain require() calls, so this catches them all.
 const REQUIRE_RE = /require\(\s*['"]([^'"]+)['"]\s*\)/g;
 function requireSpecs(cjs: string): string[] {
   const out = new Set<string>();
@@ -136,12 +127,16 @@ export async function bundle(userSource: string, deps: Record<string, string>): 
     return finalUrl;
   }
 
-  for (const spec of specifiers(userSource)) {
+  // Transpile the user source first, then read the entry specifiers off the resulting CJS
+  // require() calls (the same robust scan used for fetched modules). Scanning the CJS instead
+  // of the raw ESM means comments and string literals don't produce phantom fetches, and
+  // whitespace-free forms like `import{x}from"pkg"` are still caught (sucrase normalizes them).
+  const userCjs = sucrase(userSource, { transforms: ["typescript", "imports"], preserveDynamicImport: false }).code;
+
+  for (const spec of requireSpecs(userCjs)) {
     if (isBuiltin(spec) || !isBare(spec)) continue;
     entry.set(spec, await process(esmUrl(spec, deps)));
   }
-
-  const userCjs = sucrase(userSource, { transforms: ["typescript", "imports"], preserveDynamicImport: false }).code;
 
   const modLiteral = [...mods.entries()]
     .filter(([, v]) => v)
@@ -150,14 +145,14 @@ export async function bundle(userSource: string, deps: Record<string, string>): 
   const entryLiteral = [...entry.entries()].map(([k, v]) => `${JSON.stringify(k)}: ${JSON.stringify(v)}`).join(", ");
 
   // The assembled blob. The first-line marker tells the sandbox this is already CommonJS so it
-  // skips its own sucrase pass (avoiding a second full parse of the whole blob — the peak-memory
+  // skips its own sucrase pass (avoiding a second full parse of the whole blob, the peak-memory
   // step on large blobs). `require` here is the sandbox's host registry (builtins). No regex is used
   // inside the blob (indexOf checks) to stay robust if the sandbox ever does transpile it.
   //
   // The user code runs in an `await (async function(){...})()`: the sandbox runs the blob as its
   // AsyncFunction body, so (1) top-level `await` in the user source is valid (it sits inside an
   // async function) and (2) awaiting the IIFE makes the sandbox wait for the user's async work to
-  // finish before it captures stdout — without this, top-level await was a compile error under the
+  // finish before it captures stdout. Without this, top-level await was a compile error under the
   // bundler path and floating async work was cut off before its output flushed.
   const blob =
 `//__spin_bundled_cjs__

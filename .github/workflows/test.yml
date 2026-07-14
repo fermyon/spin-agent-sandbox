@@ -1,17 +1,49 @@
-name: bundler tests
+name: tests
 
-# Real Wasm components (bundler + ts-sandbox) chained via `spin up`.
-# See ts-sandbox/bundler/test/README.md. The broad library compatibility sweep lives in
+# Two jobs: the pure-logic unit suites (no build, no server) and the live bundler
+# integration (real Wasm components chained via `spin up`, reaching esm.sh). See
+# ts-sandbox/bundler/test/README.md. The broad 571-library compatibility sweep lives in
 # ts-sandbox/bundler/test/compat and is run manually.
 on:
   push:
     branches: [main]
-    paths: ["ts-sandbox/**", ".github/workflows/test.yml"]
+    paths:
+      - "ts-sandbox/**"
+      - "py-sandbox/**"
+      - "sdk/**"
+      - "spin.toml"
+      - ".github/workflows/test.yml"
   pull_request:
-    paths: ["ts-sandbox/**", ".github/workflows/test.yml"]
+    paths:
+      - "ts-sandbox/**"
+      - "py-sandbox/**"
+      - "sdk/**"
+      - "spin.toml"
+      - ".github/workflows/test.yml"
   workflow_dispatch:
 
 jobs:
+  unit:
+    name: unit (pure logic, no server)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: ts-sandbox unit tests
+        run: npm ci && npm test
+        working-directory: ts-sandbox
+      - name: py-sandbox unit tests
+        run: python3 -m unittest discover -s tests -t .
+        working-directory: py-sandbox
+      - name: sdk typecheck + tests
+        run: npm ci && npm run check
+        working-directory: sdk
+
   integration:
     name: integration (real components)
     runs-on: ubuntu-latest

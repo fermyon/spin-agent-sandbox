@@ -45,7 +45,7 @@ echo ">> componentize"
 
 # Strip DWARF/debug + name sections. componentize-py bakes the CPython runtime and the
 # native extension modules (numpy, sqlalchemy, ...) in with debug info, which is ~half the
-# component and unused at runtime — stripping roughly halves app.wasm with no behaviour
+# component and unused at runtime; stripping roughly halves app.wasm with no behaviour
 # change. Requires wasm-tools; skipped (with a note) if it is not installed.
 if command -v wasm-tools >/dev/null 2>&1; then
   echo ">> stripping debug info"

@@ -1,6 +1,6 @@
 // Running the transpiled user code and interpreting its result.
 
-// AsyncFunction constructor — user code is compiled into one so top-level `await` works.
+// AsyncFunction constructor; user code is compiled into one so top-level `await` works.
 export const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor as any;
 
 export type UserHandler = (request: Request) => unknown;

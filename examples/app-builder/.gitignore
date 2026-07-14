@@ -1,4 +1,4 @@
-# Build artifacts and dependencies — all regenerable via `spin build`.
+# Build artifacts and dependencies, all regenerable via `spin build`.
 node_modules/
 dist/
 build/

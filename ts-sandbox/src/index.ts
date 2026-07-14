@@ -1,4 +1,4 @@
-// ts-sandbox — executes dynamic JS/TS code received as a JSON envelope.
+// ts-sandbox: executes dynamic JS/TS code received as a JSON envelope.
 //
 // Request (POST, body = strict JSON envelope):
 //   { code: string, sandboxId: string, input?: {method?, headers?, query?, body?}, allowedHosts?: string[] }
@@ -22,7 +22,7 @@
 import { transform } from "sucrase";
 import * as realKv from "@spinframework/spin-kv";
 import { log, initLogger } from "./logger";
-import { validateEnvelope, buildRequest, errorResponse } from "./envelope";
+import { validateEnvelope, buildRequest, errorResponse, MAX_BODY } from "./envelope";
 import { makeScopedKv } from "./kv";
 import { makeFetch } from "./egress";
 import { makeConsole } from "./console";
@@ -36,9 +36,19 @@ async function handle(request: Request): Promise<Response> {
     return errorResponse(405, "method_not_allowed", "send the code envelope as a POST body");
   }
 
+  let raw: string;
+  try {
+    raw = await request.text();
+  } catch {
+    return errorResponse(400, "invalid_json", "request body must be a JSON envelope");
+  }
+  if (raw.length > MAX_BODY) {
+    return errorResponse(413, "body_too_large", `request body exceeds ${MAX_BODY} bytes`);
+  }
+
   let parsed: any;
   try {
-    parsed = await request.json();
+    parsed = JSON.parse(raw);
   } catch {
     return errorResponse(400, "invalid_json", "request body must be a JSON envelope");
   }
@@ -99,7 +109,14 @@ async function handle(request: Request): Promise<Response> {
 
     const handler = detectHandler(moduleObj.exports);
     if (handler) {
-      const synthReq = buildRequest(input);
+      let synthReq: Request;
+      try {
+        synthReq = buildRequest(input);
+      } catch (e: any) {
+        // Malformed input (e.g. invalid header names/method) is a client error, not an
+        // internal one: buildRequest's URL/Headers/Request constructors throw on bad input.
+        return errorResponse(400, "invalid_input", String(e && e.message ? e.message : e));
+      }
       let userResp: any;
       try {
         userResp = await handler(synthReq);

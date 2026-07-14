@@ -1,6 +1,6 @@
 # Adds TWO private components: the JS/TS code sandbox and its dependency bundler. Both are
-# PRIVATE (service-chained), so neither is publicly routable — the sandbox runs untrusted
-# code, the bundler fetches arbitrary npm from esm.sh. Keeping them separate isolates the
+# PRIVATE (service-chained), so neither is publicly routable: the sandbox runs untrusted
+# code, and the bundler fetches arbitrary npm from esm.sh. Keeping them separate isolates the
 # "fetch npm" capability from the "run untrusted code" capability. Reach them from your own
 # component through @spinframework/sandbox:
 #

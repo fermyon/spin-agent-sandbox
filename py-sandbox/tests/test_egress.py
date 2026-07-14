@@ -16,6 +16,9 @@ class TestIsInternalHost(unittest.TestCase):
             "100.64.0.1", "224.0.0.1", "255.255.255.255", "ff02::1", "2001:db8::1",
             # IPv4-mapped IPv6, dotted and hex forms (kept in parity with the TS backstop).
             "::ffff:127.0.0.1", "::ffff:169.254.169.254", "::ffff:a9fe:a9fe", "::ffff:7f00:1",
+            # Mapped carrier-grade NAT: caught only by reclassifying via the embedded IPv4,
+            # since 100.64.0.0/10 is not is_private on this Python.
+            "::ffff:100.64.0.1",
         ]
         for h in internal:
             self.assertTrue(is_internal_host(h), h)
@@ -23,7 +26,7 @@ class TestIsInternalHost(unittest.TestCase):
     def test_public_allowed(self):
         public = [
             "example.com", "api.example.com", "8.8.8.8", "172.32.0.1", "193.0.0.1", "2606:4700::1",
-            "::ffff:8.8.8.8", "::ffff:0808:0808",  # mapped public — must NOT be over-blocked
+            "::ffff:8.8.8.8", "::ffff:0808:0808",  # mapped public, must NOT be over-blocked
         ]
         for h in public:
             self.assertFalse(is_internal_host(h), h)

@@ -1,4 +1,4 @@
-// @spinframework/sandbox/core — the portable interface + shared types.
+// @spinframework/sandbox/core, the portable interface + shared types.
 // No transport, no dependencies. The extension point: implement `CodeRunner` to
 // add a backend.
 

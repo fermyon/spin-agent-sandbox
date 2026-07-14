@@ -8,7 +8,7 @@
 //   wrong_output  bundle ok, run ok (error null) but marker missing        (behavioral diff / bad snippet)
 //   runtime_error bundle ok, sandbox threw at run time                     (usually a Node-builtin shim gap)
 //   compile_error sandbox engine (StarlingMonkey) rejected the blob        (engine capability gap, e.g. \p{} regex)
-//   transpile_err sandbox's sucrase pass rejected the blob                 (rare — blob is already CJS)
+//   transpile_err sandbox's sucrase pass rejected the blob                 (rare, blob is already CJS)
 //   bundle_error  /bundle failed (esm.sh fetch, sucrase transpile, graph too large)
 //   net_error     harness could not reach the server (after retries)
 //
@@ -102,7 +102,7 @@ function classify(entry, bundleRes, runRes) {
   }
 
   // A 5xx with no JSON envelope means the sandbox component itself crashed/trapped (e.g. OOM on
-  // a very large blob) rather than returning a handler Response — classify it as a crash.
+  // a very large blob) rather than returning a handler Response; classify it as a crash.
   if (runRes.status >= 500 && (!runRes.isJson || !r || String(r).trim() === "")) {
     rec.status = "sandbox_crash";
     rec.detail = `sandbox returned HTTP ${runRes.status} with no body (blob too large/complex to run)`;
@@ -141,8 +141,8 @@ function matches(entry, out) {
 }
 const firstLine = (s) => String(s || "").split("\n")[0].slice(0, 300);
 
-// Wrap the user IIFE inside the bundler's blob in try/catch so a throw — at module load time (a
-// dependency's factory) OR in the user body, sync OR async — prints its real message. (SpiderMonkey's
+// Wrap the user IIFE inside the bundler's blob in try/catch so any throw (at module load time in a
+// dependency's factory, or in the user body, sync or async) prints its real message. (SpiderMonkey's
 // error.stack omits the message, so an uncaught throw shows only frames.) The bundler emits the user
 // code as exactly one `await (async function(module, exports, require){...})(...)` at the end of the
 // blob; we wrap that whole awaited expression, so `await` inside the try catches async rejections too.
@@ -228,14 +228,14 @@ async function main() {
     const rec = await runOne(entry);
     done++;
     const badge = rec.status === "pass" ? "PASS" : rec.status.toUpperCase();
-    console.log(`  [${String(done).padStart(2)}/${catalog.length}] ${badge.padEnd(13)} ${entry.name}${rec.detail ? "  — " + firstLine(rec.detail) : ""}`);
+    console.log(`  [${String(done).padStart(2)}/${catalog.length}] ${badge.padEnd(13)} ${entry.name}${rec.detail ? ": " + firstLine(rec.detail) : ""}`);
     return rec;
   });
   const secs = ((Date.now() - t0) / 1000).toFixed(1);
   writeFileSync(OUT, JSON.stringify({ base: BASE, seconds: Number(secs), results }, null, 2) + "\n");
   if (REPORT) writeFileSync(REPORT, report(results));
   const passed = results.filter((r) => r.status === "pass").length;
-  console.log(`\nDone in ${secs}s — ${passed}/${results.length} pass. Wrote ${path.basename(OUT)}${REPORT ? " and " + path.basename(REPORT) : ""}`);
+  console.log(`\nDone in ${secs}s. ${passed}/${results.length} pass. Wrote ${path.basename(OUT)}${REPORT ? " and " + path.basename(REPORT) : ""}`);
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });

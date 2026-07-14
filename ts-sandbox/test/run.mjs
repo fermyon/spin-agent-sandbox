@@ -1,5 +1,5 @@
 // Unit-test runner: bundle each test/*.test.ts with the already-present esbuild, then
-// run the output under Node's built-in test runner. No extra dependencies.
+// run the output under Node's built-in test runner.
 //
 //   npm test           # (package.json wires this file)
 //   node test/run.mjs

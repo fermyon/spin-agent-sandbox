@@ -11,7 +11,7 @@ description = "{{project-description}}"
 # This app scaffolds two PRIVATE building blocks: a JS/TS code sandbox and its dependency
 # bundler. Both are private (no public route) and reachable only via service chaining from
 # another component in this app. Add your own component that drives them through
-# @spinframework/sandbox — see examples/ai-code-executor — or `spin add -t sandbox-ts`
+# @spinframework/sandbox (see examples/ai-code-executor), or `spin add -t sandbox-ts`
 # this pair into an existing app instead. The Interpreter wiring:
 #
 #   const js = new Interpreter({
@@ -41,5 +41,5 @@ component = "{{project-name | kebab_case}}-bundler"
 
 [component.{{project-name | kebab_case}}-bundler]
 source = { url = "https://github.com/lepton/wasm-sandbox/releases/download/v0.1.0/bundler.wasm", digest = "sha256:0000000000000000000000000000000000000000000000000000000000000000" }
-# The bundler fetches npm dependencies from esm.sh (trusted build infra) — its only egress.
+# The bundler's only egress is esm.sh (trusted build infra).
 allowed_outbound_hosts = ["https://esm.sh", "https://*.esm.sh"]

@@ -15,7 +15,6 @@ EXAMPLES="$HERE/examples"
 source "$HERE/lib.sh"
 
 pass=0; fail=0; known=0
-results=""
 
 for f in $(ls "$EXAMPLES" | sort -t. -k1 -n); do
   src="$EXAMPLES/$f"
@@ -26,7 +25,7 @@ for f in $(ls "$EXAMPLES" | sort -t. -k1 -n); do
 
   body="$(jq -n --rawfile c "$src" --argjson in "$input" \
           '{code:$c, sandboxId:("harness-"+($c|@base64|.[0:8])), input:$in}')"
-  # Capture the response body AND status in one shot, no temp file. The old
+  # Capture the response body AND status in one shot (no temp file). The old
   # `-o /tmp/sbx_body` approach silently yielded an empty body when the write failed,
   # which made every check pass vacuously. The status is appended on its own trailing line.
   resp="$(curl -s -w $'\n%{http_code}' --max-time 120 \
@@ -36,7 +35,7 @@ for f in $(ls "$EXAMPLES" | sort -t. -k1 -n); do
 
   verdict="PASS"
   if [ -z "$out" ] || [ "$status" = "000" ]; then
-    verdict="FAIL"   # no response — is the server running at $BASE ?
+    verdict="FAIL"   # no response; is the server running at $BASE?
   elif [ "$status" -ge 400 ]; then
     verdict="FAIL"
   elif echo "$out" | grep -qE '"error": ?"(handler_error|internal|transpile_error|compile_error|invalid_envelope|invalid_json)"'; then
@@ -64,7 +63,6 @@ for f in $(ls "$EXAMPLES" | sort -t. -k1 -n); do
     [ "$n" -gt "${SHOW_LINES:-15}" ] && printf '      …(%s lines total)\n' "$n"
     echo
   fi
-  results="$results\n$f:$verdict"
 done
 
 echo ""

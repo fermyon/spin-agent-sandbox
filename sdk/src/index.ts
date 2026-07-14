@@ -1,4 +1,4 @@
-// @spinframework/sandbox — an extensible client for sandboxed code execution,
+// @spinframework/sandbox, an extensible client for sandboxed code execution,
 // consumed from a Spin application.
 //
 // Author a tool against `CodeRunner` (from "@spinframework/sandbox/core") and it
@@ -9,7 +9,8 @@
 //
 // Only the Wasm interpreter backend ships today. To extend it, add a new module
 // that implements `CodeRunner` and declares itself through `Caps`, and export it
-// below. Nothing in `core` is interpreter-specific.
+// below. The core contract (`CodeRunner`, `RunOpts`, `Result`, `Caps`) is
+// backend-neutral.
 
 export * from "./core/index.ts";
 export { Interpreter, InterpreterKV, type InterpreterOptions } from "./interpreter/index.ts";

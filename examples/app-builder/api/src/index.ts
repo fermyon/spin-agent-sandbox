@@ -1,9 +1,9 @@
-// App Builder API — Claude generates a self-contained HTTP-handler web app; we store it via
+// App Builder API: Claude generates a self-contained HTTP-handler web app; we store it via
 // @spinframework/sandbox and serve each stored app live at its own URL.
 //
 // Two surfaces on one component:
-//   /api/...   control plane — generate (Claude loop) + list apps
-//   /a/<id>/   live app — load stored code from KV, run it in the sandbox, forward its Response
+//   /api/...   control plane: generate (Claude loop) + list apps
+//   /a/<id>/   live app: load stored code from KV, run it in the sandbox, forward its Response
 
 import { Hono } from "hono";
 import { fire } from "hono/service-worker";
@@ -64,13 +64,13 @@ function systemPrompt(): string {
     "- JavaScript: `export default { async fetch(request) { … } }` returning a `Response`.",
     "- Python: `def handle_request(request):` returning a `Response(status, headers, body_bytes)`.",
     "Rules:",
-    "1. Serve the HTML UI for a GET at path '/'. Route on the request path — JS: `new URL(request.url).pathname`,",
+    "1. Serve the HTML UI for a GET at path '/'. Route on the request path, JS: `new URL(request.url).pathname`,",
     "   Python: `urllib.parse.urlparse(request.uri).path`.",
     "2. Put any API on sub-paths (e.g. '/data') returning JSON.",
-    "3. Use RELATIVE URLs everywhere in the HTML — `fetch('data')`, `href='style.css'` — never a leading '/'.",
+    "3. Use RELATIVE URLs everywhere in the HTML, `fetch('data')`, `href='style.css'`, never a leading '/'.",
     "   The app is mounted under a base path, so absolute paths break.",
     "4. Inline all CSS and JS in the HTML; do not load assets from a CDN. Outbound network is DENIED by default,",
-    "   so a browser `fetch` to a third party will fail — but the app's server-side handler MAY call an external",
+    "   so a browser `fetch` to a third party will fail, but the app's server-side handler MAY call an external",
     "   API if you list its hosts in create_app's `allowedHosts` (e.g. [\"api.openweathermap.org\"]); proxy such",
     "   calls through your own sub-path (e.g. '/data') rather than from the browser.",
     "   JavaScript only: to use an npm library beyond the pre-bundled set (lodash, zod, date-fns, dayjs, cheerio,",
@@ -78,7 +78,7 @@ function systemPrompt(): string {
     "   (e.g. `import { marked } from 'marked'`), NOT `require()`. It is bundled into the app at publish time",
     "   (not fetched at runtime). Python cannot add packages.",
     "5. To persist state across requests (counters, saved items, notes), use the app's private key-value",
-    "   store — Spin's DEFAULT store, which is automatically scoped to this app and durable across requests:",
+    "   store, Spin's DEFAULT store, which is automatically scoped to this app and durable across requests:",
     "   - JS: `import { openDefault } from '@spinframework/spin-kv'; const store = openDefault();` then",
     "     `store.getJson(k)`, `store.setJson(k, v)`, `store.delete(k)`, `store.exists(k)`, `store.getKeys()`.",
     "   - Python (synchronous in this sandbox): `from spin_sdk import key_value; store = key_value.open_default()`",
@@ -145,7 +145,7 @@ function extractField(buf: string, key: string): { value: string; complete: bool
   return decodeJsonStringAt(buf, q);
 }
 
-// The interpreters are two private, service-chained components — one per language. Storage
+// The interpreters are two private, service-chained components, one per language. Storage
 // (the code registry) runs through the JS interpreter's scoped KV.
 function makeStore() {
   const tsUrl = variables.get("ts_interpreter_url") ?? "http://ts-sandbox.spin.internal";
@@ -158,7 +158,7 @@ function makeStore() {
     python: new Interpreter({ baseUrl: pyUrl }),
   };
   const store = new KvCodeStore({ interpreter: interpreters.javascript, namespace: "apps" });
-  // Per-app conversation blobs (opaque to the api — the UI owns the shape), in their own
+  // Per-app conversation blobs (opaque to the api; the UI owns the shape), in their own
   // KV scope so they never collide with the code registry.
   const convos = interpreters.javascript.kv("convos");
   return { store, interpreters, convos };
@@ -288,7 +288,7 @@ async function runAgent(
         toolResults.push({
           type: "tool_result",
           tool_use_id: block.id,
-          content: `Published "${input.title}" — live at ${url}`,
+          content: `Published "${input.title}", live at ${url}`,
         });
       }
     }
@@ -315,8 +315,8 @@ app.use(async (c: Context, next) => {
 
 // ---- access-token gate ----
 // If the `access_token` variable is set, every route except health/auth requires a matching
-// `app_token` cookie (set by POST /api/auth) — including the live `/a/<id>/` app URLs, which a
-// browser navigation carries via the cookie. An empty token disables the gate (local dev).
+// `app_token` cookie (set by POST /api/auth), including the live `/a/<id>/` app URLs, since
+// browser navigations send the cookie there too. An empty token disables the gate (local dev).
 const AUTH_COOKIE = "app_token";
 const accessToken = () => (variables.get("access_token") ?? "").trim();
 
@@ -336,7 +336,7 @@ app.use("/api/*", async (c: Context, next) => {
     try {
       if (new URL(ref).pathname.startsWith("/a/")) return c.json({ error: "forbidden" }, 403);
     } catch {
-      // unparseable referer — allow
+      // unparseable referer, allow
     }
   }
   return next();
@@ -374,7 +374,7 @@ app.get("/api/apps", async (c: Context) => {
   return c.json(await store.list());
 });
 
-// The full record (source + saved conversation) for one app — so the UI can show its code
+// The full record (source + saved conversation) for one app, so the UI can show its code
 // and restore the chat history any time (survives navigating away and reloads).
 app.get("/api/apps/:id", async (c: Context) => {
   const { store, convos } = makeStore();
@@ -460,7 +460,7 @@ app.all("/a/:id/*", async (c: Context) => {
 // prettify a sandbox crash into a readable page, and harden headers.
 async function finishResponse(resp: Response, baseHref: string): Promise<Response> {
   const ct = resp.headers.get("content-type") ?? "application/octet-stream";
-  // Build FRESH headers — never copy the upstream response's headers wholesale. Its
+  // Build FRESH headers; never copy the upstream response's headers wholesale. Its
   // `content-length` describes the ORIGINAL body; re-sending it with a modified body (base
   // injection) or streaming an outbound body straight through makes the declared length
   // mismatch the bytes written, which traps wasi-http mid-response ("after response started").
@@ -470,7 +470,7 @@ async function finishResponse(resp: Response, baseHref: string): Promise<Respons
     "x-content-type-options": "nosniff",
   };
 
-  // A sandbox handler crash comes back as 500 JSON — show a readable page instead.
+  // A sandbox handler crash comes back as 500 JSON; show a readable page instead.
   if (resp.status >= 500 && ct.includes("application/json")) {
     const j: any = await resp.json().catch(() => ({}));
     const detail = String(j?.trace ?? j?.message ?? "unknown error");

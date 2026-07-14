@@ -1,6 +1,6 @@
 manifest_version = "1"
 id = "sandbox-py"
-description = "Python code sandbox — runs untrusted Python over HTTP in Wasm"
+description = "Python code sandbox: runs untrusted Python over HTTP in Wasm"
 trigger_type = "http"
 tags = ["http", "sandbox", "ai", "python"]
 

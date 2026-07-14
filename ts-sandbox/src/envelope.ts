@@ -1,6 +1,7 @@
 // Request envelope: validation and the synthetic Request built for the handler shape.
-// Pure logic — uses only web globals (URL/Request/Headers/Response), no Spin imports.
+// Pure logic (no Spin imports); uses only web globals (URL/Request/Headers/Response).
 
+export const MAX_BODY = 8 * 1024 * 1024; // reject request bodies larger than this
 export const MAX_CODE = 5 * 1024 * 1024; // reject user code larger than this
 
 export interface ValidEnvelope {

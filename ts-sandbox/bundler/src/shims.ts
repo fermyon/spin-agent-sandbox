@@ -3,10 +3,10 @@
 // esm.sh serves its own Node polyfills (from `unenv`) at /node/<name>.mjs, but those are
 // heavily minified and sucrase mis-transpiles some of them. We substitute these clean,
 // sucrase-safe shims instead. Anything we don't cover falls back to a generic stub that
-// compiles fine and only throws if actually used at runtime — so bundling never breaks.
+// compiles fine and only throws if actually used at runtime, so bundling never breaks.
 //
 // IMPORTANT: these strings are embedded verbatim into the output blob, which is parsed
-// again by the sandbox. They MUST NOT contain backslashes, regex literals, or `${` — hence
+// again by the sandbox. They MUST NOT contain backslashes, regex literals, or `${`, hence
 // String.fromCharCode(10) instead of a newline escape, string ops instead of regex, etc.
 
 const SHIMS: Record<string, string> = {

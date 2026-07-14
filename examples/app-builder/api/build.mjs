@@ -9,7 +9,7 @@ let SourceMapPlugin = {
     name: 'excludeVendorFromSourceMap',
     setup(build) {
         build.onLoad({ filter: /node_modules/ }, args => {
-            // Skip .json — appending a sourcemap comment corrupts JSON data files
+            // Skip .json: appending a sourcemap comment corrupts JSON data files
             // (spin-js-sdk#406). The SDKs bundle some .json at build time.
             if (args.path.endsWith('.json')) return;
             return {

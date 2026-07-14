@@ -20,7 +20,7 @@ test("isInternalHost blocks loopback / link-local / private / internal", () => {
 test("isInternalHost allows public hosts (including a public IPv4-mapped address)", () => {
   const pub = [
     "example.com", "api.example.com", "8.8.8.8", "172.32.0.1", "193.0.0.1", "2606:4700::1",
-    "::ffff:8.8.8.8", "::ffff:0808:0808", // mapped public — must NOT be over-blocked
+    "::ffff:8.8.8.8", "::ffff:0808:0808", // mapped public, must NOT be over-blocked
   ];
   for (const h of pub) assert.equal(isInternalHost(h), false, `${h} should be public`);
 });
@@ -45,6 +45,11 @@ test("hostAllowed enforces the label boundary for wildcard subdomains", () => {
 
 test('hostAllowed ignores a bare "*" (envelope cannot grant allow-all)', () => {
   assert.equal(hostAllowed(new URL("https://anything.com/"), ["*"]), false);
+});
+
+test("hostAllowed matches a mixed-case allow-list entry (pattern is lowercased)", () => {
+  assert.equal(hostAllowed(new URL("https://api.example.com/"), ["API.Example.com"]), true);
+  assert.equal(hostAllowed(new URL("https://api.example.com/"), ["*.Example.COM"]), true);
 });
 
 test("hostAllowed refuses an internal target even if explicitly allow-listed", () => {
@@ -86,6 +91,40 @@ test("makeFetch follows a redirect that stays within the allow-list", async () =
   const f = makeFetch(["example.com"], stub);
   const r = await f("https://example.com/start");
   assert.equal(await r.text(), "ok");
+});
+
+test("makeFetch downgrades a POST to GET (dropping the body) on a 303 redirect", async () => {
+  const seen: Array<{ method?: string; hasBody: boolean }> = [];
+  const stub = (async (input: any, init: any) => {
+    const u = new URL(typeof input === "string" ? input : input.url);
+    seen.push({ method: init?.method, hasBody: init?.body !== undefined });
+    if (u.pathname === "/submit") {
+      return new Response(null, { status: 303, headers: { location: "https://example.com/done" } });
+    }
+    return new Response("ok", { status: 200 });
+  }) as unknown as typeof fetch;
+  const f = makeFetch(["example.com"], stub);
+  await f("https://example.com/submit", { method: "POST", body: "payload" });
+  assert.equal(seen[0].method, "POST");
+  assert.equal(seen[0].hasBody, true);
+  assert.equal(seen[1].method, "GET"); // 303 forces GET
+  assert.equal(seen[1].hasBody, false); // and drops the body
+});
+
+test("makeFetch preserves method and body across a 307 redirect", async () => {
+  const seen: Array<{ method?: string; hasBody: boolean }> = [];
+  const stub = (async (input: any, init: any) => {
+    const u = new URL(typeof input === "string" ? input : input.url);
+    seen.push({ method: init?.method, hasBody: init?.body !== undefined });
+    if (u.pathname === "/submit") {
+      return new Response(null, { status: 307, headers: { location: "https://example.com/done" } });
+    }
+    return new Response("ok", { status: 200 });
+  }) as unknown as typeof fetch;
+  const f = makeFetch(["example.com"], stub);
+  await f("https://example.com/submit", { method: "POST", body: "payload" });
+  assert.equal(seen[1].method, "POST"); // 307 keeps the method
+  assert.equal(seen[1].hasBody, true); // and the body
 });
 
 test("makeFetch bounds the redirect chain (too many redirects)", async () => {

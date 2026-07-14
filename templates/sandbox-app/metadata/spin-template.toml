@@ -1,6 +1,6 @@
 manifest_version = "1"
 id = "sandbox-app"
-description = "A dual-language (JS/TS + Python) Wasm code sandbox — both components wired into one app"
+description = "A dual-language (JS/TS + Python) Wasm code sandbox, both components wired into one app"
 trigger_type = "http"
 tags = ["http", "sandbox", "ai", "javascript", "typescript", "python"]
 

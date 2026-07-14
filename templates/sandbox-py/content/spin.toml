@@ -8,9 +8,9 @@ version = "0.1.0"
 authors = ["{{authors}}"]
 description = "{{project-description}}"
 
-# NOTE: PUBLIC route — this standalone app is a local dev/test harness. In production add
+# NOTE: PUBLIC route; this standalone app is a local dev/test harness. In production add
 # the sandbox to a consuming app with `spin add` (which puts it behind a PRIVATE route +
-# service chaining) and reach it through @spinframework/sandbox — see examples/ai-code-executor.
+# service chaining) and reach it through @spinframework/sandbox; see examples/ai-code-executor.
 [[trigger.http]]
 route = "{{ http-path | http_wildcard }}"
 component = "{{project-name | kebab_case}}"
@@ -21,6 +21,6 @@ component = "{{project-name | kebab_case}}"
 # (see scripts/update-template-refs.sh). PLACEHOLDER url/digest until first release.
 source = { url = "https://github.com/lepton/wasm-sandbox/releases/download/v0.1.0/py-sandbox.wasm", digest = "sha256:0000000000000000000000000000000000000000000000000000000000000000" }
 # The component scopes KV keys per sandboxId; its fetch shim enforces the per-request
-# allow-list on top of this broad dev bound — tighten it per-deployment.
+# allow-list on top of this broad dev bound; tighten it per-deployment.
 key_value_stores = ["default"]
 allowed_outbound_hosts = ["https://*:*", "http://*:*"]

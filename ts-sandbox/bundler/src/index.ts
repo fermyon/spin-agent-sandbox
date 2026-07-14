@@ -1,4 +1,4 @@
-// bundler — a Spin/StarlingMonkey component that turns (source + package.json) into
+// bundler, a Spin/StarlingMonkey component that turns (source + package.json) into
 // ONE self-contained CJS blob the (unchanged) ts-sandbox can execute.
 //
 // Request (POST, JSON body):
@@ -11,8 +11,8 @@
 // graph resolution + tree-shaking are offloaded to esm.sh (?bundle); this component
 // fetches those modules, substitutes curated shims for Node builtins, transpiles each
 // with sucrase (ESM -> CJS) and links them with a URL-resolving require(). The sandbox's
-// 14 pre-bundled packages are left as bare require() calls so they resolve to the
-// in-WASM copies — no duplication, no version interference.
+// pre-bundled packages are left as bare require() calls so they resolve to the in-WASM
+// copies, with no duplication and no version interference.
 
 import { bundle } from "./bundler";
 

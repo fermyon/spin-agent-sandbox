@@ -1,7 +1,7 @@
 {
   "name": "bundler",
   "version": "1.0.0",
-  "description": "In-Wasm dependency bundler for the TS sandbox — runs in StarlingMonkey (no Node, no esbuild at runtime)",
+  "description": "In-Wasm dependency bundler for the TS sandbox; runs in StarlingMonkey (no Node, no esbuild at runtime)",
   "scripts": {
     "build": "node build.mjs && mkdirp dist && j2w -i build/bundle.js --initLocation http://bundler.localhost -o dist/bundler.wasm",
     "build:debug": "node build.mjs && mkdirp dist && j2w -d -i build/bundle.js --initLocation http://bundler.localhost -o dist/bundler.wasm",

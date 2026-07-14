@@ -1,11 +1,11 @@
-// Outbound egress control: per-sandbox allow-list on top of the broad Spin manifest
-// bound. Pure logic (no Spin imports); `makeFetch` wraps `globalThis.fetch`.
+// Outbound egress control: per-sandbox allow-list on top of the broad
+// allowed_outbound_hosts bound in the Spin manifest. Pure logic (no Spin imports); `makeFetch` wraps `globalThis.fetch`.
 
 import * as ipaddr from "ipaddr.js";
 
 export function isInternalHost(hostname: string): boolean {
-  // Internal targets are never reachable, even if allow-listed — primary SSRF backstop
-  // (cloud metadata 169.254.169.254, *.spin.internal, loopback, RFC1918, ...).
+  // Internal targets are never reachable, even if allow-listed. This is the primary SSRF
+  // backstop (cloud metadata 169.254.169.254, *.spin.internal, loopback, RFC1918, ...).
   //
   // DNS-name checks (not IP classification) stay explicit, mirroring _egress.py.
   const h = (hostname || "").toLowerCase().replace(/\.$/, "");
@@ -16,7 +16,7 @@ export function isInternalHost(hostname: string): boolean {
     return true;
   }
 
-  // IP classification via ipaddr.js — the JS analogue of Python's stdlib `ipaddress`
+  // IP classification via ipaddr.js, the JS analogue of Python's stdlib `ipaddress`
   // (used in _egress.py). Only a globally-routable unicast address may be reached; every
   // special range (loopback, link-local, private, unique-local, multicast, reserved,
   // IPv4-mapped, ...) is refused. url.hostname wraps an IPv6 literal in brackets.
@@ -36,7 +36,9 @@ export function hostAllowed(url: URL, allowedHosts: string[]): boolean {
   const hostname = url.hostname;
   return allowedHosts.some((raw) => {
     if (raw === "*") return false; // a bare "*" from the per-request envelope must not allow-all
-    const pat = raw.replace(/^[a-z]+:\/\//i, "").replace(/\/.*$/, "");
+    // Lowercase the pattern to match url.hostname/url.host (WHATWG URL lowercases the host),
+    // so a mixed-case allow-list entry still matches. Mirrors _egress.py.
+    const pat = raw.replace(/^[a-z]+:\/\//i, "").replace(/\/.*$/, "").toLowerCase();
     if (pat.startsWith("*.")) {
       const base = pat.slice(2);
       return hostname === base || hostname.endsWith("." + base);
@@ -66,7 +68,7 @@ export function makeFetch(
         `outbound host not allowed by sandbox: ${url.host} (allowedHosts: ${JSON.stringify(allowedHosts)})`
       );
     }
-    // Follow redirects manually so EVERY hop is re-checked against the allow-list — an
+    // Follow redirects manually so EVERY hop is re-checked against the allow-list: an
     // allow-listed host must not be able to 302 to an internal/metadata or otherwise
     // disallowed target. NOTE: this relies on `redirect: "manual"` being honored by the
     // Spin JS runtime; if it is not, fetch auto-follows and only the initial URL is
@@ -87,9 +89,21 @@ export function makeFetch(
         if (!hostAllowed(next, allowedHosts)) {
           throw new Error(`redirect to disallowed host blocked: ${next.host}`);
         }
+        // Per the Fetch standard, a 301/302/303 turns a non-GET/HEAD request into a GET and
+        // drops the body; 307/308 keep the method and body. Reusing the original POST body
+        // across every hop is wrong for the former.
+        const method = String(curInit.method || "GET").toUpperCase();
+        if (
+          (resp.status === 301 || resp.status === 302 || resp.status === 303) &&
+          method !== "GET" && method !== "HEAD"
+        ) {
+          curInit = { ...curInit, method: "GET", redirect: "manual" };
+          delete curInit.body;
+        } else {
+          curInit = { ...curInit, redirect: "manual" };
+        }
         url = next;
         curInput = next.toString();
-        curInit = { ...curInit, redirect: "manual" };
         continue;
       }
       return resp;

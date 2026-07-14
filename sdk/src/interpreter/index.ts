@@ -1,11 +1,11 @@
-// @spinframework/sandbox/interpreter — the Wasm code interpreter backend.
+// @spinframework/sandbox/interpreter, the Wasm code interpreter backend.
 //
 // A thin client over a wasm-sandbox component's `POST /ts/run` (JS/TS) and `/py/run`
 // (Python) routes. Inherently single-shot and buffered, which is exactly the portable
 // `core.run()` contract.
 //
-// In the intended deployment the interpreter is TWO PRIVATE components — ts-sandbox and
-// py-sandbox — reached via service chaining. `.spin.internal` resolves to a COMPONENT id,
+// In the intended deployment the interpreter is TWO PRIVATE components, ts-sandbox and
+// py-sandbox, reached via service chaining. `.spin.internal` resolves to a COMPONENT id,
 // so each language has its own host: use one Interpreter per language, each `baseUrl`
 // pointed at its component (see examples/ai-code-executor/api/src/index.ts):
 //
@@ -14,8 +14,8 @@
 //   await js.run(code, { lang: "javascript" });   // -> ts-sandbox
 //   await py.run(code, { lang: "python" });        // -> py-sandbox
 //
-// (A single combined app that routes both /ts and /py by path also works — then one
-// `baseUrl` at the app suffices — but the private two-component form is the default.)
+// (A single combined app that routes both /ts and /py by path also works; then one
+// `baseUrl` at the app suffices, but the private two-component form is the default.)
 //
 // JavaScript can pull npm dependencies beyond the frozen libs by giving the JS Interpreter
 // a `bundlerUrl` (the bundler component) and passing `packageJson` to run():
@@ -36,7 +36,7 @@ export type FetchLike = typeof fetch;
 
 export interface InterpreterOptions {
   /** Base URL of the interpreter component, no trailing slash, e.g.
-   * "http://ts-sandbox.spin.internal" (use one Interpreter per language — see the module doc). */
+   * "http://ts-sandbox.spin.internal" (use one Interpreter per language, see the module doc). */
   baseUrl: string;
   /** Optional. Base URL of the bundler component, e.g. "http://bundler.spin.internal".
    * Enables `RunOpts.packageJson` for JavaScript: the source + package.json are POSTed to
@@ -62,7 +62,7 @@ const CAPS: Caps = {
 };
 
 // User-code failure kinds the interpreter reports as DATA (Result.error), to
-// match a backend where an in-code exception is data, not a thrown error.
+// match the portable contract, where an in-code exception is data, not a thrown error.
 const CODE_ERROR_KINDS = new Set(["transpile_error", "compile_error", "handler_error"]);
 
 interface MainShape {
@@ -132,7 +132,7 @@ export class Interpreter implements CodeRunner {
   /**
    * If the run requests dependencies (`packageJson`), bundle them into `code` via the
    * bundler component and return the self-contained bundle; otherwise return `code`
-   * unchanged. JavaScript only — python and a missing bundler are hard errors.
+   * unchanged. JavaScript only; python and a missing bundler are hard errors.
    */
   private async maybeBundle(code: string, o: RunOpts): Promise<string> {
     if (o.packageJson === undefined) return code;
@@ -161,7 +161,7 @@ export class Interpreter implements CodeRunner {
 
   /**
    * Like run(), but returns the sandbox's raw HTTP Response verbatim. For the HTTP-handler
-   * shape, where the handler's Response (status/headers/body) is the payload you want — not
+   * shape, where the handler's Response (status/headers/body) is the payload you want, not
    * the parsed {stdout,stderr}. Throws only on transport failure.
    */
   async runRaw(code: string, opts?: RunOpts): Promise<Response> {
@@ -175,6 +175,10 @@ export class Interpreter implements CodeRunner {
     });
   }
 
+  // Runs `code` and returns the parsed main-shape `{ stdout, stderr, error }`. For
+  // handler-shape code (`export default { fetch }` / `def handle_request`) the sandbox
+  // returns the handler's Response instead, which does not match this shape and yields an
+  // empty Result; use runRaw() for that case.
   async run(code: string, opts?: RunOpts): Promise<Result> {
     const o = withDefaults(opts);
     const bundled = await this.maybeBundle(code, o);
@@ -221,9 +225,11 @@ export class Interpreter implements CodeRunner {
   }
 
   /**
-   * INTERPRETER-ONLY power: the per-namespace scoped key-value store
-   * (`{namespace}-{key}`), reached by running a tiny snippet against the shared
-   * `default` store. JSON-oriented.
+   * INTERPRETER-ONLY power: the per-namespace scoped key-value store, reached by running a
+   * tiny snippet against the shared `default` store (the sandbox namespaces keys as
+   * `{len}:{sandboxId}:{key}`, with the namespace as the sandbox id). JSON-oriented. Reads
+   * round-trip through the sandbox's captured stdout, which is capped at 256 KiB, so a stored
+   * value whose JSON exceeds that cannot be read back (getJson throws rather than truncating).
    */
   kv(namespace: string): InterpreterKV {
     return new InterpreterKV(this, namespace);
@@ -241,10 +247,8 @@ export class InterpreterKV {
   }
 
   async getJson<T = unknown>(key: string): Promise<T | null> {
-    return this.eval<T | null>(
-      `const v = s.exists(K) ? s.getJson(K) : null; out({ v });`,
-      key,
-    ).then((r) => r.v);
+    // The scoped store already returns null for a missing key, so no exists() guard is needed.
+    return this.eval<T | null>(`out({ v: s.getJson(K) });`, key).then((r) => r.v);
   }
 
   async setJson(key: string, value: unknown): Promise<void> {
@@ -277,6 +281,11 @@ export class InterpreterKV {
     }
     const parsed = safeJson(res.stdout.trim());
     if (parsed == null) {
+      // The read snippet prints its result to stdout, which the sandbox caps at 256 KiB and
+      // marks with this suffix.
+      if (res.stdout.includes("...[truncated]")) {
+        throw new Error("interpreter kv value too large to read back (exceeds the sandbox's 256 KiB stdout cap)");
+      }
       throw new Error(`interpreter kv op returned no JSON (stdout: ${JSON.stringify(res.stdout)})`);
     }
     return parsed as { v: T };

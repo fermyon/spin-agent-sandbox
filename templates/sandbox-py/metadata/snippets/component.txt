@@ -1,4 +1,4 @@
-# Added as a PRIVATE component — no public route. It runs untrusted code, so it is only
+# Added as a PRIVATE component. It runs untrusted code, so it is only
 # reachable from other components in this app via service chaining
 # (http://{{project-name | kebab_case}}.spin.internal), which is how @spinframework/sandbox
 # is meant to consume it. Do not give it a public route.

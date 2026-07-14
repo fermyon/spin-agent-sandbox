@@ -29,12 +29,21 @@ for comp in ts-sandbox py-sandbox bundler; do
   echo "   $digest"
 
   # Rewrite `... url = "<any-version-of-this-wasm>", digest = "sha256:<64hex>" ...`.
+  # perl's s/// exits 0 whether or not it matched, so track that at least one file actually
+  # changed and fail loudly otherwise (e.g. if the template's source-line format drifts).
+  rewrote=0
   while IFS= read -r f; do
+    before="$(cat "$f")"
     comp="$comp" url="$url" digest="$digest" perl -i -pe '
       my ($c, $u, $d) = ($ENV{comp}, $ENV{url}, $ENV{digest});
       s{https://github\.com/[^"]*/\Q$c\E\.wasm", digest = "sha256:[0-9a-f]{64}"}{$u", digest = "$d"}g;
     ' "$f"
+    [ "$(cat "$f")" != "$before" ] && rewrote=$((rewrote + 1))
   done < <(grep -rl "/$comp.wasm" "$ROOT/templates")
+  if [ "$rewrote" -eq 0 ]; then
+    echo "   ERROR: no template rewritten for $comp; the source/digest line format may have changed" >&2
+    exit 1
+  fi
 done
 
-echo ">> done — review: git diff templates/"
+echo ">> done, review: git diff templates/"

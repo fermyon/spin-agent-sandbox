@@ -41,7 +41,7 @@
             <span class="badge" :class="a.language">{{ shortLang(a.language) }}</span>
             <span class="applink-title">{{ a.title || a.id }}</span>
           </button>
-          <p v-if="!apps.length" class="side-empty">No apps yet — build one.</p>
+          <p v-if="!apps.length" class="side-empty">No apps yet. Build one.</p>
         </div>
       </aside>
 
@@ -56,7 +56,7 @@
           <a class="open" :href="activeMeta.url" target="_blank" rel="noopener">Open live ↗</a>
         </div>
 
-        <!-- Persistent source view for the active app — loaded from the backend, so it
+        <!-- Persistent source view for the active app, loaded from the backend, so it
              survives navigating between apps (unlike the ephemeral chat transcript). -->
         <div v-if="activeMeta && mainView === 'code'" class="codepane">
           <div v-if="lastDiff" class="codepane-bar">
@@ -134,13 +134,13 @@
         <h2 class="help-title">How it works</h2>
         <p class="help-lede">
           App Builder is a chat assistant that builds small web apps for you. Describe what you
-          want — a counter, a notes board, a calculator — and it writes a complete app (an HTML
+          want (a counter, a notes board, a calculator) and it writes a complete app (an HTML
           page plus a JSON API) and gives you a URL where it runs live.
         </p>
         <p class="help-lede">
           That app is written by the model, so it is untrusted. Each one runs in a
-          <strong>WebAssembly sandbox</strong>: isolated from the host — no filesystem, no
-          network unless allowed — with its own scoped key-value store for state, and
+          <strong>WebAssembly sandbox</strong>: isolated from the host (no filesystem, no
+          network unless allowed) with its own scoped key-value store for state, and
           near-instant to start (milliseconds, no container cold-start), so serving a fresh app
           on every request stays cheap.
         </p>
@@ -158,7 +158,7 @@
 
             <!-- edit loop: the live app is re-published by Claude, in place -->
             <path d="M664 118 C 664 46, 251 46, 251 118" fill="none" stroke="#1d4ed8" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#ahb)" />
-            <text x="457" y="38" text-anchor="middle" font-size="12.5" fill="#1d4ed8" font-weight="600">edit — updates in place, same URL</text>
+            <text x="457" y="38" text-anchor="middle" font-size="12.5" fill="#1d4ed8" font-weight="600">edit: updates in place, same URL</text>
 
             <!-- forward arrows -->
             <line x1="112" y1="150" x2="170" y2="150" stroke="#9aa0a8" stroke-width="1.6" marker-end="url(#ah)" />
@@ -193,20 +193,20 @@
             <div><strong>You describe an app.</strong> Say what you want in the chat.</div>
           </li>
           <li><span class="n">2</span>
-            <div><strong>Claude writes it.</strong> One self-contained HTTP handler — an HTML UI plus a JSON API — streamed in live as it is written.</div>
+            <div><strong>Claude writes it.</strong> One self-contained HTTP handler (an HTML UI plus a JSON API) streamed in live as it is written.</div>
           </li>
           <li><span class="n">3</span>
             <div><strong>It runs at its own URL.</strong> The code is stored in the sandbox's KV and executed on demand at <code>/a/&lt;id&gt;/</code>, returning the app's response verbatim.</div>
           </li>
           <li><span class="n">4</span>
-            <div><strong>Keep editing by chatting.</strong> Each change updates the same app in place — the URL never changes, and the source and conversation persist.</div>
+            <div><strong>Keep editing by chatting.</strong> Each change updates the same app in place. The URL never changes, and the source and conversation persist.</div>
           </li>
         </ol>
 
         <p class="help-why-title">Why run generated apps in a Wasm sandbox?</p>
         <ul class="help-why">
-          <li><strong>Isolated</strong> — untrusted, model-written code can't reach the host: no filesystem, network default-deny.</li>
-          <li><strong>Instant</strong> — millisecond cold starts (no container), so running a fresh app per request is cheap.</li>
+          <li><strong>Isolated:</strong> untrusted, model-written code can't reach the host: no filesystem, network default-deny.</li>
+          <li><strong>Instant:</strong> millisecond cold starts (no container), so running a fresh app per request is cheap.</li>
         </ul>
         <p class="help-refs">
           Further reading:
@@ -296,13 +296,13 @@ function shortLang(lang: string): string {
 function findApp(block: string): any {
   return messages.value.find((m) => m.t === "app" && (m as any).block === block);
 }
-// Last lines of the streaming code — the writing edge, without an unbounded live card.
+// Last lines of the streaming code (the writing edge), so the live card stays bounded.
 function tail(code: string): string {
   const lines = code.split("\n");
   return lines.length > 26 ? lines.slice(-26).join("\n") : code;
 }
 
-// Line-level diff via jsdiff — renders the whole file with +/- so you see the code AND the
+// Line-level diff via jsdiff; renders the whole file with +/- so you see the code AND the
 // change. (jsdiff is the same engine @pierre/diffs uses, minus the React/Shiki weight.)
 function lineDiff(oldStr: string, newStr: string): DiffLine[] {
   const out: DiffLine[] = [];
@@ -362,7 +362,7 @@ async function saveConvo() {
       body: JSON.stringify({ messages: serializeMsgs(messages.value), history: history.value }),
     });
   } catch {
-    // best-effort — the in-memory conversation still works
+    // best-effort, the in-memory conversation still works
   }
 }
 
@@ -391,7 +391,7 @@ async function checkAuth() {
     const d = await (await fetch("/api/health")).json();
     gate.value = !d.authRequired || d.authed ? "open" : "locked";
   } catch {
-    gate.value = "open"; // health unreachable — don't hard-lock local dev
+    gate.value = "open"; // health unreachable, don't hard-lock local dev
   }
   if (gate.value === "open") loadApps();
 }
@@ -413,7 +413,7 @@ async function submitToken() {
       gateError.value = "Invalid access token";
     }
   } catch {
-    gateError.value = "Could not verify — try again";
+    gateError.value = "Could not verify. Try again.";
   } finally {
     gateBusy.value = false;
   }
@@ -432,7 +432,7 @@ function newApp() {
   mainView.value = "chat";
 }
 
-// Open an existing app — load its source AND its saved conversation, so both the chat and the
+// Open an existing app, load its source AND its saved conversation, so both the chat and the
 // Code view are restored (they survive navigating away and reloads).
 async function openEdit(a: AppMeta) {
   activeId.value = a.id;

@@ -96,13 +96,13 @@
         <h2 class="help-title">How it works</h2>
         <p class="help-lede">
           This is a chat assistant that solves tasks by writing and running code. Ask it to
-          compute, parse, or transform something — it writes a short program, runs it, and
+          compute, parse, or transform something: it writes a short program, runs it, and
           answers from the real output, fixing and re-running if the code fails.
         </p>
         <p class="help-lede">
           That code is written by the model, so it is untrusted. Each run executes in a
-          <strong>WebAssembly sandbox</strong>: isolated from the host — no filesystem, and no
-          network unless a request allows it — and near-instant to start (milliseconds, no
+          <strong>WebAssembly sandbox</strong>: isolated from the host, no filesystem, no
+          network unless a request allows it, and near-instant to start (milliseconds, no
           container cold-start), so running fresh code on every request stays cheap.
         </p>
 
@@ -156,7 +156,7 @@
             <div><strong>Claude writes code.</strong> It picks Python or JavaScript and produces a small program.</div>
           </li>
           <li><span class="n">3</span>
-            <div><strong>A private Wasm sandbox runs it.</strong> The code executes in an isolated WebAssembly interpreter — no filesystem, no shell, default-deny network.</div>
+            <div><strong>A private Wasm sandbox runs it.</strong> The code executes in an isolated WebAssembly interpreter: no filesystem, no shell, default-deny network.</div>
           </li>
           <li><span class="n">4</span>
             <div><strong>The output loops back.</strong> stdout, stderr and errors return to Claude, which fixes-and-reruns or, once satisfied, writes the final answer.</div>
@@ -165,9 +165,9 @@
 
         <p class="help-why-title">Why write code instead of only calling fixed tools?</p>
         <ul class="help-why">
-          <li><strong>Open-ended</strong> — anything the sandbox can run, not just the tools that were pre-bundled.</li>
-          <li><strong>Fewer round-trips</strong> — one program with real control flow, instead of a model turn per tool call.</li>
-          <li><strong>Verifiable</strong> — a real interpreter computes the result; the model doesn't guess.</li>
+          <li><strong>Open-ended</strong>: anything the sandbox can run, not just the tools that were pre-bundled.</li>
+          <li><strong>Fewer round-trips</strong>: one program with real control flow, instead of a model turn per tool call.</li>
+          <li><strong>Verifiable</strong>: a real interpreter computes the result; the model doesn't guess.</li>
         </ul>
         <p class="help-refs">
           Further reading:
@@ -199,7 +199,7 @@ import diff from "highlight.js/lib/languages/diff";
 import "highlight.js/styles/github.css";
 
 // Register a focused language set (each registers its own aliases too: js, ts,
-// py, sh, …) — leaner than the full highlight.js build, covering what the model
+// py, sh, …), leaner than the full highlight.js build, covering what the model
 // emits in code and prose.
 for (const [name, lang] of Object.entries({
   javascript, typescript, python, bash, json, sql, xml, css: cssLang, yaml, go, rust, markdown: markdownLang, diff,
@@ -208,9 +208,9 @@ for (const [name, lang] of Object.entries({
 }
 
 // Syntax-highlight a code string for a known language; falls back to escaped
-// plain text (the returned HTML is highlight.js spans or escaped text — safe).
+// plain text (the returned HTML is highlight.js spans or escaped text, so it is safe).
 // Memoized so that, while streaming, already-finished code blocks (stable input)
-// are not re-highlighted on every token — only the in-progress block changes.
+// are not re-highlighted on every token; only the in-progress block changes.
 const hlCache = new Map<string, string>();
 function highlightCode(code: string, lang?: string): string {
   const key = (lang || "") + " " + code;
@@ -232,7 +232,7 @@ function highlightCode(code: string, lang?: string): string {
 }
 
 // markdown-it with raw HTML DISABLED: the model's text is untrusted, so any HTML
-// in it is escaped rather than rendered — which makes v-html of this output
+// in it is escaped rather than rendered, which makes v-html of this output
 // XSS-safe. GitHub-style line breaks + autolinking; fenced code is highlighted.
 const md = new MarkdownIt({
   html: false,
@@ -240,7 +240,7 @@ const md = new MarkdownIt({
   breaks: true,
   highlight(code, lang): string {
     // Only ever interpolate a REGISTERED language name (always a safe [a-z0-9-]
-    // identifier) into the class — the fence's lang token is model-controlled and
+    // identifier) into the class: the fence's lang token is model-controlled and
     // unescaped here, so echoing it raw would let `lang` break out of the
     // attribute and inject markup into the v-html'd output.
     const known = lang && hljs.getLanguage(lang) ? lang : "";
@@ -272,7 +272,7 @@ md.validateLink = (url: string): boolean => {
   try {
     decoded = decodeURIComponent(url);
   } catch {
-    // malformed % escape — fall back to the raw string
+    // malformed % escape, fall back to the raw string
   }
   let s = "";
   for (const ch of decoded) if (ch.charCodeAt(0) > 0x20) s += ch;
@@ -372,7 +372,7 @@ async function checkAuth() {
     const d = await (await fetch("/api/health")).json();
     gate.value = !d.authRequired || d.authed ? "open" : "locked";
   } catch {
-    gate.value = "open"; // health unreachable — don't hard-lock local dev
+    gate.value = "open"; // health unreachable, don't hard-lock local dev
   }
 }
 async function submitToken() {
@@ -389,7 +389,7 @@ async function submitToken() {
     if (r.ok) gate.value = "open";
     else gateError.value = "Invalid access token";
   } catch {
-    gateError.value = "Could not verify — try again";
+    gateError.value = "Could not verify. Try again.";
   } finally {
     gateBusy.value = false;
   }
@@ -397,7 +397,7 @@ async function submitToken() {
 checkAuth();
 
 function fmt(ms: number): string {
-  if (ms == null) return "—";
+  if (ms == null) return ", ";
   return ms >= 1000 ? (ms / 1000).toFixed(1) + "s" : Math.round(ms) + "ms";
 }
 
@@ -421,11 +421,11 @@ function reset() {
 // Apply one streamed NDJSON event to the live assistant message.
 function apply(a: Assistant, ev: any) {
   if (ev.t === "text_delta") {
-    // Append to the live text block, or start a new one — so the model's text
+    // Append to the live text block, or start a new one, so the model's text
     // grows on screen token-by-token as it is received.
     let s = a.steps.find((x) => x.kind === "text" && x.block === ev.block) as TextStep | undefined;
     if (!s) {
-      finalizeText(a); // a new block began — drop the caret from the previous one
+      finalizeText(a); // a new block began, drop the caret from the previous one
       s = { kind: "text", block: ev.block, text: "", html: "", streaming: true };
       a.steps.push(s);
     }
@@ -434,7 +434,7 @@ function apply(a: Assistant, ev: any) {
     if (!s.html) s.html = renderMarkdown(s.text, true);
     else scheduleRender(s);
   } else if (ev.t === "tool_start") {
-    finalizeText(a); // text before a tool call is done — stop its caret
+    finalizeText(a); // text before a tool call is done, stop its caret
     a.steps.push({
       kind: "tool",
       id: ev.id,
@@ -462,7 +462,7 @@ function apply(a: Assistant, ev: any) {
     finalizeText(a);
     error.value = ev.error;
   } else if (ev.t === "done") {
-    finalizeText(a); // the turn is over — settle the final text without a caret
+    finalizeText(a); // the turn is over, settle the final text without a caret
     if (Array.isArray(ev.messages)) history.value = ev.messages; // carry context to the next turn
   }
 }

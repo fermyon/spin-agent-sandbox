@@ -15,9 +15,9 @@ description = "{{project-description}}"
 # ---------------------------------------------------------------------------
 # TypeScript / JavaScript sandbox
 # ---------------------------------------------------------------------------
-# NOTE: /ts and /py are PUBLIC — this standalone app is a local dev/test harness. In
+# NOTE: /ts and /py are PUBLIC; this standalone app is a local dev/test harness. In
 # production run the sandbox as a PRIVATE component (`route = { private = true }`) inside a
-# consuming app and reach it via service chaining through @spinframework/sandbox — see the
+# consuming app and reach it via service chaining through @spinframework/sandbox; see the
 # `sandbox-ts` / `sandbox-py` templates' `spin add` mode and examples/ai-code-executor.
 [[trigger.http]]
 route = "/ts/..."
@@ -26,7 +26,7 @@ component = "ts-sandbox"
 [component.ts-sandbox]
 source = { url = "https://github.com/lepton/wasm-sandbox/releases/download/v0.1.0/ts-sandbox.wasm", digest = "sha256:0000000000000000000000000000000000000000000000000000000000000000" }
 # Single shared KV store; the component scopes keys per sandbox id. The fetch shim
-# enforces the per-request allow-list on top of this broad dev bound — tighten it
+# enforces the per-request allow-list on top of this broad dev bound; tighten it
 # per-deployment in production.
 key_value_stores = ["default"]
 allowed_outbound_hosts = ["https://*:*", "http://*:*"]

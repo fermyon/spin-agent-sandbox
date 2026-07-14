@@ -1,4 +1,4 @@
-// AI Code Executor API — a Claude agent whose tool is a sandbox.
+// AI Code Executor API, a Claude agent whose tool is a sandbox.
 //
 // The model is given one tool: it runs code in the fast Wasm interpreter. The
 // model writes the code, we execute it through @spinframework/sandbox and feed
@@ -24,7 +24,7 @@ const INTERPRETER_TOOL: Anthropic.Tool = {
     "jinja2, markdown, tabulate, tiktoken; JavaScript: lodash, zod, date-fns, dayjs, cheerio, uuid, nanoid). " +
     "For JavaScript you may pull ADDITIONAL npm packages by listing them in `dependencies` " +
     "(name -> semver); they are fetched and bundled in before the code runs. Import them with ESM " +
-    "`import` syntax (e.g. `import M from 'mustache'`), NOT `require()` — `require` returns the module " +
+    "`import` syntax (e.g. `import M from 'mustache'`), NOT `require()`; `require` returns the module " +
     "namespace, so the package's API would be under `.default`. Python cannot add packages. " +
     "NO filesystem, NO shell, stateless. Print results to stdout. " +
     "Network egress is DENIED by default. If the code calls an external API/tool with `fetch`, " +
@@ -38,7 +38,7 @@ const INTERPRETER_TOOL: Anthropic.Tool = {
         description:
           "The full program to run. Print results to stdout. Top-level `await` IS supported " +
           "(write `const res = await fetch(url)` directly, with or without `dependencies`). Do NOT wrap " +
-          "async work in a floating `(async () => { … })()` IIFE — its promise is discarded before output " +
+          "async work in a floating `(async () => { … })()` IIFE: its promise is discarded before output " +
           "is captured; use top-level `await` (or `await` the async call) instead.",
       },
       dependencies: {
@@ -65,7 +65,7 @@ const INTERPRETER_TOOL: Anthropic.Tool = {
 function systemPrompt(): string {
   return (
     "You are an AI code executor. When the user asks you to compute something, write the code and " +
-    "RUN it in a sandbox using your tool — never compute by hand. After running, give a short, direct answer " +
+    "RUN it in a sandbox using your tool, never compute by hand. After running, give a short, direct answer " +
     "with the result. Keep code minimal and print the result to stdout. " +
     "You have one sandbox: a fast Wasm interpreter. Use it for all code execution."
   );
@@ -81,7 +81,7 @@ type WireEvent =
       language: string;
       code: string;
       // Extra npm packages the model asked to bundle in (name -> semver), and the outbound
-      // hosts it allow-listed for this run — shown in the UI alongside the code.
+      // hosts it allow-listed for this run, shown in the UI alongside the code.
       packages?: Record<string, string>;
       allowedHosts?: string[];
       genMs: number;
@@ -116,7 +116,7 @@ async function runAgent(prompt: string, history: Anthropic.MessageParam[], emit:
   const bundlerUrl = variables.get("bundler_url") ?? "http://bundler.spin.internal";
 
   const anthropic = new Anthropic({ apiKey });
-  // The interpreter is two private, service-chained components — one per language — so pick
+  // The interpreter is two private, service-chained components, one per language, so pick
   // the client by the language the model chose. The JS interpreter also knows the bundler, so
   // model code can pull extra npm dependencies (see the tool's `dependencies` field).
   const interpreters: Record<Language, Interpreter> = {
@@ -133,7 +133,7 @@ async function runAgent(prompt: string, history: Anthropic.MessageParam[], emit:
 
   // Agentic loop: let the model call the sandbox tool until it produces a final answer.
   for (let turn = 0; turn < 8; turn++) {
-    // Time the model "generating the code" — the latency of this Claude turn.
+    // Time the model "generating the code" (the latency of this Claude turn).
     const genStart = Date.now();
     // Stream the turn so the model's text appears token-by-token as it is
     // produced, instead of arriving in one buffered blob at the end of the turn.

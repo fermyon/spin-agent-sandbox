@@ -1,0 +1,5 @@
+{
+  "code": "try:\n    fetch(\"https://example.com/\")\n    print(\"ALLOWED\")\nexcept Exception as e:\n    print(\"DENIED: \" + type(e).__name__)",
+  "sandboxId": "egress-test",
+  "allowedHosts": ["*"]
+}

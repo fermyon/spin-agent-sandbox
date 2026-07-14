@@ -1,4 +1,4 @@
-// @spinframework/sandbox/store — persist AI-generated code and run it later by id.
+// @spinframework/sandbox/store, persist AI-generated code and run it later by id.
 //
 // KvCodeStore is the one CodeStore implementation today: it keeps code in the sandbox's
 // scoped KV (via InterpreterKV). serveStoredCode composes a store with interpreters to run
@@ -54,9 +54,9 @@ export class KvCodeStore implements CodeStore {
     };
     // `code` is the editable source; `bundled` (when present) is what serveStoredCode runs.
     await this.kv.setJson(recordKey(id), { ...meta, code: input.code, bundled: input.bundled } satisfies StoredCode);
-    // Maintain a metadata index for cheap list() — replace in place on update, append on
+    // Maintain a metadata index for cheap list(): replace in place on update, append on
     // create. Read-modify-write: fine for a single control-plane; concurrent saves could drop
-    // an index entry — the record itself is never lost, it is keyed by unique id.
+    // an index entry, but the record itself is never lost (it is keyed by unique id).
     const index = (await this.kv.getJson<CodeMeta[]>(INDEX_KEY)) ?? [];
     const at = index.findIndex((m) => m.id === id);
     if (at >= 0) index[at] = meta;

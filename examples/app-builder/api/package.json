@@ -1,7 +1,7 @@
 {
   "name": "api",
   "version": "1.0.0",
-  "description": "App Builder API — Claude generates HTTP-handler apps, stores them, and serves each live",
+  "description": "App Builder API, Claude generates HTTP-handler apps, stores them, and serves each live",
   "main": "index.js",
   "type": "module",
   "scripts": {
