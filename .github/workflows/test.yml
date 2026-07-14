@@ -24,7 +24,7 @@ on:
 
 jobs:
   unit:
-    name: unit (pure logic, no server)
+    name: unit
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -45,7 +45,7 @@ jobs:
         working-directory: sdk
 
   integration:
-    name: integration (real components)
+    name: integration
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
