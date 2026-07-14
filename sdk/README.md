@@ -72,6 +72,9 @@ and export it from `src/index.ts`. Nothing in `core` or `interpreter` has to cha
 ```bash
 npm install
 npm run typecheck    # tsc, incl. the compile-time contract assertions in test/types.assert.ts
-npm test             # node --test (type-stripped)
+npm test             # node --test (runs the .ts tests directly)
 npm run check        # both
 ```
+
+`npm test` runs the TypeScript tests through Node's built-in runner with no build step, so
+it needs Node 24+ (native type stripping, plus `--test` glob support).

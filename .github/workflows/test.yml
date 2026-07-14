@@ -30,7 +30,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          # The sdk runs its TypeScript tests directly (`node --test "test/*.test.ts"`),
+          # which needs native type stripping (unflagged since Node 24) and --test glob
+          # support (Node 21+). ts-sandbox transpiles first, so it is version-agnostic.
+          node-version: "24"
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
