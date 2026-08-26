@@ -16,19 +16,12 @@ test("validateEnvelope rejects oversized code with 413", () => {
   if (!r.ok) assert.equal(r.status, 413);
 });
 
-test("validateEnvelope accepts a valid envelope and defaults allowedHosts to []", () => {
+test("validateEnvelope accepts a valid envelope", () => {
   const r = validateEnvelope({ code: "print(1)", sandboxId: "s", input: { method: "GET" } });
   assert.equal(r.ok, true);
   if (r.ok) {
-    assert.deepEqual(r.allowedHosts, []);
     assert.equal(r.sandboxId, "s");
   }
-});
-
-test("validateEnvelope preserves a provided allowedHosts array", () => {
-  const r = validateEnvelope({ code: "x", sandboxId: "s", allowedHosts: ["a.com"] });
-  assert.equal(r.ok, true);
-  if (r.ok) assert.deepEqual(r.allowedHosts, ["a.com"]);
 });
 
 test("buildRequest: GET drops the body and sets query params", () => {

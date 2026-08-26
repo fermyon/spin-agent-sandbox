@@ -1,5 +1,0 @@
-{
-  "code": "try {\n  await fetch(\"https://example.com/\");\n  console.log(\"ALLOWED\");\n} catch (e) {\n  console.log(\"DENIED: \" + (e && e.message ? e.message : e));\n}",
-  "sandboxId": "egress-test",
-  "allowedHosts": ["*"]
-}

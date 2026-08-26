@@ -29,7 +29,7 @@ def validate_envelope(body):
         or not isinstance(env.get("sandboxId"), str)
     ):
         return None, {"status": 400, "error": "invalid_envelope",
-                      "message": "expected {code: str, sandboxId: str, input?, allowedHosts?}"}
+                      "message": "expected {code: str, sandboxId: str, input?}"}
     if len(env["code"]) > MAX_CODE:
         return None, {"status": 413, "error": "code_too_large",
                       "message": f"code exceeds {MAX_CODE} bytes"}

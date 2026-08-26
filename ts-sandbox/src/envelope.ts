@@ -9,7 +9,6 @@ export interface ValidEnvelope {
   code: string;
   sandboxId: string;
   input: any;
-  allowedHosts: string[];
 }
 export interface InvalidEnvelope {
   ok: false;
@@ -26,7 +25,7 @@ export function validateEnvelope(parsed: any): ValidEnvelope | InvalidEnvelope {
       ok: false,
       status: 400,
       kind: "invalid_envelope",
-      message: "expected { code: string, sandboxId: string, input?, allowedHosts? }",
+      message: "expected { code: string, sandboxId: string, input? }",
     };
   }
   if (parsed.code.length > MAX_CODE) {
@@ -37,7 +36,6 @@ export function validateEnvelope(parsed: any): ValidEnvelope | InvalidEnvelope {
     code: parsed.code,
     sandboxId: parsed.sandboxId,
     input: parsed.input,
-    allowedHosts: Array.isArray(parsed.allowedHosts) ? parsed.allowedHosts : [],
   };
 }
 

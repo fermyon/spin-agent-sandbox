@@ -41,7 +41,7 @@ if [ ! -d vendor ]; then
 fi
 
 echo ">> componentize"
-.venv/bin/componentize-py -w spin-http componentize -p . -p vendor app -o app.wasm
+VIRTUAL_ENV="$PWD/.venv" .venv/bin/componentize-py -w spin-http componentize -p . -p vendor app -o app.wasm
 
 # Strip DWARF/debug + name sections. componentize-py bakes the CPython runtime and the
 # native extension modules (numpy, sqlalchemy, ...) in with debug info, which is ~half the

@@ -1,5 +1,0 @@
-{
-  "code": "try {\n  await fetch(\"http://169.254.169.254/latest/meta-data/\");\n  console.log(\"ALLOWED\");\n} catch (e) {\n  console.log(\"DENIED: \" + (e && e.message ? e.message : e));\n}",
-  "sandboxId": "egress-test",
-  "allowedHosts": ["169.254.169.254"]
-}
