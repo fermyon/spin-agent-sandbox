@@ -16,8 +16,8 @@
     "typescript": "^5.5.0"
   },
   "dependencies": {
-    "@spinframework/build-tools": "^1.0.7",
-    "@spinframework/wasi-http-proxy": "^1.0.0",
+    "@spinframework/build-tools": "^2.1.0",
+    "@spinframework/wasi-http-proxy": "^2.0.0 ",
     "sucrase": "^3.35.0"
   }
 }
