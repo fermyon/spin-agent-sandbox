@@ -1,5 +1,0 @@
-{
-  "code": "try:\n    fetch(\"http://169.254.169.254/latest/meta-data/\")\n    print(\"ALLOWED\")\nexcept Exception as e:\n    print(\"DENIED: \" + type(e).__name__)",
-  "sandboxId": "egress-test",
-  "allowedHosts": ["169.254.169.254"]
-}

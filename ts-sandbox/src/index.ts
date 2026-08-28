@@ -1,12 +1,12 @@
 // ts-sandbox: executes dynamic JS/TS code received as a JSON envelope.
 //
 // Request (POST, body = strict JSON envelope):
-//   { code: string, sandboxId: string, input?: {method?, headers?, query?, body?}, allowedHosts?: string[] }
+//   { code: string, sandboxId: string, input?: {method?, headers?, query?, body?} }
 //
 // The user `code` is TypeScript/JS using ES modules. It is transpiled at runtime with
 // sucrase (types stripped, `import`/`export default` -> CommonJS) and run via the
 // AsyncFunction constructor with an injected `require` (a fixed module registry), a
-// per-sandbox scoped KV, an allow-listed `fetch`, and a capturing `console`.
+// per-sandbox scoped KV, native `fetch`, and a capturing `console`.
 //
 // Two code shapes are supported:
 //   - handler:  `export default { fetch(request) {...} }`  -> synthetic Request built
@@ -16,7 +16,7 @@
 //
 // This file is the orchestration layer; the logic lives in focused modules:
 //   envelope.ts (validation + synthetic request), kv.ts (scoped store),
-//   egress.ts (allow-list + fetch), console.ts (capture), registry.ts (require),
+//   console.ts (capture), registry.ts (require),
 //   runner.ts (execute + interpret result).
 
 import { transform } from "sucrase";
@@ -24,7 +24,6 @@ import * as realKv from "@spinframework/spin-kv";
 import { log, initLogger } from "./logger";
 import { validateEnvelope, buildRequest, errorResponse, MAX_BODY } from "./envelope";
 import { makeScopedKv } from "./kv";
-import { makeFetch } from "./egress";
 import { makeConsole } from "./console";
 import { makeRequire } from "./registry";
 import { AsyncFunction, detectHandler, coerceUserResponse } from "./runner";
@@ -57,7 +56,7 @@ async function handle(request: Request): Promise<Response> {
   if (!envelope.ok) {
     return errorResponse(envelope.status, envelope.kind, envelope.message);
   }
-  const { code, sandboxId, allowedHosts, input } = envelope;
+  const { code, sandboxId, input } = envelope;
 
   // A blob produced by the bundler is already CommonJS (no ESM imports, no TS) and carries this
   // marker on its first line. Skip the sucrase pass for it: re-transpiling only re-parses the whole
@@ -82,12 +81,7 @@ async function handle(request: Request): Promise<Response> {
   const err: string[] = [];
   const moduleObj: any = { exports: {} };
   const requireShim = makeRequire(makeScopedKv(realKv, sandboxId));
-  const fetchShim = makeFetch(allowedHosts);
   const consoleShim = makeConsole(out, err);
-
-  // Gate globalThis.fetch too, so user code can't bypass the shim. Restore after.
-  const savedFetch = globalThis.fetch;
-  (globalThis as any).fetch = fetchShim;
 
   try {
     let fn: any;
@@ -98,7 +92,7 @@ async function handle(request: Request): Promise<Response> {
     }
 
     try {
-      await fn(requireShim, moduleObj, moduleObj.exports, consoleShim, fetchShim);
+      await fn(requireShim, moduleObj, moduleObj.exports, consoleShim, globalThis.fetch);
     } catch (e: any) {
       return Response.json({
         stdout: out.join("\n"),
@@ -131,8 +125,6 @@ async function handle(request: Request): Promise<Response> {
   } catch (e: any) {
     log.error(`sandbox internal error: ${e}`);
     return errorResponse(500, "internal", String(e && e.stack ? e.stack : e));
-  } finally {
-    (globalThis as any).fetch = savedFetch;
   }
 }
 

@@ -1,7 +1,7 @@
 """py-sandbox: executes dynamic Python code received as a JSON envelope.
 
 Request (POST, body = strict JSON envelope):
-    {code: str, sandboxId: str, input?: {method?, path?, headers?, query?, body?}, allowedHosts?: [str]}
+    {code: str, sandboxId: str, input?: {method?, path?, headers?, query?, body?}}
 
 The user `code` is exec'd in a fresh namespace. Two code shapes are supported:
     - handler: code defines `handle_request(request) -> Response`. A synthetic
@@ -11,7 +11,7 @@ The user `code` is exec'd in a fresh namespace. Two code shapes are supported:
       returned as {stdout, stderr, error} JSON.
 
 This module is the Spin glue layer; the logic lives in focused, spin-free modules:
-    _kv.py (scoped store), _egress.py (allow-list), _envelope.py (validation + request).
+    _kv.py (scoped store), _envelope.py (validation + request).
 
 Pre-configured dependencies are imported at module top so componentize-py freezes them
 into the component (it only bundles the static import closure of this module; modules
@@ -25,11 +25,9 @@ import types
 import traceback
 
 from spin_sdk.http import IncomingHandler, Request, Response, send as _orig_send
-import spin_sdk.http as _spin_http
 import spin_sdk.key_value as _key_value
 
 from _kv import ScopedStore, scoped_prefix
-from _egress import host_allowed
 from _envelope import validate_envelope, build_request_args
 
 # Originals captured so the scoped factories can reach the real store without recursion.
@@ -99,25 +97,12 @@ def _install_scoped_kv(sandbox_id):
     sys.modules["spin_sdk.kv"] = mod
 
 
-# Outbound HTTP: gate every egress path (the injected fetch and spin_sdk.http.send)
-# through the per-sandbox allow-list from _egress.host_allowed.
-def _install_fetch(allowed_hosts):
-    allowed = list(allowed_hosts or [])
-
-    def guarded_send(req):
-        if not host_allowed(req.uri, allowed):
-            raise PermissionError(
-                f"outbound host not allowed by sandbox: {req.uri} (allowedHosts={allowed})"
-            )
-        return _orig_send(req)
-
-    # Wrap the module-level send so user code that calls spin_sdk.http.send is gated too.
-    _spin_http.send = guarded_send
-
+# Outbound HTTP: convenience fetch wrapper around spin_sdk.http.send.
+def _make_fetch():
     def fetch(url, method="GET", headers=None, body=None):
         if isinstance(body, str):
             body = body.encode()
-        resp = guarded_send(Request(method, url, dict(headers or {}), body))
+        resp = _orig_send(Request(method, url, dict(headers or {}), body))
         return {
             "status": resp.status,
             "headers": dict(resp.headers),
@@ -156,7 +141,7 @@ def _run(env):
     input_ = env.get("input") or {}
 
     _install_scoped_kv(sandbox_id)
-    fetch = _install_fetch(env.get("allowedHosts"))
+    fetch = _make_fetch()
 
     ns = {"__name__": "__main__", "fetch": fetch}
     out, errbuf = io.StringIO(), io.StringIO()
@@ -190,7 +175,6 @@ def _run(env):
         )
     finally:
         sys.stdout, sys.stderr = old_out, old_err
-        _spin_http.send = _orig_send  # don't leak the per-request allow-list
         _key_value.open_default = _orig_kv_open_default  # don't leak the per-sandbox prefix
         _key_value.open = _orig_kv_open
         # Restore the spin_sdk.kv alias too, so its open*/open_default don't keep the prefix.

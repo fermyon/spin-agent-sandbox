@@ -57,9 +57,7 @@ HTTP 400
 
 # ===========================================================================
 # Security regression gates. The KV-isolation gates fail on the historical
-# "{id}-{key}" scheme; the egress gates assert the request is denied by POLICY
-# (a matching denial marker, never "ALLOWED") so they can't pass vacuously on an
-# unrelated network error.
+# "{id}-{key}" scheme.
 # ===========================================================================
 
 # --- KV isolation (Python): sandbox "iso-a" must NOT see sandbox "iso-a-b"'s key ---
@@ -97,58 +95,6 @@ HTTP 200
 jsonpath "$.error" == null
 jsonpath "$.stdout" not contains "TOPSECRET"
 jsonpath "$.stdout" contains "leaked=null"
-
-# --- Egress default-deny: no allowedHosts => outbound fetch is refused by policy ---
-# py refuses with a PermissionError before any network call; ts throws the policy message.
-POST {{base_url}}/py/run
-content-type: application/json
-file,bodies/py-egress-deny.json;
-HTTP 200
-[Asserts]
-jsonpath "$.stdout" contains "PermissionError"
-jsonpath "$.stdout" not contains "ALLOWED"
-
-POST {{base_url}}/ts/run
-content-type: application/json
-file,bodies/ts-egress-deny.json;
-HTTP 200
-[Asserts]
-jsonpath "$.stdout" contains "not allowed by sandbox"
-jsonpath "$.stdout" not contains "ALLOWED"
-
-# --- Egress: a bare "*" in the per-request allow-list must NOT grant all ---
-POST {{base_url}}/py/run
-content-type: application/json
-file,bodies/py-egress-star.json;
-HTTP 200
-[Asserts]
-jsonpath "$.stdout" contains "PermissionError"
-jsonpath "$.stdout" not contains "ALLOWED"
-
-POST {{base_url}}/ts/run
-content-type: application/json
-file,bodies/ts-egress-star.json;
-HTTP 200
-[Asserts]
-jsonpath "$.stdout" contains "not allowed by sandbox"
-jsonpath "$.stdout" not contains "ALLOWED"
-
-# --- Egress SSRF backstop: an allow-listed INTERNAL target is still refused by policy ---
-POST {{base_url}}/py/run
-content-type: application/json
-file,bodies/py-egress-internal.json;
-HTTP 200
-[Asserts]
-jsonpath "$.stdout" contains "PermissionError"
-jsonpath "$.stdout" not contains "ALLOWED"
-
-POST {{base_url}}/ts/run
-content-type: application/json
-file,bodies/ts-egress-internal.json;
-HTTP 200
-[Asserts]
-jsonpath "$.stdout" contains "not allowed by sandbox"
-jsonpath "$.stdout" not contains "ALLOWED"
 
 # --- Both components reject a non-POST request with 405 (the manual method check) ---
 GET {{base_url}}/ts/run
