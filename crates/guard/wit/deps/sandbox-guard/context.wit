@@ -1,0 +1,20 @@
+package sandbox:guard@0.1.0;
+
+// Exported by guard-io, imported by guard-front. Bridges the per-request sandboxId
+// (parsed by guard-front off the raw envelope) into guard-io's guarded key-value
+// export, which has no other way to see it — see ARCHITECTURE.md for why this indirection
+// exists (guard-front and guard-io can't import each other's exports directly
+// without an instantiation cycle).
+//
+// Also the retrieval side of stdout/stderr capture: guard-io owns the real,
+// capturing wasi:cli/stdout`/`stderr` exports, so guard-front calls
+// take-captured-output after ts-sandbox's executor.run to read back what was
+// written and clear the buffers for the next request.
+interface context {
+    set-request-context: func(sandbox-id: string);
+    take-captured-output: func() -> tuple<string, string>;
+}
+
+world context-host {
+    export context;
+}

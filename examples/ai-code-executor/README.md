@@ -125,6 +125,6 @@ api/               Hono component: the Claude tool-use loop + the interpreter to
   src/index.ts     the agent; imports @spinframework/sandbox; one Interpreter client per component
 ui/                Nuxt SPA chat (near-verbatim from upstream; one filesystem prompt swapped)
   pages/index.vue  the chat UI
-../../ts-sandbox   private JS/TS interpreter, built in place, reached via ts-sandbox.spin.internal
+../../packages/typescript/sandbox   private JS/TS interpreter, built in place, reached via ts-sandbox.spin.internal
 ../../py-sandbox   private Python interpreter, built in place, reached via py-sandbox.spin.internal
 ```

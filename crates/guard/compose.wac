@@ -1,0 +1,21 @@
+// Composes the three components into the single artifact Spin deploys.
+//
+// Dependency graph (must be a DAG — the Component Model requires instantiation
+// order, so no two components may need each other's exports):
+//
+//   guard:io      — needs nothing but the real Spin host.
+//   ts-sandbox    — needs guard:io's guarded key-value export.
+//   guard:front   — needs guard:io's `context` export and ts-sandbox's `executor`
+//                   export; nothing depends on guard:front, so it's the entry point
+//                   Spin actually calls (see crates/guard/src/lib.rs).
+//
+// Run via: wac compose -d guard:io=<path> -d ts-sandbox:sandbox=<path> \
+//            -d guard:front=<path> -o <out> crates/guard/compose.wac
+
+package local:composed;
+
+let io = new guard:io { ... };
+let sandbox = new ts-sandbox:sandbox { ...io, ... };
+let front = new guard:front { ...io, ...sandbox, ... };
+
+export front...;

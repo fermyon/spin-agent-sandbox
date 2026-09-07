@@ -107,6 +107,6 @@ api/               Hono component: the Claude loop, the code store, and the live
   src/index.ts     imports @spinframework/sandbox/{interpreter,store}
 ui/                Nuxt SPA: build gallery + create flow
   pages/index.vue  the gallery + "describe an app" UI
-../../ts-sandbox   private JS/TS interpreter, built in place, reached via ts-sandbox.spin.internal
+../../packages/typescript/sandbox   private JS/TS interpreter, built in place, reached via ts-sandbox.spin.internal
 ../../py-sandbox   private Python interpreter, built in place, reached via py-sandbox.spin.internal
 ```

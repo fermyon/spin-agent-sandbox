@@ -1,0 +1,41 @@
+{
+  "name": "ts-sandbox",
+  "version": "1.0.0",
+  "description": "Wasm sandbox that executes dynamic JS/TS code via Spin",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs && mkdirp dist && j2w -i build/bundle.js --initLocation http://ts-sandbox.localhost -o dist/ts-sandbox.wasm",
+    "build:debug": "node build.mjs && mkdirp dist && j2w -d -i build/bundle.js --initLocation http://ts-sandbox.localhost -o dist/ts-sandbox.wasm",
+    "test": "node --experimental-test-module-mocks test/run.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/lodash": "^4.17.7",
+    "esbuild": "^0.25.8",
+    "mkdirp": "^3.0.1",
+    "typescript": "^5.7.3"
+  },
+  "dependencies": {
+    "@spinframework/build-tools": "^2.1.0",
+    "@spinframework/spin-kv": "1.0.1",
+    "cheerio": "^1.2.0",
+    "date-fns": "^4.1.0",
+    "dayjs": "^1.11.13",
+    "js-yaml": "^4.1.0",
+    "lodash": "^4.17.21",
+    "nanoid": "^5.1.0",
+    "node-html-parser": "^7.0.1",
+    "sucrase": "^3.35.0",
+    "ulidx": "^2.4.1",
+    "uuid": "^11.0.0",
+    "zod": "^4.0.0"
+  },
+  "config": {
+    "witDependencies": [
+      { "witPath": "./wit", "package": "sandbox:guard@0.1.0", "world": "executor-host" }
+    ]
+  }
+}

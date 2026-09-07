@@ -1,0 +1,36 @@
+package sandbox:guard@0.1.0;
+
+// Exported by ts-sandbox, imported by guard-front. No stdout/stderr fields here —
+// that capture happens in guard-io's guarded wasi:cli/stdout`/`stderr` exports,
+// read back via context.take-captured-output after run() returns.
+interface executor {
+    record run-input {
+        method: string,
+        path: string,
+        headers: list<tuple<string, string>>,
+        query: list<tuple<string, string>>,
+        body: option<list<u8>>,
+    }
+
+    record handler-response {
+        status: u16,
+        headers: list<tuple<string, string>>,
+        body: list<u8>,
+    }
+
+    variant outcome {
+        handler-response(handler-response),
+        // None = success, Some(stack) = uncaught error in "main" shape.
+        main(option<string>),
+        // Syntax/transpile error, or a malformed `input` — a client error (400).
+        compile-error(string),
+        // The handler shape's `fetch()` threw — a server error (500).
+        handler-error(string),
+    }
+
+    run: func(code: string, input: option<run-input>) -> outcome;
+}
+
+world executor-host {
+    export executor;
+}

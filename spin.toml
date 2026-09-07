@@ -14,23 +14,53 @@ log_level = { default = "info" }
 # /py/run). In production the sandbox is meant to be a PRIVATE component: give it
 # `route = { private = true }` and reach it only via service chaining through
 # @spinframework/sandbox (see examples/ai-code-executor).
+#
+# The deployed component is `guard` + `guard-io` + `ts-sandbox` composed by `wac` into one
+# artifact: `guard` is the real HTTP entry point (parses the envelope, enforces size
+# limits), `guard-io` implements the WASI interfaces ts-sandbox imports (guarded
+# per-sandbox key-value, captured stdout/stderr) so ts-sandbox itself does no security
+# enforcement — see crates/guard/compose.wac and AGENTS.md.
 [[trigger.http]]
 route = "/ts/..."
 component = "ts-sandbox"
 
 [component.ts-sandbox]
-source = "ts-sandbox/dist/ts-sandbox.wasm"
+source = "dist/ts-sandbox.wasm"
 exclude_files = ["**/node_modules"]
-# Single shared KV store; the component scopes keys per sandbox id.
+# Single shared KV store; guard-io scopes keys per sandbox id.
 key_value_stores = ["default"]
-# Broad dev outer bound; the component's fetch shim enforces the per-sandbox
-# allow-list on top. Tighten this per-deployment in production.
+# This is the only outbound-host control point for the TS sandbox: guard-io forwards
+# every outbound request unchanged (see crates/guard-io/src/outgoing.rs). Wide open here
+# is a dev default; tighten per-deployment.
 allowed_outbound_hosts = ["https://*:*", "http://*:*"]
 [component.ts-sandbox.variables]
 log_level = "{{log_level}}"
 [component.ts-sandbox.build]
-command = "npm ci && npm run build"
-workdir = "ts-sandbox"
+# guard-io builds via wasm32-wasip1 + `wasm-tools component new` + the vendored preview1
+# adapter, not rustc's native wasm32-wasip2 auto-componentization — see
+# crates/guard-io/README.md for the encoding bug this works around.
+command = """
+cargo build --release --target wasm32-wasip1 -p guard-io && \
+wasm-tools component new target/wasm32-wasip1/release/guard_io.wasm \
+  --adapt wasi_snapshot_preview1=crates/guard-io/adapters/wasi_snapshot_preview1.reactor.wasm \
+  -o target/guard_io_component.wasm && \
+cargo build --release --target wasm32-wasip2 -p guard && \
+npm --prefix packages/typescript/sandbox ci && \
+npm --prefix packages/typescript/sandbox run build && \
+mkdir -p dist && \
+wac compose \
+  -d guard:io=target/guard_io_component.wasm \
+  -d ts-sandbox:sandbox=packages/typescript/sandbox/dist/ts-sandbox.wasm \
+  -d guard:front=target/wasm32-wasip2/release/guard.wasm \
+  -o dist/ts-sandbox.wasm \
+  crates/guard/compose.wac
+"""
+# Kept in sync by hand with the command above.
+watch = [
+    "crates/guard-io/src/**/*.rs", "crates/guard-io/wit/**/*.wit", "crates/guard-io/Cargo.toml",
+    "crates/guard/src/**/*.rs", "crates/guard/wit/**/*.wit", "crates/guard/Cargo.toml", "crates/guard/compose.wac",
+    "packages/typescript/sandbox/src/**/*.ts", "packages/typescript/sandbox/wit/**/*.wit",
+]
 
 # ---------------------------------------------------------------------------
 # Dependency bundler (runs in StarlingMonkey, no Node, no esbuild at runtime)
@@ -45,13 +75,13 @@ route = "/bundle/..."
 component = "bundler"
 
 [component.bundler]
-source = "ts-sandbox/bundler/dist/bundler.wasm"
+source = "packages/typescript/bundler/dist/bundler.wasm"
 exclude_files = ["**/node_modules"]
 # Only esm.sh (trusted build infra), kept separate from the sandbox's per-request egress.
 allowed_outbound_hosts = ["https://esm.sh", "https://*.esm.sh"]
 [component.bundler.build]
 command = "npm ci && npm run build"
-workdir = "ts-sandbox/bundler"
+workdir = "packages/typescript/bundler"
 
 # ---------------------------------------------------------------------------
 # Python sandbox

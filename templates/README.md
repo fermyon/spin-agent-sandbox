@@ -78,7 +78,7 @@ The templates and workflow ship with placeholders. Search for them and set your 
 The prebuilt `wasm32-wasi` Python packages come from the `spin-python-deps` git
 submodule under `py-sandbox/`, so the release workflow just checks it out
 (`submodules: recursive`) with no extra repo or secret to configure.
-`ts-sandbox/package-lock.json` is committed so the CI's `npm ci` is reproducible; keep
+`packages/typescript/sandbox/package-lock.json` is committed so the CI's `npm ci` is reproducible; keep
 it tracked.
 
 ## Maintaining vs. the source

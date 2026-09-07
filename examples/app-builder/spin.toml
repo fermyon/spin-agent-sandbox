@@ -66,7 +66,7 @@ route = { private = true }
 component = "ts-sandbox"
 
 [component.ts-sandbox]
-source = "../../ts-sandbox/dist/ts-sandbox.wasm"
+source = "../../packages/typescript/sandbox/dist/ts-sandbox.wasm"
 exclude_files = ["**/node_modules"]
 key_value_stores = ["default"]
 # Broad dev outer bound for user code; the component's fetch shim enforces the
@@ -76,7 +76,7 @@ allowed_outbound_hosts = ["https://*:*", "http://*:*"]
 log_level = "{{ log_level }}"
 [component.ts-sandbox.build]
 command = "npm ci && npm run build"
-workdir = "../../ts-sandbox"
+workdir = "../../packages/typescript/sandbox"
 
 [[trigger.http]]
 route = { private = true }
@@ -99,9 +99,9 @@ route = { private = true }
 component = "bundler"
 
 [component.bundler]
-source = "../../ts-sandbox/bundler/dist/bundler.wasm"
+source = "../../packages/typescript/bundler/dist/bundler.wasm"
 exclude_files = ["**/node_modules"]
 allowed_outbound_hosts = ["https://esm.sh", "https://*.esm.sh"]
 [component.bundler.build]
 command = "npm ci && npm run build"
-workdir = "../../ts-sandbox/bundler"
+workdir = "../../packages/typescript/bundler"

@@ -5,14 +5,15 @@ Python. Secure by default and quick to start, built on [Spin](https://spinframew
 
 This repository contains three composable layers: the sandbox components, a client
 library that turns a sandbox into an agent tool, and examples that wire them together.
+See [ARCHITECTURE.md](ARCHITECTURE.md) for how the components are composed.
 
 ## What's in this repo
 
-1. **Sandboxes**: [`ts-sandbox/`](ts-sandbox) and [`py-sandbox/`](py-sandbox) are Spin
+1. **Sandboxes**: [`ts-sandbox/`](packages/typescript/sandbox) and [`py-sandbox/`](py-sandbox) are Spin
    WebAssembly components that execute untrusted JS/TS and Python received over HTTP.
    Popular dependencies are pre-bundled, each run gets a scoped KV store, and outbound
    HTTP is possible behind an allow-list. A third component, the
-   [bundler](ts-sandbox/bundler), lets JS code pull extra npm packages at publish time.
+   [bundler](packages/typescript/bundler), lets JS code pull extra npm packages at publish time.
 2. **A client library**: [`@spinframework/sandbox`](sdk) is a small TypeScript client
    that consumes a sandbox and exposes it as an agent tool behind a portable
    `CodeRunner` contract.
@@ -52,7 +53,7 @@ cd py-sandbox && bash build.sh
 
 Each sandbox is a Spin component that accepts code over HTTP, runs it, and returns the
 result. `ts-sandbox` serves `POST /ts/…`; `py-sandbox` serves `POST /py/…`. The manifest
-also wires the [bundler](ts-sandbox/bundler) at `POST /bundle`.
+also wires the [bundler](packages/typescript/bundler) at `POST /bundle`.
 
 | Component    | Route        | Engine                                                |
 | ------------ | ------------ | ----------------------------------------------------- |
@@ -74,7 +75,6 @@ POST a strict JSON envelope to `/ts/...` or `/py/...`:
     "query":   { "name": "ada" },
     "body":    { "values": [1, 2, 3] }   // string passed through; object → JSON
   },
-  "allowedHosts": ["api.example.com"]    // optional: per-sandbox outbound allow-list
 }
 ```
 
@@ -114,7 +114,7 @@ raises a "module not found" error.
 - **TypeScript/JS**: `cheerio`, `node-html-parser`, `zod`, `js-yaml`, `nanoid`, `ulidx`,
   `uuid`, `lodash`, `date-fns`, `dayjs`, `@spinframework/spin-kv`. User TS is transpiled
   at runtime with `sucrase` (types stripped, ES `import`/`export` rewired to the bundled
-  set). For anything beyond this set, the [bundler](ts-sandbox/bundler) component turns
+  set). For anything beyond this set, the [bundler](packages/typescript/bundler) component turns
   source plus a package.json into one self-contained blob the sandbox runs unchanged.
 - **Python**: `numpy`, `tabulate`, `markdown`, `jinja2`, `regex`, `beautifulsoup4`, plus
   popular extras proven to compile (`sqlalchemy`, `tiktoken`, `pydantic`, `pyyaml`,
@@ -139,13 +139,6 @@ import * as kv from "@spinframework/spin-kv";   // canonical Spin TS API
 const store = kv.openDefault();
 store.setJson("k", { v: 1 }); store.getJson("k");
 ```
-
-### Outbound HTTP
-
-The Spin manifest grants a broad outer bound (`https://*:*`) for development. On top of
-it, user code's `fetch`/`spin_sdk.http.send` is gated by the per-request `allowedHosts`
-allow-list. The default is deny-all when the list is empty, and the per-request list can
-only narrow egress, never expand it beyond what the sandbox component allows.
 
 ## Deployment model
 
@@ -182,7 +175,7 @@ validation, request shaping) lives in small dependency-free modules that are
 unit-tested directly:
 
 ```bash
-cd ts-sandbox && npm test                              # TS logic (esbuild + node --test)
+cd packages/typescript/sandbox && npm test                              # TS logic (esbuild + node --test)
 cd py-sandbox && python3 -m unittest discover -s tests -t .   # Python logic (stdlib unittest)
 ```
 
