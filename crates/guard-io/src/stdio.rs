@@ -1,5 +1,5 @@
 //! Exported `wasi:cli/stdout`/`stderr` + `wasi:io/streams` — what the guest's
-//! `console.log`/`console.error` write to. `get-stdout`/`get-stderr` mint a
+//! `console.log`/`console.error` write to. `get-stdout`/`get-stderr` allocate a
 //! request-scoped, size-capped buffer; `context::take_captured_output` drains
 //! them after `executor.run` returns. `wasi:io/streams` is exported here (not
 //! just stdout/stderr) because wit-bindgen requires the component that mints a

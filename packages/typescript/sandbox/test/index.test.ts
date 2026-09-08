@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { mock, test } from "node:test";
+import { BodyStream } from "../src/requestResponse";
 
 // See test/registry.test.ts — index.ts pulls in registry.ts, which
 // unconditionally bundles @spinframework/spin-kv.
@@ -37,7 +38,7 @@ test("handler-shape { fetch } export runs and returns a wire response", async ()
   assert.equal(outcome.tag, "handler-response");
   if (outcome.tag !== "handler-response") throw new Error("unreachable");
   assert.equal(outcome.val.status, 201);
-  assert.equal(new TextDecoder().decode(outcome.val.body), "got:POST");
+  assert.equal(await readBodyToString(outcome.val.body), "got:POST");
 });
 
 test("handler-shape bare-function export also works", async () => {
@@ -45,7 +46,8 @@ test("handler-shape bare-function export also works", async () => {
   const outcome = await executor.run(code, undefined);
   assert.equal(outcome.tag, "handler-response");
   if (outcome.tag !== "handler-response") throw new Error("unreachable");
-  assert.equal(new TextDecoder().decode(outcome.val.body), "fn-ok");
+  assert.equal(outcome.val.status, 200);
+  assert.equal(await readBodyToString(outcome.val.body), "fn-ok");
 });
 
 test("a throwing handler is reported as a handler-error", async () => {
@@ -80,3 +82,20 @@ test("TypeScript syntax is transpiled before execution", async () => {
   const outcome = await executor.run(code, undefined);
   assert.deepEqual(outcome, { tag: "main", val: undefined });
 });
+
+async function readBodyToString(body: BodyStream) {
+  let result = "";
+  while (true) {
+    let chunk = await body.read();
+    if (chunk.tag == "chunk" && chunk.val != null) {
+      result += new TextDecoder().decode(chunk.val);
+    }
+    if (chunk.tag == "done") {
+      break;
+    }
+    if (chunk.tag == "error") {
+      throw new Error("Error reading body");
+    }
+  }
+  return result;
+}

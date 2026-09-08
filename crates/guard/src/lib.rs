@@ -11,9 +11,11 @@ wit_bindgen::generate!({
 mod envelope;
 mod logging;
 
+use futures::SinkExt;
 use sandbox::guard::{context, executor};
 use envelope::{EnvelopeError, RawInput};
-use spin_sdk::http::{IntoResponse, Method, Request, Response};
+use spin_sdk::http::conversions::TryFromIncomingRequest;
+use spin_sdk::http::{Fields, IncomingRequest, Method, OutgoingResponse, Request, Response, ResponseOutparam};
 use spin_sdk::http_component;
 
 fn build_run_input(input: &RawInput) -> executor::RunInput {
@@ -37,30 +39,74 @@ fn json_error(status: u16, kind: &str, message: &str) -> Response {
         .build()
 }
 
-#[http_component]
-async fn handle(req: Request) -> anyhow::Result<impl IntoResponse> {
-    if *req.method() != Method::Post {
-        logging::warn(&format!("rejected method={:?}", req.method()));
-        return Ok(json_error(405, "method_not_allowed", "send the code envelope as a POST body"));
+/// Sends a fully-buffered `Response` through `response_out`. Used for every
+/// outcome except `handler-response`, which streams instead (see `handle`).
+async fn respond(response_out: ResponseOutparam, mut response: Response) {
+    let body = std::mem::take(response.body_mut());
+    match OutgoingResponse::try_from(response) {
+        Ok(outgoing) => {
+            if let Err(e) = response_out.set_with_body(outgoing, body).await {
+                logging::error(&format!("failed to send response: {e:?}"));
+            }
+        }
+        Err(e) => {
+            logging::error(&format!("failed to build response: {e:?}"));
+            let outgoing = OutgoingResponse::new(Fields::new());
+            let _ = outgoing.set_status_code(500);
+            let _ = response_out.set_with_body(outgoing, Vec::new()).await;
+        }
     }
+}
+
+fn log_response(sandbox_id: &str, kind: &str, status: u16, stdout: &str, stderr: &str, duration_ms: u128) {
+    logging::info(&format!(
+        "response sandbox={sandbox_id} outcome={kind} status={status} stdout_bytes={} stderr_bytes={} duration_ms={duration_ms}",
+        stdout.len(),
+        stderr.len(),
+    ));
+}
+
+#[http_component]
+async fn handle(req: IncomingRequest, response_out: ResponseOutparam) {
+    if req.method() != Method::Post {
+        logging::warn(&format!("rejected method={:?}", req.method()));
+        respond(response_out, json_error(405, "method_not_allowed", "send the code envelope as a POST body")).await;
+        return;
+    }
+
+    let req = match Request::try_from_incoming_request(req).await {
+        Ok(req) => req,
+        Err(e) => {
+            logging::warn(&format!("failed to read request body: {e}"));
+            respond(response_out, json_error(400, "invalid_request", "failed to read request body")).await;
+            return;
+        }
+    };
 
     let body_bytes = req.body().len();
     let envelope = match envelope::validate(req.body()) {
         Ok(e) => e,
         Err(EnvelopeError::Invalid(msg)) => {
             logging::warn(&format!("rejected invalid_envelope: {msg}"));
-            return Ok(json_error(400, "invalid_envelope", &msg));
+            respond(response_out, json_error(400, "invalid_envelope", &msg)).await;
+            return;
         }
         Err(EnvelopeError::CodeTooLarge) => {
             logging::warn(&format!("rejected code_too_large body_bytes={body_bytes}"));
-            return Ok(json_error(413, "code_too_large", &format!("code exceeds {} bytes", envelope::MAX_CODE)));
+            respond(response_out, json_error(413, "code_too_large", &format!("code exceeds {} bytes", envelope::MAX_CODE))).await;
+            return;
         }
         Err(EnvelopeError::BodyTooLarge) => {
             logging::warn(&format!("rejected body_too_large body_bytes={body_bytes}"));
-            return Ok(json_error(413, "body_too_large", &format!("request body exceeds {} bytes", envelope::MAX_BODY)));
+            respond(
+                response_out,
+                json_error(413, "body_too_large", &format!("request body exceeds {} bytes", envelope::MAX_BODY)),
+            )
+            .await;
+            return;
         }
     };
-    
+
     // We have to set the request context for the current sandbox before running the code.
     context::set_request_context(&envelope.sandbox_id);
 
@@ -75,50 +121,84 @@ async fn handle(req: Request) -> anyhow::Result<impl IntoResponse> {
 
     let started = std::time::Instant::now();
     let outcome = executor::run(&envelope.code, run_input.as_ref());
-    let duration_ms = started.elapsed().as_millis();
 
-    // guard-io captured whatever ts-sandbox's (real, unshimmed) console wrote
-    // to wasi:cli/stdout`/`stderr` while `run` was executing — that's the
-    // "main" shape's output, not anything ts-sandbox reports itself.
-    let (stdout, stderr) = context::take_captured_output();
-
-    let (kind, status, response) = match outcome {
+    match outcome {
         executor::Outcome::HandlerResponse(hr) => {
             let status = hr.status;
-            let mut builder = Response::builder();
-            builder.status(status);
-            for (name, value) in &hr.headers {
-                builder.header(name, value);
+            let header_list: Vec<(String, Vec<u8>)> =
+                hr.headers.iter().map(|(k, v)| (k.clone(), v.clone().into_bytes())).collect();
+            let fields = match Fields::from_list(&header_list) {
+                Ok(f) => f,
+                Err(e) => {
+                    logging::warn(&format!("sandbox={} handler produced invalid headers: {e:?}", envelope.sandbox_id));
+                    respond(response_out, json_error(500, "handler_error", "handler produced invalid headers")).await;
+                    return;
+                }
+            };
+            let outgoing = OutgoingResponse::new(fields);
+            if outgoing.set_status_code(status).is_err() {
+                logging::warn(&format!("sandbox={} handler produced invalid status code {status}", envelope.sandbox_id));
+                respond(response_out, json_error(500, "handler_error", "handler produced an invalid status code")).await;
+                return;
             }
-            ("handler_response", status, builder.body(hr.body).build())
+
+            // `take_body` borrows, so it must run before `response_out.set`
+            // consumes `outgoing` by value.
+            let mut body_sink = outgoing.take_body();
+            response_out.set(outgoing);
+
+            loop {
+                match hr.body.read() {
+                    executor::BodyChunk::Chunk(chunk) => {
+                        if let Err(e) = body_sink.send(chunk).await {
+                            logging::warn(&format!("sandbox={} response stream write failed: {e:?}", envelope.sandbox_id));
+                            break;
+                        }
+                    }
+                    executor::BodyChunk::Done => break,
+                    executor::BodyChunk::Error(msg) => {
+                        // Status/headers are already committed at this point,
+                        // so an error here can only truncate the body, not
+                        // change the response's status.
+                        logging::warn(&format!("sandbox={} response body stream error: {msg}", envelope.sandbox_id));
+                        break;
+                    }
+                }
+            }
+            let _ = body_sink.flush().await;
+            let _ = body_sink.close().await;
+            drop(body_sink);
+
+            // Captured only now, not right after `run()` returns: a lazily
+            // streamed body can still call `console.log` while chunks are
+            // being pulled above, after `run()` has already returned.
+            let (stdout, stderr) = context::take_captured_output();
+            log_response(&envelope.sandbox_id, "handler_response", status, &stdout, &stderr, started.elapsed().as_millis());
         }
         executor::Outcome::Main(error) => {
             if let Some(msg) = &error {
                 logging::warn(&format!("sandbox={} uncaught error: {msg}", envelope.sandbox_id));
             }
+            let (stdout, stderr) = context::take_captured_output();
+            log_response(&envelope.sandbox_id, "main", 200, &stdout, &stderr, started.elapsed().as_millis());
             let body = serde_json::json!({ "stdout": stdout, "stderr": stderr, "error": error }).to_string();
-            (
-                "main",
-                200,
+            respond(
+                response_out,
                 Response::builder().status(200).header("content-type", "application/json").body(body).build(),
             )
+            .await;
         }
         executor::Outcome::CompileError(msg) => {
             logging::warn(&format!("sandbox={} compile_error: {msg}", envelope.sandbox_id));
-            ("compile_error", 400, json_error(400, "compile_error", &msg))
+            let (stdout, stderr) = context::take_captured_output();
+            log_response(&envelope.sandbox_id, "compile_error", 400, &stdout, &stderr, started.elapsed().as_millis());
+            respond(response_out, json_error(400, "compile_error", &msg)).await;
         }
         executor::Outcome::HandlerError(msg) => {
             logging::warn(&format!("sandbox={} handler_error: {msg}", envelope.sandbox_id));
-            ("handler_error", 500, json_error(500, "handler_error", &msg))
+            let (stdout, stderr) = context::take_captured_output();
+            log_response(&envelope.sandbox_id, "handler_error", 500, &stdout, &stderr, started.elapsed().as_millis());
+            respond(response_out, json_error(500, "handler_error", &msg)).await;
         }
-    };
-
-    logging::info(&format!(
-        "response sandbox={} outcome={kind} status={status} stdout_bytes={} stderr_bytes={} duration_ms={duration_ms}",
-        envelope.sandbox_id,
-        stdout.len(),
-        stderr.len(),
-    ));
-
-    Ok(response)
+    }
 }

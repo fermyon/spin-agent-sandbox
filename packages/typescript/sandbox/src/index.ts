@@ -8,7 +8,7 @@
 // success/failure (guard reads the captured stdout/stderr back from guard-io itself).
 
 import { transform } from "sucrase";
-import { buildRequest, toWireResponse, type RunInput } from "./requestResponse";
+import { buildRequest, toWireResponse, BodyStream, type RunInput } from "./requestResponse";
 import { makeRequire } from "./registry";
 import { AsyncFunction, detectHandler, coerceUserResponse } from "./runner";
 
@@ -25,7 +25,7 @@ function errorText(e: any): string {
 const PREBUNDLED_MARKER = "//__spin_bundled_cjs__";
 
 type Outcome =
-  | { tag: "handler-response"; val: { status: number; headers: [string, string][]; body: Uint8Array } }
+  | { tag: "handler-response"; val: { status: number; headers: [string, string][]; body: BodyStream } }
   | { tag: "main"; val: string | undefined }
   | { tag: "compile-error"; val: string }
   | { tag: "handler-error"; val: string };
@@ -82,4 +82,4 @@ async function run(code: string, input: RunInput | undefined): Promise<Outcome> 
   return { tag: "main", val: undefined };
 }
 
-export const executor = { run };
+export const executor = { run, BodyStream };

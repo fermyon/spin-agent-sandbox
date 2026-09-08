@@ -24,14 +24,44 @@ export function buildRequest(input: RunInput | undefined): Request {
   });
 }
 
+export type BodyChunk =
+  | { tag: "chunk"; val: Uint8Array }
+  | { tag: "done" }
+  | { tag: "error"; val: string };
+
+// Implements the WIT `body-stream` resource: guard-front owns one instance
+// per handler-response and calls `read()` repeatedly until `done`, driving
+// this reader forward one `ReadableStream` chunk per call.
+export class BodyStream {
+  #reader: ReadableStreamDefaultReader<Uint8Array> | null;
+
+  constructor(body: ReadableStream<Uint8Array> | null) {
+    this.#reader = body ? body.getReader() : null;
+  }
+
+  async read(): Promise<BodyChunk> {
+    if (!this.#reader) return { tag: "done" };
+    try {
+      const { done, value } = await this.#reader.read();
+      if (done) {
+        this.#reader = null;
+        return { tag: "done" };
+      }
+      return { tag: "chunk", val: value };
+    } catch (e: any) {
+      this.#reader = null;
+      return { tag: "error", val: String(e?.message ?? e) };
+    }
+  }
+}
+
 export interface WireResponse {
   status: number;
   headers: [string, string][];
-  body: Uint8Array;
+  body: BodyStream;
 }
 
 export async function toWireResponse(resp: Response): Promise<WireResponse> {
-  const body = new Uint8Array(await resp.arrayBuffer());
   const headers: [string, string][] = [...resp.headers.entries()];
-  return { status: resp.status, headers, body };
+  return { status: resp.status, headers, body: new BodyStream(resp.body) };
 }

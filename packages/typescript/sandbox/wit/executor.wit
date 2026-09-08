@@ -16,10 +16,30 @@ interface executor {
         body: option<list<u8>>,
     }
 
+    // Mirrors wasi:io/streams' pull-based read contract, scoped to this
+    // package rather than reusing that interface directly — ts-sandbox would
+    // otherwise have to implement wasi:io/streams' full output-stream side too,
+    // just to export a resource it only ever produces the input half of.
+    // `chunk` = more data, `done` = clean EOF, `error` = the underlying stream
+    // broke mid-read (e.g. an upstream fetch failed).
+    variant body-chunk {
+        chunk(list<u8>),
+        done,
+        error(string),
+    }
+
+    // Owned by guard-front once returned in `handler-response`; pulled via
+    // repeated `read` calls until `done`. Status/headers are already
+    // committed by the time any `error` surfaces, so the host can only
+    // abort/truncate the body at that point, not report a different status.
+    resource body-stream {
+        read: func() -> body-chunk;
+    }
+
     record handler-response {
         status: u16,
         headers: list<tuple<string, string>>,
-        body: list<u8>,
+        body: body-stream,
     }
 
     variant outcome {

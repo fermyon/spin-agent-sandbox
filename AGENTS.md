@@ -10,10 +10,10 @@ file covers the invariants you must not break.
 This is the whole point of the project. If you touch the relevant code, keep these true
 and keep the tests in [tests/smoke.hurl](tests/smoke.hurl) green:
 
-1. **Per-sandbox KV isolation.** Keys are namespaced `"{len}:{sandboxId}:{key}"`. The
-   length prefix is load-bearing: a bare `"{sandboxId}-{key}"` separator collides (id
-   `a` + key `b-k` == id `a-b` + key `k`), which would let one sandbox read, write, or
-   enumerate another's keys. Keep the namespace unambiguous in both components.
+1. **Per-sandbox KV isolation.** Keys are namespaced `"{len}:{sandboxId}:{key}"`.
+   Length-prefixing avoids collisions: a bare `"{sandboxId}-{key}"` separator collides
+   (id `a` + key `b-k` == id `a-b` + key `k`), which would let one sandbox read, write,
+   or enumerate another's keys. Keep the namespace unambiguous in both components.
 2. **Egress default-deny.** Empty `allowedHosts` denies all outbound. The per-request
    list may only narrow: a bare `"*"` must not grant all. Loopback, link-local,
    private, and `.internal` targets are always refused, even if allow-listed (the SSRF

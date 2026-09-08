@@ -47,5 +47,20 @@ test("toWireResponse round-trips status, headers, and body", async () => {
   const wire = await toWireResponse(resp);
   assert.equal(wire.status, 201);
   assert.deepEqual(wire.headers.find(([k]) => k === "x-test"), ["x-test", "yes"]);
-  assert.equal(new TextDecoder().decode(wire.body), "hi");
+  // we have to read bodystream to the end to ensure the body is fully consumed
+  let body = "";
+  while (true) {
+    let chunk = await wire.body.read();
+    if (chunk.tag == "chunk" && chunk.val != null) {
+      body += new TextDecoder().decode(chunk.val);
+    }
+    if (chunk.tag == "done") {
+      break;
+    }
+    if (chunk.tag == "error") {
+      throw new Error("Error reading body");
+    }
+
+  }
+  assert.equal(body, "hi");
 });

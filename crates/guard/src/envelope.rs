@@ -55,6 +55,9 @@ pub fn validate(body: &[u8]) -> Result<Envelope, EnvelopeError> {
     if raw.code.len() > MAX_CODE {
         return Err(EnvelopeError::CodeTooLarge);
     }
+    if raw.sandbox_id.trim().is_empty() {
+        return Err(EnvelopeError::Invalid("sandboxId must not be empty".to_string()));
+    }
     Ok(Envelope {
         code: raw.code,
         sandbox_id: raw.sandbox_id,
@@ -100,6 +103,22 @@ mod tests {
     fn rejects_missing_required_fields() {
         // `sandboxId` is missing entirely.
         match validate(br#"{"code": "1"}"#) {
+            Err(EnvelopeError::Invalid(_)) => {}
+            other => panic!("expected Invalid, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn rejects_empty_sandbox_id() {
+        match validate(br#"{"code": "1", "sandboxId": ""}"#) {
+            Err(EnvelopeError::Invalid(_)) => {}
+            other => panic!("expected Invalid, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn rejects_whitespace_only_sandbox_id() {
+        match validate(br#"{"code": "1", "sandboxId": "   "}"#) {
             Err(EnvelopeError::Invalid(_)) => {}
             other => panic!("expected Invalid, got {other:?}"),
         }
