@@ -17,7 +17,7 @@ Five components; only `ui` and `api` have public routes.
   from the upstream example and trimmed to the interpreter-only surface (a
   filesystem-assuming prompt was swapped for an interpreter-friendly one).
 - **`ts-sandbox` / `py-sandbox`** (private, `route = { private = true }`): this repo's
-  interpreter components, built in place from `../../ts-sandbox` and `../../py-sandbox`.
+  interpreter components, built in place from `../../packages/typescript/sandbox` and `../../py-sandbox`.
   They have no public route and are reachable only from `api` via service chaining
   (`ts-sandbox.spin.internal` / `py-sandbox.spin.internal`), which the API lists in its
   `allowed_outbound_hosts`.

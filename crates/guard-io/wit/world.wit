@@ -1,0 +1,35 @@
+package guard:host;
+
+world guard-io {
+    // Real wasi:http, pinned to @0.2.10 to exact-match the JS component's ABI —
+    // kept separate from spin-sdk 4.0.0's own wasi:http@0.2.0 client.
+    import wasi:io/poll@0.2.10;
+    import wasi:io/error@0.2.10;
+    import wasi:clocks/wall-clock@0.2.10;
+    import wasi:http/types@0.2.10;
+    import wasi:http/outgoing-handler@0.2.10;
+
+    // wac-composed into ts-sandbox's matching imports. wasi:io/streams must be
+    // exported alongside every interface sharing its stream/descriptor types
+    // (stdin, stdout, stderr, http/types, filesystem/*) or the composed
+    // component ends up with two definitions of "the same" type and fails
+    // validation — see src/stdio.rs. stdin/filesystem are stubs (ts-sandbox
+    // never legitimately uses them).
+    //
+    // BUILD NOTE — built via wasm32-wasip1 + `wasm-tools component new` + the
+    // vendored preview1 adapter, not wasip2 — see ../README.md.
+    export wasi:io/streams@0.2.10;
+    export wasi:cli/stdin@0.2.10;
+    export wasi:cli/stdout@0.2.10;
+    export wasi:cli/stderr@0.2.10;
+    export wasi:http/types@0.2.10;
+    export wasi:filesystem/types@0.2.10;
+    export wasi:filesystem/preopens@0.2.10;
+    export fermyon:spin/key-value@2.0.0;
+    export wasi:http/outgoing-handler@0.2.10;
+
+    // Exported to guard-front, which calls this once per request — before
+    // calling into ts-sandbox — to set which sandboxId the key-value export
+    // should prefix, and to reset the captured stdout/stderr buffers.
+    export sandbox:guard/context@0.1.0;
+}

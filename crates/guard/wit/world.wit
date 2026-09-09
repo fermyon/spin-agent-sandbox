@@ -1,0 +1,10 @@
+package guard:front;
+
+world guard-front {
+    // guard-io's exports (called once per request, before executor.run, to
+    // scope the guarded key-value export it wac-composes into ts-sandbox).
+    import sandbox:guard/context@0.1.0;
+
+    // ts-sandbox's only export.
+    import sandbox:guard/executor@0.1.0;
+}
