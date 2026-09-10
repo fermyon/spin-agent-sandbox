@@ -17,12 +17,12 @@ const skip = BASE ? false : "set BUNDLER_BASE_URL (or use `npm run test:integrat
 
 async function bundleReq(source, deps) {
   const r = await fetch(`${BASE}/bundle`, { method: "POST", headers: { "content-type": "application/json" },
-    body: JSON.stringify({ source, packageJson: { dependencies: deps } }) });
+    body: JSON.stringify({ source, packageJson: { dependencies: deps } }), signal: AbortSignal.timeout(45000) });
   return r.json();
 }
 async function sandboxRun(code) {
   const r = await fetch(`${BASE}/ts/run`, { method: "POST", headers: { "content-type": "application/json" },
-    body: JSON.stringify({ code, sandboxId: "it", input: {} }) });
+    body: JSON.stringify({ code, sandboxId: "it", input: {} }), signal: AbortSignal.timeout(45000) });
   const ct = r.headers.get("content-type") || "";
   return { status: r.status, body: ct.includes("application/json") ? await r.json() : await r.text() };
 }

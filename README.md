@@ -164,17 +164,48 @@ spin add -t sandbox-py             # or the Python sandbox
 ```
 
 The release workflow ([.github/workflows/release.yml](.github/workflows/release.yml))
-builds and publishes the components. See [templates/README.md](templates/README.md).
+runs the CI gates before publishing. It reuses the tested TypeScript artifacts,
+including the composed `dist/ts-sandbox.wasm` (guard + guard-io + JS guest), then
+builds the Python sandbox and publishes all three components with SHA-256 checksums.
+Each release also includes the compatibility reports and logs from its tested run.
+Push a `v*` tag for a versioned release, or dispatch the workflow from a branch for
+the rolling `canary` prerelease. See [templates/README.md](templates/README.md).
 
 ## Testing
 
-### Unit tests (no build or server needed)
+GitHub Actions runs the unit suites on every pull request and push to `main`.
+Bundler integration tests, the full library compatibility sweep, and tool-installer
+checks run on demand through the `tests` workflow's **Run workflow** action, and
+before every release. The release workflow runs only for `v*` tags or manual
+dispatch, so a push to `main` does not also start release tests. The compatibility gate
+requires all libraries marked required in the compact `baseline.json` to keep passing
+and checks that the sweep is complete; known unsupported libraries remain recorded.
+Full reports are generated artifacts, not tracked files. Local runs retain separate
+timestamped directories under ignored `test-results/bundler-compat/`; CI uploads
+reports and logs even when tests fail and retains them for 90 days.
+Configure the `ci` status check as required in branch protection to gate merges on
+the unit suites. Manual and release runs also require the live suites to pass.
+
+CI installs the latest stable `wasm-tools` and `wac` releases directly from the
+Bytecode Alliance repositories, plus both Rust Wasm targets needed for composition.
+To run the bundler's integration and compatibility gates locally:
+
+```bash
+cd packages/typescript/bundler && npm run test:ci
+```
+
+See [the bundler test guide](packages/typescript/bundler/test/README.md) for baseline
+maintenance and report locations.
+
+### Unit tests (no Wasm build or server needed)
 
 The pure logic of each component (KV scoping, the egress allow-list, envelope
 validation, request shaping) lives in small dependency-free modules that are
-unit-tested directly:
+unit-tested directly. The Rust suites also cover envelope validation and bounded
+output capture. Run each command from the repository root:
 
 ```bash
+cargo test --workspace --locked                                       # Rust guard + guard-io
 cd packages/typescript/sandbox && npm test                              # TS logic (esbuild + node --test)
 cd py-sandbox && python3 -m unittest discover -s tests -t .   # Python logic (stdlib unittest)
 ```
