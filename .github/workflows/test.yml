@@ -1,50 +1,59 @@
 name: tests
 
-# Two jobs: the pure-logic unit suites (no build, no server) and the live bundler
-# integration (real Wasm components chained via `spin up`, reaching esm.sh). See
-# packages/typescript/bundler/test/README.md. The broad 571-library compatibility sweep
-# lives in packages/typescript/bundler/test/compat and is run manually.
+# Unit tests run on every PR and main push, keeping the required `ci` check present.
+# Live suites run on demand or when requested by the release workflow, which
+# publishes the exact TS artifacts tested here.
 on:
   push:
     branches: [main]
-    paths:
-      - "packages/typescript/**"
-      - "py-sandbox/**"
-      - "sdk/**"
-      - "spin.toml"
-      - ".github/workflows/test.yml"
   pull_request:
-    paths:
-      - "packages/typescript/**"
-      - "py-sandbox/**"
-      - "sdk/**"
-      - "spin.toml"
-      - ".github/workflows/test.yml"
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      run-integration:
+        description: Run the live bundler integration and compatibility gates.
+        type: boolean
+        required: false
+        default: false
 
+permissions:
+  contents: read
 
 env:
   CARGO_TERM_COLOR: always
-  RUST_VERSION: '1.95'
+  RUST_VERSION: "1.95"
 
 jobs:
   unit:
     name: unit
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+      - name: Install Rust toolchain
+        run: |
+          rustup toolchain install "$RUST_VERSION" --profile minimal --no-self-update
+          rustup default "$RUST_VERSION"
+      - uses: Swatinem/rust-cache@v2
+      - name: Guard and guard-io unit tests
+        run: cargo test --workspace --locked
       - uses: actions/setup-node@v4
         with:
-          # The sdk runs its TypeScript tests directly (`node --test "test/*.test.ts"`),
-          # which needs native type stripping (unflagged since Node 24) and --test glob
-          # support (Node 21+). ts-sandbox transpiles first, so it is version-agnostic.
+          # Sandbox module mocks and the SDK's native TS tests need modern Node.
           node-version: "24"
+          cache: npm
+          cache-dependency-path: |
+            packages/typescript/sandbox/package-lock.json
+            sdk/package-lock.json
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - name: ts-sandbox unit tests
         run: npm ci && npm test
         working-directory: packages/typescript/sandbox
+      - name: Bundler gate and report unit tests
+        run: npm run test:unit
+        working-directory: packages/typescript/bundler
       - name: py-sandbox unit tests
         run: python3 -m unittest discover -s tests -t .
         working-directory: py-sandbox
@@ -54,40 +63,95 @@ jobs:
 
   integration:
     name: integration
+    if: github.event_name == 'workflow_dispatch' || inputs.run-integration == true
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
-
-      - uses: Swatinem/rust-cache@v2
-      
-      - name: Install Rust toolchain
-        shell: bash
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: |
+            packages/typescript/sandbox/package-lock.json
+            packages/typescript/bundler/package-lock.json
+      - name: WebAssembly tool installer tests
+        run: node --test .github/actions/setup-wasm-tools/install.test.mjs
+      - name: Install Rust toolchain and Wasm targets
         run: |
-          rustup toolchain install ${{ env.RUST_VERSION }} --no-self-update
-          rustup default ${{ env.RUST_VERSION }}
-
-      - name: Install target
-        if: matrix.config.target != ''
-        shell: bash
-        run: rustup target add --toolchain ${{ env.RUST_VERSION }} ${{ matrix.config.target }}
-
-      - name: Install Wasm Rust target
-        run: rustup target add wasm32-wasip1 wasm32-wasip2 --toolchain ${{ env.RUST_VERSION }}
+          rustup toolchain install "$RUST_VERSION" --profile minimal --no-self-update --target wasm32-wasip1 --target wasm32-wasip2
+          rustup default "$RUST_VERSION"
+      - uses: Swatinem/rust-cache@v2
       - name: Install Spin
         uses: fermyon/actions/spin/setup@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-      
-      - uses: cargo-bins/cargo-binstall@main
-
-      - name: Install Wac and wasm-tools
-        run: |
-          cargo binstall wac-cli
-          cargo binstall wasm-tools
-
-      - name: Build components (ts-sandbox + bundler)
+      - name: Install latest Bytecode Alliance tools
+        uses: ./.github/actions/setup-wasm-tools
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build composed ts-sandbox and bundler
         run: spin build -c ts-sandbox -c bundler
-      - name: Integration tests (bundler -> sandbox)
-        # Reaches esm.sh at runtime; starts `spin up` on the trimmed test manifest,
-        # runs test/integration.test.mjs, tears down.
-        run: node packages/typescript/bundler/test/integration-run.mjs
+      - name: Validate components
+        run: |
+          wasm-tools validate dist/ts-sandbox.wasm
+          wasm-tools validate packages/typescript/bundler/dist/bundler.wasm
+      - name: Bundler integration and compatibility gate
+        # Starts Spin once, runs both live suites, and fails on a baseline regression.
+        # The full catalog reaches esm.sh; reports are retained even on failure.
+        shell: bash
+        env:
+          COMPAT_OUTPUT_DIR: ${{ runner.temp }}/bundler-compat
+        run: npm run test:ci 2>&1 | tee "$RUNNER_TEMP/bundler-tests.log"
+        working-directory: packages/typescript/bundler
+      - name: Compatibility summary
+        if: always()
+        run: |
+          node --input-type=module <<'JS' >> "$GITHUB_STEP_SUMMARY"
+          import { existsSync, readFileSync } from 'node:fs';
+          import path from 'node:path';
+          const root = path.join(process.env.RUNNER_TEMP, 'bundler-compat');
+          const latest = path.join(root, 'latest.json');
+          if (existsSync(latest)) {
+            const { runDirectory } = JSON.parse(readFileSync(latest, 'utf8'));
+            const gate = path.join(root, runDirectory, 'GATE.md');
+            if (existsSync(gate)) process.stdout.write(readFileSync(gate, 'utf8'));
+          }
+          JS
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundler-test-results
+          path: |
+            ${{ runner.temp }}/bundler-compat/
+            ${{ runner.temp }}/bundler-tests.log
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Collect tested TypeScript components
+        run: |
+          mkdir -p "$RUNNER_TEMP/typescript-components"
+          cp dist/ts-sandbox.wasm "$RUNNER_TEMP/typescript-components/ts-sandbox.wasm"
+          cp packages/typescript/bundler/dist/bundler.wasm "$RUNNER_TEMP/typescript-components/bundler.wasm"
+      - name: Upload tested TypeScript components
+        uses: actions/upload-artifact@v4
+        with:
+          name: typescript-components
+          path: ${{ runner.temp }}/typescript-components/*.wasm
+          if-no-files-found: error
+          retention-days: 7
+
+  ci:
+    name: ci
+    if: always()
+    needs: [unit, integration]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require all scheduled tests to pass
+        env:
+          UNIT_RESULT: ${{ needs.unit.result }}
+          INTEGRATION_RESULT: ${{ needs.integration.result }}
+          EXPECTED_INTEGRATION_RESULT: ${{ (github.event_name == 'workflow_dispatch' || inputs.run-integration == true) && 'success' || 'skipped' }}
+        run: |
+          [[ "$UNIT_RESULT" == success && "$INTEGRATION_RESULT" == "$EXPECTED_INTEGRATION_RESULT" ]]

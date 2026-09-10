@@ -3,6 +3,11 @@ node_modules/
 build/
 dist/
 .build/
+test-results/
+# Legacy report locations (new compatibility runs use test-results/).
+packages/typescript/bundler/test/compat/results.json
+packages/typescript/bundler/test/compat/REPORT.md
+packages/typescript/bundler/test/compat/GATE.md
 __pycache__/
 
 # Rust

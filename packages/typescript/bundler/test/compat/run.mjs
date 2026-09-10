@@ -15,54 +15,37 @@
 // Usage:
 //   BUNDLER_BASE_URL=http://127.0.0.1:3000 node run.mjs [catalog.mjs] [--only=name1,name2] [--conc=3]
 // Defaults: BASE=http://127.0.0.1:3000, catalog=./catalog.mjs, concurrency=3.
-// Writes results.json and REPORT.md next to this file.
+// Preserves each run in a unique directory under COMPAT_OUTPUT_DIR or repo/test-results/bundler-compat.
+// Add --gate to require all baseline passes and complete catalog coverage.
 
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { checkCompatibility, gateReport, parseBaseline } from "./gate.mjs";
+import { createOutputGuard, createRunHistory } from "./reports.mjs";
+import { postJson } from "./http.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const BASE = process.env.BUNDLER_BASE_URL || "http://127.0.0.1:3000";
 const argv = process.argv.slice(2);
 const posArgs = argv.filter((a) => !a.startsWith("--"));
 const flags = Object.fromEntries(argv.filter((a) => a.startsWith("--")).map((a) => {
-  const [k, v] = a.replace(/^--/, "").split("=");
-  return [k, v ?? true];
+  const value = a.replace(/^--/, "");
+  const separator = value.indexOf("=");
+  return separator < 0 ? [value, true] : [value.slice(0, separator), value.slice(separator + 1)];
 }));
 const CATALOG = posArgs[0] ? path.resolve(process.cwd(), posArgs[0]) : path.join(HERE, "catalog.mjs");
 const ONLY = flags.only ? new Set(String(flags.only).split(",")) : null;
 const CONC = Number(flags.conc || 3);
-const OUT = flags.out ? path.resolve(process.cwd(), String(flags.out)) : path.join(HERE, "results.json");
-const REPORT = flags.report === "none" ? null
-  : flags.report ? path.resolve(process.cwd(), String(flags.report))
-  : path.join(HERE, "REPORT.md");
-const REQ_TIMEOUT_MS = 45000;
-
-async function postJson(url, body, tries = 3) {
-  let lastErr;
-  for (let attempt = 1; attempt <= tries; attempt++) {
-    const ctl = new AbortController();
-    const timer = setTimeout(() => ctl.abort(), REQ_TIMEOUT_MS);
-    try {
-      const r = await fetch(url, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(body),
-        signal: ctl.signal,
-      });
-      clearTimeout(timer);
-      const ct = r.headers.get("content-type") || "";
-      const isJson = ct.includes("application/json");
-      const payload = isJson ? await r.json() : await r.text();
-      return { status: r.status, isJson, contentType: ct, payload };
-    } catch (e) {
-      clearTimeout(timer);
-      lastErr = e;
-      if (attempt < tries) await new Promise((res) => setTimeout(res, 500 * attempt));
-    }
-  }
-  return { netError: String((lastErr && lastErr.message) || lastErr) };
-}
+const REPO_ROOT = path.resolve(HERE, "../../../../..");
+const OUTPUT_DIR = path.resolve(String(flags["out-dir"] || process.env.COMPAT_OUTPUT_DIR || path.join(REPO_ROOT, "test-results/bundler-compat")));
+// Optional additional exports never replace the canonical report history.
+const OUT = flags.out ? path.resolve(String(flags.out)) : null;
+const REPORT = flags.report && flags.report !== "none" ? path.resolve(String(flags.report)) : null;
+const GATE = Boolean(flags.gate);
+const BASELINE = flags.baseline ? path.resolve(String(flags.baseline)) : path.join(HERE, "baseline.json");
+const BUNDLE_TIMEOUT_MS = Number(flags["bundle-timeout-ms"] ?? process.env.COMPAT_BUNDLE_TIMEOUT_MS ?? 120000);
+const RUN_TIMEOUT_MS = Number(flags["run-timeout-ms"] ?? process.env.COMPAT_RUN_TIMEOUT_MS ?? 45000);
 
 function classify(entry, bundleRes, runRes) {
   const rec = {
@@ -156,20 +139,29 @@ function wrapBlob(blob) {
 }
 
 async function runOne(entry) {
+  const requestOptions = (stage, timeoutMs) => ({
+    timeoutMs,
+    onRetry: ({ detail, nextAttempt, delayMs }) => {
+      console.log(`  RETRY ${entry.name} ${stage}: ${detail}; attempt ${nextAttempt}/3 in ${delayMs}ms`);
+    },
+  });
   const deps = { ...(entry.version ? { [entry.name]: entry.version } : {}), ...(entry.extraDeps || {}) };
   const bundleRes = await postJson(`${BASE}/bundle`, {
     source: entry.source,
     packageJson: { dependencies: deps },
-  });
+  }, requestOptions("bundle", BUNDLE_TIMEOUT_MS));
   let runRes = { payload: null };
   if (!bundleRes.netError && bundleRes.status === 200 && bundleRes.payload && bundleRes.payload.blob) {
     runRes = await postJson(`${BASE}/ts/run`, {
       code: wrapBlob(bundleRes.payload.blob),
       sandboxId: "compat-" + entry.name.replace(/[^a-z0-9]/gi, "_"),
       input: {},
-    });
+    }, requestOptions("run", RUN_TIMEOUT_MS));
   }
-  return classify(entry, bundleRes, runRes);
+  return {
+    ...classify(entry, bundleRes, runRes),
+    requests: { bundle: bundleRes.attempts, run: runRes.attempts || [] },
+  };
 }
 
 async function pool(items, n, fn) {
@@ -185,57 +177,101 @@ async function pool(items, n, fn) {
   return out;
 }
 
-function report(results) {
-  const order = ["pass", "wrong_output", "runtime_error", "compile_error", "transpile_err", "run_reject", "sandbox_crash", "bundle_error", "net_error"];
-  const counts = {};
-  for (const r of results) counts[r.status] = (counts[r.status] || 0) + 1;
-  const total = results.length;
-  const passed = counts.pass || 0;
-
-  const lines = [];
-  lines.push(`# Bundler → Sandbox compatibility sweep`);
-  lines.push("");
-  lines.push(`**${passed}/${total} libraries pass end-to-end** (bundle + run + expected output).`);
-  lines.push("");
-  lines.push(`| outcome | count |`);
-  lines.push(`|---|---|`);
-  for (const s of order) if (counts[s]) lines.push(`| \`${s}\` | ${counts[s]} |`);
-  lines.push("");
-  lines.push(`## Results`);
-  lines.push("");
-  lines.push(`| library | version | category | outcome | fetches | modules | bytes | ms | detail |`);
-  lines.push(`|---|---|---|---|--:|--:|--:|--:|---|`);
-  const rank = Object.fromEntries(order.map((s, i) => [s, i]));
-  const sorted = [...results].sort((a, b) =>
-    (rank[a.status] ?? 99) - (rank[b.status] ?? 99) || a.category.localeCompare(b.category) || a.name.localeCompare(b.name));
-  for (const r of sorted) {
-    const s = r.stats || {};
-    const badge = r.status === "pass" ? "✅ pass" : r.status;
-    lines.push(`| \`${r.name}\` | ${r.version} | ${r.category} | ${badge} | ${s.fetches ?? ""} | ${s.modules ?? ""} | ${s.bytes ?? ""} | ${s.ms ?? ""} | ${escapePipes(r.detail)} |`);
-  }
-  lines.push("");
-  return lines.join("\n");
-}
-const escapePipes = (s) => String(s || "").replace(/\|/g, "\\|").replace(/\n/g, " ");
-
 async function main() {
-  let catalog = (await import(pathToFileURL(CATALOG).href)).default;
-  if (ONLY) catalog = catalog.filter((e) => ONLY.has(e.name));
-  console.log(`Running ${catalog.length} cases against ${BASE} (concurrency ${CONC}) ...`);
+  if (!Number.isInteger(CONC) || CONC < 1) throw new Error("--conc must be a positive integer");
+  for (const [name, value] of [["bundle-timeout-ms", BUNDLE_TIMEOUT_MS], ["run-timeout-ms", RUN_TIMEOUT_MS]]) {
+    if (flags[name] === true || !Number.isInteger(value) || value < 1 || value > 2147483647) {
+      throw new Error(`--${name} must be an integer between 1 and 2147483647 milliseconds`);
+    }
+  }
+  if (GATE && ONLY) throw new Error("--gate requires the full catalog; --only is not allowed");
+  // Apply the same safety rules to exploratory runs and gated runs before any
+  // requests are sent. Exports must be new files, even outside the checkout.
+  const assertOutput = createOutputGuard({ repoRoot: REPO_ROOT, baselinePath: BASELINE });
+  const exports = [OUT, REPORT].filter(Boolean).map((filename) => assertOutput(filename, { exclusive: true }));
+  if (new Set(exports).size !== exports.length) throw new Error("--out and --report must use different filenames");
+  const fullCatalog = (await import(pathToFileURL(CATALOG).href)).default;
+  if (!Array.isArray(fullCatalog) || !fullCatalog.length) throw new Error("Catalog must be a non-empty array");
+  const catalog = ONLY ? fullCatalog.filter((entry) => ONLY.has(entry.name)) : fullCatalog;
+  if (!catalog.length) throw new Error("No catalog entries selected");
+  const history = createRunHistory({ outputDirectory: OUTPUT_DIR, repoRoot: REPO_ROOT, baselinePath: BASELINE, selectedCount: catalog.length, catalogCount: fullCatalog.length });
+  console.log(`Reports: ${history.runDirectory}`);
   const t0 = Date.now();
-  let done = 0;
-  const results = await pool(catalog, CONC, async (entry) => {
-    const rec = await runOne(entry);
-    done++;
-    const badge = rec.status === "pass" ? "PASS" : rec.status.toUpperCase();
-    console.log(`  [${String(done).padStart(2)}/${catalog.length}] ${badge.padEnd(13)} ${entry.name}${rec.detail ? ": " + firstLine(rec.detail) : ""}`);
-    return rec;
-  });
-  const secs = ((Date.now() - t0) / 1000).toFixed(1);
-  writeFileSync(OUT, JSON.stringify({ base: BASE, seconds: Number(secs), results }, null, 2) + "\n");
-  if (REPORT) writeFileSync(REPORT, report(results));
-  const passed = results.filter((r) => r.status === "pass").length;
-  console.log(`\nDone in ${secs}s. ${passed}/${results.length} pass. Wrote ${path.basename(OUT)}${REPORT ? " and " + path.basename(REPORT) : ""}`);
+  const completed = new Map();
+  let baseline = [];
+  let finished = false;
+  let failure = null;
+  const results = () => [...completed].sort(([a], [b]) => a - b).map(([, row]) => row);
+  const seconds = () => Number(((Date.now() - t0) / 1000).toFixed(1));
+  function checkpoint(final = false) {
+    const rows = results();
+    const covered = finished && catalog.length === fullCatalog.length && rows.length === catalog.length;
+    const complete = covered && !rows.some((row) => row.status === "net_error");
+    let gate;
+    if (GATE) {
+      const checked = checkCompatibility(fullCatalog, baseline, rows);
+      if (!covered) checked.errors.push("Sweep did not complete; results are a partial checkpoint.");
+      if (failure) checked.errors.push(failure);
+      checked.ok = checked.ok && complete && !failure;
+      gate = gateReport(checked);
+    }
+    history.write({ results: rows, base: BASE, seconds: seconds(), gate, complete, finishedAt: final ? new Date().toISOString() : null });
+    return gate;
+  }
+  function interrupt(signal) {
+    failure = `Sweep interrupted by ${signal}.`;
+    try { checkpoint(true); }
+    catch (error) { console.error(`Could not save final checkpoint: ${error.message}`); }
+    console.error(`${failure} Reports: ${history.runDirectory}`);
+    process.exit(signal === "SIGINT" ? 130 : 143);
+  }
+  const onInterrupt = () => interrupt("SIGINT");
+  const onTerminate = () => interrupt("SIGTERM");
+  process.on("SIGINT", onInterrupt);
+  process.on("SIGTERM", onTerminate);
+  try {
+    checkpoint();
+    if (GATE) {
+      const policy = JSON.parse(readFileSync(BASELINE, "utf8"));
+      baseline = parseBaseline(policy);
+      // Validate policy coverage before spending time on a live sweep. Synthetic
+      // successes validate every required flag, name and version without guessing
+      // outcomes for libraries that are allowed to fail.
+      const validation = checkCompatibility(fullCatalog, baseline, fullCatalog.map((entry) => ({ ...entry, status: "pass" })));
+      if (!validation.ok) throw new Error(gateReport(validation));
+      checkpoint();
+    }
+    console.log(`Running ${catalog.length} cases against ${BASE} (concurrency ${CONC}) ...`);
+    console.log(`Request timeouts: bundle ${BUNDLE_TIMEOUT_MS}ms, run ${RUN_TIMEOUT_MS}ms; up to 3 transport attempts each.`);
+    let done = 0;
+    await pool(catalog, CONC, async (entry, index) => {
+      const rec = await runOne(entry);
+      completed.set(index, rec);
+      done++;
+      checkpoint();
+      const badge = rec.status === "pass" ? "PASS" : rec.status.toUpperCase();
+      console.log(`  [${String(done).padStart(2)}/${catalog.length}] ${badge.padEnd(13)} ${entry.name}${rec.detail ? ": " + firstLine(rec.detail) : ""}`);
+      return rec;
+    });
+    finished = true;
+    const summary = checkpoint(true);
+    if (OUT) history.exportFile("results.json", OUT);
+    if (REPORT) history.exportFile("REPORT.md", REPORT);
+    const rows = results();
+    const passed = rows.filter((row) => row.status === "pass").length;
+    console.log(`\nDone in ${seconds()}s. ${passed}/${rows.length} pass. Reports: ${history.runDirectory}`);
+    if (summary) {
+      console.log(summary);
+      if (!checkCompatibility(fullCatalog, baseline, rows).ok || !history.metadata.complete) process.exitCode = 1;
+    }
+  } catch (error) {
+    failure = error.message;
+    checkpoint(true);
+    throw error;
+  } finally {
+    process.off("SIGINT", onInterrupt);
+    process.off("SIGTERM", onTerminate);
+  }
 }
 
-main().catch((e) => { console.error(e); process.exit(1); });
+main().catch((error) => { console.error(error); process.exit(1); });

@@ -1,0 +1,23 @@
+name: Set up WebAssembly tools
+description: Install the latest stable Bytecode Alliance wasm-tools and wac binaries for the runner OS and architecture.
+inputs:
+  github-token:
+    description: GitHub token used to read public release metadata.
+    required: true
+outputs:
+  wasm-tools-version:
+    description: Installed wasm-tools release tag.
+    value: ${{ steps.install.outputs.wasm-tools-version }}
+  wac-version:
+    description: Installed wac release tag.
+    value: ${{ steps.install.outputs.wac-version }}
+runs:
+  using: composite
+  steps:
+    - name: Install latest stable releases
+      id: install
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        ACTION_PATH: ${{ github.action_path }}
+      run: bash "$ACTION_PATH/install.sh"
