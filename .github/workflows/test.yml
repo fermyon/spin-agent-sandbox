@@ -24,6 +24,18 @@ env:
   RUST_VERSION: "1.95"
 
 jobs:
+  audit:
+    name: npm audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Audit all npm projects
+        run: node scripts/check-npm-audit.mjs
+
   unit:
     name: unit
     runs-on: ubuntu-latest
@@ -144,14 +156,17 @@ jobs:
   ci:
     name: ci
     if: always()
-    needs: [unit, integration]
+    needs: [audit, unit, integration]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Require all scheduled tests to pass
         env:
+          AUDIT_RESULT: ${{ needs.audit.result }}
           UNIT_RESULT: ${{ needs.unit.result }}
           INTEGRATION_RESULT: ${{ needs.integration.result }}
           EXPECTED_INTEGRATION_RESULT: ${{ (github.event_name == 'workflow_dispatch' || inputs.run-integration == true) && 'success' || 'skipped' }}
         run: |
-          [[ "$UNIT_RESULT" == success && "$INTEGRATION_RESULT" == "$EXPECTED_INTEGRATION_RESULT" ]]
+          [[ "$AUDIT_RESULT" == success ]]
+          [[ "$UNIT_RESULT" == success ]]
+          [[ "$INTEGRATION_RESULT" == "$EXPECTED_INTEGRATION_RESULT" ]]
