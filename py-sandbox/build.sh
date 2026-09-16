@@ -36,20 +36,15 @@ if [ ! -d vendor ]; then
   PYTHON="$PWD/.venv/bin/python" bash setup-vendor.sh
 fi
 
-# spin_sdk/http.py (a package dir in the real spin-sdk PyPI package, vendored
-# above) assumes the component itself exports wasi:http/incoming-handler, which
-# doesn't fit this pure-executor component — replace it with our own override
-# every build (cheap, idempotent) rather than patching the real package.
-rm -rf vendor/spin_sdk/http
-cp overrides/spin_sdk_http.py vendor/spin_sdk/http.py
-
 # Build the py-sandbox component (executor, not HTTP handler).
 # -m spin_sdk=spin-imports: generate spin_sdk's own WIT bindings using its
 # bundled "spin-imports" world (imports only, no incoming-handler export —
 # guard:front owns that) instead of hand-vendoring fermyon:spin/key-value and
-# wasi:http/* ourselves; see py-executor.wit. 
+# wasi:http/* ourselves; see py-executor.wit. spin-sdk's own http.py already
+# guards its incoming-handler bits with `except ImportError: pass` for exactly
+# this world, so no override is needed here.
 echo ">> componentize"
-WIT_REQUIRE_F32_F64=0 VIRTUAL_ENV="$PWD/.venv" .venv/bin/componentize-py \
+VIRTUAL_ENV="$PWD/.venv" .venv/bin/componentize-py \
   -d wit -w py-executor \
   componentize -m spin_sdk=spin-imports \
   -p . -p vendor \

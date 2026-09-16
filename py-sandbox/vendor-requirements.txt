@@ -13,9 +13,6 @@ pydantic
 idna
 typing_extensions
 annotated-types
-# The real Spin Python SDK: provides key_value.py (used as-is) and the
-# generated spin_sdk/wit/ bindings tree componentize-py's `-m spin_sdk=
-# spin-imports` targets (see build.sh). http.py is overridden at build time —
-# see overrides/spin_sdk_http.py.
-spin-sdk==2.0.0
+# The real Spin Python SDK: provides key_value.py and http.py used as-is
+spin-sdk==3.4.1
 
