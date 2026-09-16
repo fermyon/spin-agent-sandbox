@@ -16,6 +16,10 @@ let io = new guard:io { ... };
 // crates/guard-io/wit/dummy-sockets.wit — every export traps with
 // `unreachable`, denying raw sockets.
 let sockets-dummy = new guard:dummy-sockets { ...io, ... };
+// Same technique, from crates/guard-io/wit/dummy-capabilities.wit — denies
+// llm/redis/postgres/mysql/sqlite/mqtt/variables/wasi:keyvalue/wasi:config,
+// which spin_sdk's "spin-imports" world always pulls in
+let caps-dummy = new guard:dummy-capabilities { ... };
 
 // explicitly map interfaces until https://github.com/bytecodealliance/wac/pull/215 makes it into a release
 let sandbox = new py-sandbox:sandbox {
@@ -35,6 +39,7 @@ let sandbox = new py-sandbox:sandbox {
     "wasi:sockets/udp-create-socket@0.2.0": sockets-dummy["wasi:sockets/udp-create-socket@0.2.10"],
     "wasi:sockets/ip-name-lookup@0.2.0": sockets-dummy["wasi:sockets/ip-name-lookup@0.2.10"],
     ...io,
+    ...caps-dummy,
     ...
 };
 let front = new guard:front { ...io, ...sandbox, ... };
