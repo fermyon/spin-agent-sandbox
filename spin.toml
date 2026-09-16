@@ -86,18 +86,41 @@ workdir = "packages/typescript/bundler"
 # ---------------------------------------------------------------------------
 # Python sandbox
 # ---------------------------------------------------------------------------
+# The deployed component is `guard` + `guard-io` + `py-sandbox` composed by `wac` into one
+# artifact: `guard` is the real HTTP entry point (parses the envelope, enforces size
+# limits), `guard-io` implements the WASI interfaces py-sandbox imports (guarded
+# per-sandbox key-value, captured stdout/stderr) so py-sandbox itself does no security
+# enforcement — see crates/guard/compose-py.wac and AGENTS.md.
 [[trigger.http]]
 route = "/py/..."
 component = "py-sandbox"
 
 [component.py-sandbox]
-source = "py-sandbox/app.wasm"
+source = "dist/py-sandbox.wasm"
 key_value_stores = ["default"]
 allowed_outbound_hosts = ["https://*:*", "http://*:*"]
 [component.py-sandbox.build]
-# build.sh sets up an isolated python3.12 venv (pinned spin-sdk + componentize-py),
-# populates vendor/ with the runtime deps, then runs componentize-py with
-# `-p . -p vendor` so every pre-bundled dependency is frozen into the component.
-command = "bash build.sh"
-workdir = "py-sandbox"
-watch = ["*.py", "requirements.txt"]
+command = """
+cargo build --release --target wasm32-wasip1 -p guard-io && \
+wasm-tools component new target/wasm32-wasip1/release/guard_io.wasm \
+  --adapt wasi_snapshot_preview1=crates/guard-io/adapters/wasi_snapshot_preview1.reactor.wasm \
+  -o target/guard_io_component.wasm && \
+cargo build --release --target wasm32-wasip2 -p guard && \
+bash py-sandbox/build.sh && \
+mkdir -p dist && \
+wasm-tools component embed crates/guard-io/wit -w dummy-sockets --dummy -o target/dummy_sockets_core.wasm && \
+wasm-tools component new target/dummy_sockets_core.wasm -o target/dummy_sockets.wasm && \
+wac compose \
+  -d guard:io=target/guard_io_component.wasm \
+  -d guard:dummy-sockets=target/dummy_sockets.wasm \
+  -d py-sandbox:sandbox=py-sandbox/py-sandbox.wasm \
+  -d guard:front=target/wasm32-wasip2/release/guard.wasm \
+  -o dist/py-sandbox.wasm \
+  crates/guard/compose-py.wac
+"""
+workdir = "."
+watch = [
+    "crates/guard-io/src/**/*.rs", "crates/guard-io/wit/**/*.wit", "crates/guard-io/Cargo.toml",
+    "crates/guard/src/**/*.rs", "crates/guard/wit/**/*.wit", "crates/guard/Cargo.toml", "crates/guard/compose-py.wac",
+    "py-sandbox/**/*.py", "py-sandbox/wit/**/*.wit",
+]

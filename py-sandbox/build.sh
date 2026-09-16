@@ -1,13 +1,9 @@
 #!/usr/bin/env bash
-# Reproducible build for the Python sandbox component.
+# Build for the Python sandbox component (py-sandbox:sandbox).
 #
-# Builds app.wasm from a clean checkout: creates an isolated python3.12 venv with the
-# pinned build tools (spin-sdk + componentize-py), populates vendor/ with the runtime
-# dependencies, then runs componentize-py. This is the command referenced by the
-# component's build step in ../spin.toml, so `spin build` / `spin up --build` work.
-#
-# The venv is required because the *system* environment may have a different spin-sdk;
-# componentize-py discovers the `spin-http` world from the spin-sdk it runs against.
+# Generates WIT bindings, builds the Python executor component with
+# componentize-py. The component is composed with guard + guard-io via
+# wac in the root spin.toml build command.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -17,8 +13,8 @@ cd "$HERE"
 # prebuilt wasm .so are cpython-312, so match it for the build venv).
 find_py() {
   for c in "${PYTHON:-}" python3.12 \
-           /opt/homebrew/opt/python@3.12/bin/python3.12 \
-           /usr/local/opt/python@3.12/bin/python3.12 python3; do
+            /opt/homebrew/opt/python@3.12/bin/python3.12 \
+            /usr/local/opt/python@3.12/bin/python3.12 python3; do
     [ -n "$c" ] && command -v "$c" >/dev/null 2>&1 && { echo "$c"; return; }
   done
   echo "ERROR: no python3.12 found (set PYTHON=/path/to/python3.12)" >&2
@@ -40,20 +36,32 @@ if [ ! -d vendor ]; then
   PYTHON="$PWD/.venv/bin/python" bash setup-vendor.sh
 fi
 
-echo ">> componentize"
-VIRTUAL_ENV="$PWD/.venv" .venv/bin/componentize-py -w spin-http componentize -p . -p vendor app -o app.wasm
+# spin_sdk/http.py (a package dir in the real spin-sdk PyPI package, vendored
+# above) assumes the component itself exports wasi:http/incoming-handler, which
+# doesn't fit this pure-executor component — replace it with our own override
+# every build (cheap, idempotent) rather than patching the real package.
+rm -rf vendor/spin_sdk/http
+cp overrides/spin_sdk_http.py vendor/spin_sdk/http.py
 
-# Strip DWARF/debug + name sections. componentize-py bakes the CPython runtime and the
-# native extension modules (numpy, sqlalchemy, ...) in with debug info, which is ~half the
-# component and unused at runtime; stripping roughly halves app.wasm with no behaviour
-# change. Requires wasm-tools; skipped (with a note) if it is not installed.
+# Build the py-sandbox component (executor, not HTTP handler).
+# -m spin_sdk=spin-imports: generate spin_sdk's own WIT bindings using its
+# bundled "spin-imports" world (imports only, no incoming-handler export —
+# guard:front owns that) instead of hand-vendoring fermyon:spin/key-value and
+# wasi:http/* ourselves; see py-executor.wit. 
+echo ">> componentize"
+WIT_REQUIRE_F32_F64=0 VIRTUAL_ENV="$PWD/.venv" .venv/bin/componentize-py \
+  -d wit -w py-executor \
+  componentize -m spin_sdk=spin-imports \
+  -p . -p vendor \
+  executor -o py-sandbox.wasm
+
+
+# Strip debug info.
 if command -v wasm-tools >/dev/null 2>&1; then
   echo ">> stripping debug info"
-  # Plain strip (removes DWARF `.debug_*`, ~halves a fresh 169M build to ~87M); NOT `-a`,
-  # which would also drop the name/producers/component-type custom sections of the component.
-  wasm-tools strip app.wasm -o app.wasm.tmp && mv app.wasm.tmp app.wasm
+  wasm-tools strip py-sandbox.wasm -o py-sandbox.wasm.tmp && mv py-sandbox.wasm.tmp py-sandbox.wasm
 else
-  echo ">> NOTE: wasm-tools not found; skipping debug strip (install it to shrink app.wasm ~2x)" >&2
+  echo ">> NOTE: wasm-tools not found; skipping debug strip" >&2
 fi
 
-echo ">> built app.wasm ($(du -h app.wasm | cut -f1))"
+echo ">> built py-sandbox.wasm ($(du -h py-sandbox.wasm | cut -f1))"

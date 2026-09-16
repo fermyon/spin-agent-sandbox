@@ -1,0 +1,18 @@
+package guard:host;
+
+// A trivial component generated at build time via `wasm-tools component embed
+// --dummy` (see spin.toml's py-sandbox build command / build.sh), composed
+// alongside guard-io to satisfy py-sandbox's forced `wasi:sockets/*` imports —
+// every exported function traps with `unreachable` when called.
+world dummy-sockets {
+    import wasi:io/streams@0.2.10;
+    import wasi:io/poll@0.2.10;
+    import wasi:clocks/monotonic-clock@0.2.10;
+    export wasi:sockets/network@0.2.10;
+    export wasi:sockets/instance-network@0.2.10;
+    export wasi:sockets/tcp@0.2.10;
+    export wasi:sockets/tcp-create-socket@0.2.10;
+    export wasi:sockets/udp@0.2.10;
+    export wasi:sockets/udp-create-socket@0.2.10;
+    export wasi:sockets/ip-name-lookup@0.2.10;
+}

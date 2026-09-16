@@ -1,0 +1,26 @@
+package py-sandbox:sandbox;
+
+// No imports declared here at all — componentize-py always forces its own
+// bundled @0.2.0 defaults for everything a Python "command" component needs
+// (wasi:cli/*, wasi:clocks/*, wasi:filesystem/*, wasi:io/*, wasi:random/*,
+// wasi:sockets/*) regardless of what this world declares, and fermyon:spin/
+// key-value + wasi:http/* come from the real spin-sdk package's own world
+// instead (see build.sh's `-m spin_sdk=spin-imports`) — so there's nothing
+// left to hand-declare. compose-py.wac bridges the handful of these that
+// guard-io actually guards (io/streams, stdio, filesystem, sockets, http) to
+// guard-io's @0.2.10 exports explicitly — wasi:io/streams needs bridging in
+// its own right (not just transitively via stdio/filesystem/sockets), or
+// components that reference it independently end up with two different
+// `pollable`/`input-stream`/`output-stream` resource identities and wac
+// rejects the composition. The rest (environment, exit, clocks, random) are
+// left unresolved and fall through to the real host, same as ts-sandbox
+// already does for those.
+world py-executor {
+    export sandbox:guard/executor@0.1.0;
+}
+
+
+
+
+
+

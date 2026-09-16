@@ -67,6 +67,7 @@ impl bindings::exports::wasi::cli::stdin::Guest for Component {
 
 impl bindings::exports::wasi::filesystem::types::Guest for Component {
     type Descriptor = filesystem::Descriptor;
+    type DirectoryEntryStream = filesystem::DirectoryEntryStream;
 
     fn filesystem_error_code(
         err: &bindings::wasi::io::error::Error,

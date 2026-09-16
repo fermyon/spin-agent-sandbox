@@ -1,6 +1,5 @@
 # Build-time tools for the venv that runs componentize-py.
-# Runtime dependencies live in vendor/ (see setup-vendor.sh + vendor-requirements.txt):
-#   - prebuilt wasm32-wasi packages copied from spin-python-deps
-#   - pure-python packages from vendor-requirements.txt
-spin-sdk == 3.4.1
+# Runtime dependencies live in vendor/ (see setup-vendor.sh + vendor-requirements.txt).
+# spin-sdk is not needed: the spin_sdk/ module in this directory provides the
+# compatibility shim, backed by WIT bindings from guard-io.
 componentize-py == 0.17.2
