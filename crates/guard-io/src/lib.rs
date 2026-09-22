@@ -7,6 +7,7 @@
 
 mod bindings;
 mod context;
+mod egress;
 mod filesystem;
 mod http_types;
 mod kv;
@@ -33,8 +34,8 @@ impl bindings::exports::wasi::http::outgoing_handler::Guest for Component {
 }
 
 impl bindings::exports::sandbox::guard::context::Guest for Component {
-    fn set_request_context(sandbox_id: String) {
-        context::set_request_context(sandbox_id)
+    fn set_request_context(sandbox_id: String, allowed_hosts: Option<Vec<String>>) {
+        context::set_request_context(sandbox_id, allowed_hosts)
     }
 
     fn take_captured_output() -> (String, String) {

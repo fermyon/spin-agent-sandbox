@@ -27,6 +27,11 @@ pub struct RawEnvelope {
     pub sandbox_id: String,
     #[serde(default)]
     pub input: Option<RawInput>,
+    // Per-request outbound allow-list, checked by guard-io's guarded
+    // outgoing-handler (see crates/guard-io/src/egress.rs). Absent/empty means
+    // default-deny for outbound HTTP.
+    #[serde(rename = "allowedHosts", default)]
+    pub allowed_hosts: Option<Vec<String>>,
 }
 
 #[derive(Debug)]
@@ -34,6 +39,7 @@ pub struct Envelope {
     pub code: String,
     pub sandbox_id: String,
     pub input: Option<RawInput>,
+    pub allowed_hosts: Option<Vec<String>>,
 }
 
 #[derive(Debug)]
@@ -62,6 +68,7 @@ pub fn validate(body: &[u8]) -> Result<Envelope, EnvelopeError> {
         code: raw.code,
         sandbox_id: raw.sandbox_id,
         input: raw.input,
+        allowed_hosts: raw.allowed_hosts,
     })
 }
 
@@ -74,7 +81,8 @@ mod tests {
         let body = br#"{
             "code": "console.log(1)",
             "sandboxId": "tenant-a",
-            "input": {"method": "POST", "path": "/x", "body": "hi"}
+            "input": {"method": "POST", "path": "/x", "body": "hi"},
+            "allowedHosts": ["api.example.com"]
         }"#;
         let env = validate(body).expect("valid envelope");
         assert_eq!(env.code, "console.log(1)");
@@ -82,13 +90,16 @@ mod tests {
         let input = env.input.expect("input present");
         assert_eq!(input.method, Some("POST".to_string()));
         assert_eq!(input.path, Some("/x".to_string()));
+        assert_eq!(env.allowed_hosts, Some(vec!["api.example.com".to_string()]));
     }
 
     #[test]
-    fn defaults_input_when_omitted() {
+    fn defaults_input_and_allowed_hosts_when_omitted() {
         let body = br#"{"code": "1", "sandboxId": "a"}"#;
         let env = validate(body).expect("valid envelope");
         assert!(env.input.is_none());
+        // Absent allowedHosts means no outbound is permitted.
+        assert_eq!(env.allowed_hosts, None);
     }
 
     #[test]

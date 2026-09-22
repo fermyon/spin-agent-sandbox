@@ -15,7 +15,11 @@ package sandbox:guard@0.1.0;
 // ts-sandbox's `executor.run` to get back what was written, then clears the buffers for
 // the next request.
 interface context {
-    set-request-context: func(sandbox-id: string);
+    // `allowed-hosts` is the per-request outbound allow-list (the envelope's
+    // `allowedHosts`, absent by default) that guard-io's guarded
+    // `wasi:http/outgoing-handler` export checks every outbound request against.
+    // `none` and an empty list both mean default-deny.
+    set-request-context: func(sandbox-id: string, allowed-hosts: option<list<string>>);
     take-captured-output: func() -> tuple<string, string>;
 }
 

@@ -14,10 +14,9 @@ and keep the tests in [tests/smoke.hurl](tests/smoke.hurl) green:
    Length-prefixing avoids collisions: a bare `"{sandboxId}-{key}"` separator collides
    (id `a` + key `b-k` == id `a-b` + key `k`), which would let one sandbox read, write,
    or enumerate another's keys. Keep the namespace unambiguous in both components.
-2. **Egress default-deny.** Empty `allowedHosts` denies all outbound. The per-request
-   list may only narrow: a bare `"*"` must not grant all. Loopback, link-local,
-   private, and `.internal` targets are always refused, even if allow-listed (the SSRF
-   backstop). The TS `fetch` shim re-checks every redirect hop.
+2. **Egress default-deny.** Absent/empty `allowedHosts` denies all outbound. The
+   per-request list may only narrow: a bare `"*"` must not grant all. Loopback,
+   link-local, private, and `.internal` targets are always refused.
 3. **No cross-request state leak.** Per-request scoping (KV prefix, allowedHosts, fetch
    shim, stdout/stderr) is installed before user code and restored in `finally`. This
    relies on Spin's fresh-instance-per-request model.
