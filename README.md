@@ -49,6 +49,8 @@ spin up --build                  # builds the three components, then serves on :
 cd py-sandbox && bash build.sh
 ```
 
+Note: Building the above requires [`wac`](https://github.com/bytecodealliance/wac)
+
 ## The sandbox HTTP API
 
 Each sandbox is a Spin component that accepts code over HTTP, runs it, and returns the
