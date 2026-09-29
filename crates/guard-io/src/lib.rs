@@ -1,9 +1,5 @@
-//! Implements the WASI interfaces the JS guest imports — guarded per-sandbox
-//! `fermyon:spin/key-value`, captured `wasi:cli/stdout`/`stderr`, stubbed
-//! `wasi:filesystem/*` — so the guest never reaches the real host directly.
-//! Kept as a separate component from `guard` to avoid an instantiation cycle
-//! (guard needs the guest's `executor` export; the guest needs this crate's
-//! exports). Outbound HTTP is a transparent passthrough — see `outgoing.rs`.
+//! Guarded host interfaces between the guest and host.
+//! This stays separate from `guard` to avoid a component-instantiation cycle.
 
 mod bindings;
 mod context;

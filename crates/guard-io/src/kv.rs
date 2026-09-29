@@ -1,7 +1,4 @@
-//! Exported `fermyon:spin/key-value` — every operation is prefixed with the
-//! current request's sandboxId before delegating to the real store.
-//! Length-prefixing prevents `"a"` + `"b-k"` from colliding with `"a-b"` +
-//! `"k"` under a bare `"{id}-{key}"` separator.
+//! Scoped `fermyon:spin/key-value` export with collision-safe length-prefixed keys.
 
 use crate::bindings::exports::fermyon::spin::key_value as guarded;
 use spin_sdk::key_value::Store as RealStore;

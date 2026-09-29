@@ -1,9 +1,7 @@
-//! The real Spin HTTP entry point for the TS/JS sandbox: parses the envelope,
-//! enforces size limits, sets guard-io's per-request sandboxId, then calls the
-//! JS guest via `sandbox:guard/executor`. See ARCHITECTURE.md for the full architecture.
+//! Spin's HTTP entry point: validates the envelope, scopes guard-io, and invokes the guest.
 
 wit_bindgen::generate!({
-    path: "wit",
+    path: "../../wit/guard",
     world: "guard-front",
     generate_all,
 });
@@ -11,12 +9,28 @@ wit_bindgen::generate!({
 mod envelope;
 mod logging;
 
-use futures::SinkExt;
+use futures::{SinkExt, TryStreamExt};
 use sandbox::guard::{context, executor};
 use envelope::{EnvelopeError, RawInput};
-use spin_sdk::http::conversions::TryFromIncomingRequest;
-use spin_sdk::http::{Fields, IncomingRequest, Method, OutgoingResponse, Request, Response, ResponseOutparam};
+use spin_sdk::http::{Fields, IncomingRequest, Method, OutgoingResponse, Response, ResponseOutparam};
 use spin_sdk::http_component;
+
+enum BodyReadError {
+    TooLarge,
+    Read,
+}
+
+async fn read_body(req: IncomingRequest) -> Result<Vec<u8>, BodyReadError> {
+    let mut stream = req.into_body_stream();
+    let mut body = Vec::new();
+    while let Some(chunk) = stream.try_next().await.map_err(|_| BodyReadError::Read)? {
+        if chunk.len() > envelope::MAX_BODY.saturating_sub(body.len()) {
+            return Err(BodyReadError::TooLarge);
+        }
+        body.extend_from_slice(&chunk);
+    }
+    Ok(body)
+}
 
 fn build_run_input(input: &RawInput) -> executor::RunInput {
     executor::RunInput {
@@ -74,17 +88,26 @@ async fn handle(req: IncomingRequest, response_out: ResponseOutparam) {
         return;
     }
 
-    let req = match Request::try_from_incoming_request(req).await {
-        Ok(req) => req,
-        Err(e) => {
-            logging::warn(&format!("failed to read request body: {e}"));
+    let body = match read_body(req).await {
+        Ok(body) => body,
+        Err(BodyReadError::Read) => {
+            logging::warn("failed to read request body");
             respond(response_out, json_error(400, "invalid_request", "failed to read request body")).await;
+            return;
+        }
+        Err(BodyReadError::TooLarge) => {
+            logging::warn("rejected body_too_large");
+            respond(
+                response_out,
+                json_error(413, "body_too_large", &format!("request body exceeds {} bytes", envelope::MAX_BODY)),
+            )
+            .await;
             return;
         }
     };
 
-    let body_bytes = req.body().len();
-    let envelope = match envelope::validate(req.body()) {
+    let body_bytes = body.len();
+    let envelope = match envelope::validate(&body) {
         Ok(e) => e,
         Err(EnvelopeError::Invalid(msg)) => {
             logging::warn(&format!("rejected invalid_envelope: {msg}"));

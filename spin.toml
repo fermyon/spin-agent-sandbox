@@ -7,19 +7,7 @@ version = "0.1.0"
 [variables]
 log_level = { default = "info" }
 
-# ---------------------------------------------------------------------------
-# TypeScript / JavaScript sandbox
-# ---------------------------------------------------------------------------
-# NOTE: /ts and /py are PUBLIC here, which is convenient for local dev/testing (curl /ts/run,
-# /py/run). In production the sandbox is meant to be a PRIVATE component: give it
-# `route = { private = true }` and reach it only via service chaining through
-# @spinframework/sandbox (see examples/ai-code-executor).
-#
-# The deployed component is `guard` + `guard-io` + `ts-sandbox` composed by `wac` into one
-# artifact: `guard` is the real HTTP entry point (parses the envelope, enforces size
-# limits), `guard-io` implements the WASI interfaces ts-sandbox imports (guarded
-# per-sandbox key-value, captured stdout/stderr) so ts-sandbox itself does no security
-# enforcement — see crates/guard/compose.wac and AGENTS.md.
+# Development routes are public. Make sandbox components private in production.
 [[trigger.http]]
 route = "/ts/..."
 component = "ts-sandbox"
@@ -27,49 +15,22 @@ component = "ts-sandbox"
 [component.ts-sandbox]
 source = "dist/ts-sandbox.wasm"
 exclude_files = ["**/node_modules"]
-# Single shared KV store; guard-io scopes keys per sandbox id.
+# guard-io scopes this shared store by sandbox ID.
 key_value_stores = ["default"]
-# This is the only outbound-host control point for the TS sandbox: guard-io forwards
-# every outbound request unchanged (see crates/guard-io/src/outgoing.rs). Wide open here
-# is a dev default; tighten per-deployment.
+# Wide-open egress is a development default; tighten it per deployment.
 allowed_outbound_hosts = ["https://*:*", "http://*:*"]
 [component.ts-sandbox.variables]
 log_level = "{{log_level}}"
 [component.ts-sandbox.build]
-# guard-io builds via wasm32-wasip1 + `wasm-tools component new` + the vendored preview1
-# adapter, not rustc's native wasm32-wasip2 auto-componentization — see
-# crates/guard-io/README.md for the encoding bug this works around.
-command = """
-cargo build --release --target wasm32-wasip1 -p guard-io && \
-wasm-tools component new target/wasm32-wasip1/release/guard_io.wasm \
-  --adapt wasi_snapshot_preview1=crates/guard-io/adapters/wasi_snapshot_preview1.reactor.wasm \
-  -o target/guard_io_component.wasm && \
-cargo build --release --target wasm32-wasip2 -p guard && \
-npm --prefix packages/typescript/sandbox ci && \
-npm --prefix packages/typescript/sandbox run build && \
-mkdir -p dist && \
-wac compose \
-  -d guard:io=target/guard_io_component.wasm \
-  -d ts-sandbox:sandbox=packages/typescript/sandbox/dist/ts-sandbox.wasm \
-  -d guard:front=target/wasm32-wasip2/release/guard.wasm \
-  -o dist/ts-sandbox.wasm \
-  crates/guard/compose.wac
-"""
-# Kept in sync by hand with the command above.
+command = "bash build-composed.sh"
+workdir = "packages/typescript/sandbox"
 watch = [
-    "crates/guard-io/src/**/*.rs", "crates/guard-io/wit/**/*.wit", "crates/guard-io/Cargo.toml",
-    "crates/guard/src/**/*.rs", "crates/guard/wit/**/*.wit", "crates/guard/Cargo.toml", "crates/guard/compose.wac",
-    "packages/typescript/sandbox/src/**/*.ts", "packages/typescript/sandbox/wit/**/*.wit",
+    "crates/guard-io/src/**/*.rs", "crates/guard-io/Cargo.toml", "wit/**/*.wit",
+    "crates/guard/src/**/*.rs", "crates/guard/Cargo.toml", "crates/guard/compose.wac",
+    "packages/typescript/sandbox/src/**/*.ts",
 ]
 
-# ---------------------------------------------------------------------------
-# Dependency bundler (runs in StarlingMonkey, no Node, no esbuild at runtime)
-# ---------------------------------------------------------------------------
-# Turns (source + package.json) into ONE self-contained CJS blob the ts-sandbox can
-# execute unchanged. Fetches deps from esm.sh, substitutes curated Node shims, transpiles
-# with sucrase and links via a URL-resolving require(). The sandbox's pre-bundled packages
-# are left as bare require() so they resolve to the in-WASM copies.
-#   curl -sX POST localhost:3000/bundle -d '{"source":"...","packageJson":{"dependencies":{...}}}'
+# Bundles source and package.json into a self-contained artifact for ts-sandbox.
 [[trigger.http]]
 route = "/bundle/..."
 component = "bundler"
@@ -77,20 +38,12 @@ component = "bundler"
 [component.bundler]
 source = "packages/typescript/bundler/dist/bundler.wasm"
 exclude_files = ["**/node_modules"]
-# Only esm.sh (trusted build infra), kept separate from the sandbox's per-request egress.
+# Bundler dependencies come only from esm.sh.
 allowed_outbound_hosts = ["https://esm.sh", "https://*.esm.sh"]
 [component.bundler.build]
 command = "npm ci && npm run build"
 workdir = "packages/typescript/bundler"
 
-# ---------------------------------------------------------------------------
-# Python sandbox
-# ---------------------------------------------------------------------------
-# The deployed component is `guard` + `guard-io` + `py-sandbox` composed by `wac` into one
-# artifact: `guard` is the real HTTP entry point (parses the envelope, enforces size
-# limits), `guard-io` implements the WASI interfaces py-sandbox imports (guarded
-# per-sandbox key-value, captured stdout/stderr) so py-sandbox itself does no security
-# enforcement — see crates/guard/compose-py.wac and AGENTS.md.
 [[trigger.http]]
 route = "/py/..."
 component = "py-sandbox"
@@ -100,30 +53,10 @@ source = "dist/py-sandbox.wasm"
 key_value_stores = ["default"]
 allowed_outbound_hosts = ["https://*:*", "http://*:*"]
 [component.py-sandbox.build]
-command = """
-cargo build --release --target wasm32-wasip1 -p guard-io && \
-wasm-tools component new target/wasm32-wasip1/release/guard_io.wasm \
-  --adapt wasi_snapshot_preview1=crates/guard-io/adapters/wasi_snapshot_preview1.reactor.wasm \
-  -o target/guard_io_component.wasm && \
-cargo build --release --target wasm32-wasip2 -p guard && \
-bash py-sandbox/build.sh && \
-mkdir -p dist && \
-wasm-tools component embed crates/guard-io/wit -w dummy-sockets --dummy -o target/dummy_sockets_core.wasm && \
-wasm-tools component new target/dummy_sockets_core.wasm -o target/dummy_sockets.wasm && \
-wasm-tools component embed crates/guard-io/wit -w dummy-capabilities --dummy -o target/dummy_capabilities_core.wasm && \
-wasm-tools component new target/dummy_capabilities_core.wasm -o target/dummy_capabilities.wasm && \
-wac compose \
-  -d guard:io=target/guard_io_component.wasm \
-  -d guard:dummy-sockets=target/dummy_sockets.wasm \
-  -d guard:dummy-capabilities=target/dummy_capabilities.wasm \
-  -d py-sandbox:sandbox=py-sandbox/py-sandbox.wasm \
-  -d guard:front=target/wasm32-wasip2/release/guard.wasm \
-  -o dist/py-sandbox.wasm \
-  crates/guard/compose-py.wac
-"""
-workdir = "."
+command = "bash build-composed.sh"
+workdir = "py-sandbox"
 watch = [
-    "crates/guard-io/src/**/*.rs", "crates/guard-io/wit/**/*.wit", "crates/guard-io/Cargo.toml",
-    "crates/guard/src/**/*.rs", "crates/guard/wit/**/*.wit", "crates/guard/Cargo.toml", "crates/guard/compose-py.wac",
-    "py-sandbox/**/*.py", "py-sandbox/wit/**/*.wit",
+    "crates/guard-io/src/**/*.rs", "crates/guard-io/Cargo.toml", "wit/**/*.wit",
+    "crates/guard/src/**/*.rs", "crates/guard/Cargo.toml", "crates/guard/compose-py.wac",
+    "py-sandbox/**/*.py",
 ]

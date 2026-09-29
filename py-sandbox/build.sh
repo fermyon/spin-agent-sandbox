@@ -1,9 +1,5 @@
 #!/usr/bin/env bash
-# Build for the Python sandbox component (py-sandbox:sandbox).
-#
-# Generates WIT bindings, builds the Python executor component with
-# componentize-py. The component is composed with guard + guard-io via
-# wac in the root spin.toml build command.
+# Build the Python sandbox component.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -36,16 +32,10 @@ if [ ! -d vendor ]; then
   PYTHON="$PWD/.venv/bin/python" bash setup-vendor.sh
 fi
 
-# Build the py-sandbox component (executor, not HTTP handler).
-# -m spin_sdk=spin-imports: generate spin_sdk's own WIT bindings using its
-# bundled "spin-imports" world (imports only, no incoming-handler export —
-# guard:front owns that) instead of hand-vendoring fermyon:spin/key-value and
-# wasi:http/* ourselves; see py-executor.wit. spin-sdk's own http.py already
-# guards its incoming-handler bits with `except ImportError: pass` for exactly
-# this world, so no override is needed here.
+# Generate spin-sdk bindings from its imports-only world.
 echo ">> componentize"
 VIRTUAL_ENV="$PWD/.venv" .venv/bin/componentize-py \
-  -d wit -w py-executor \
+  -d ../wit/py-sandbox -w py-executor \
   componentize -m spin_sdk=spin-imports \
   -p . -p vendor \
   executor -o py-sandbox.wasm

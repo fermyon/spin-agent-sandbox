@@ -1,12 +1,4 @@
-"""Pure executor logic: no WIT/spin_sdk/vendor imports, so this module can be
-unit-tested directly (see tests/test_executor_logic.py) without mocking
-sys.modules or needing componentize-py's generated bindings.
-
-executor.py is a thin adapter over this module: it does the forced imports
-componentize-py's static tracer needs (spin_sdk, numpy, etc.) and converts the
-plain tagged-tuple results here into the actual sandbox:guard/executor WIT
-types at the boundary.
-"""
+"""Pure executor logic kept free of generated bindings for unit tests."""
 
 import traceback
 from typing import Any, Dict, List, Optional, Tuple

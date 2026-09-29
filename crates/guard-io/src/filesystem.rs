@@ -1,13 +1,5 @@
-//! Exported `wasi:filesystem/types`/`preopens` — wired only because their
-//! `descriptor` resource shares the same `wasi:io/streams` type as
-//! `wasi:cli/stdout` (see `wit/world.wit`), and because componentize-py's
-//! forced `wasi:cli/imports` world pulls in the *full* canonical
-//! `wasi:filesystem/types@0.2.10` interface (not just the subset ts-sandbox
-//! happens to reference) — the wit here must match that shape exactly or wac
-//! rejects the composition as a mismatched instantiation argument. Neither
-//! sandbox does real FS I/O, so this is a stub: `get-directories` returns no
-//! preopens, so `descriptor`/`directory-entry-stream` are never instantiated
-//! and every method below is unreachable.
+//! Stubbed filesystem exports required by the shared WASI stream types.
+//! Neither sandbox is allowed to perform filesystem I/O; no descriptors are instantiated.
 
 use crate::bindings::exports::wasi::filesystem::preopens as preopens_guarded;
 use crate::bindings::exports::wasi::filesystem::types as guarded;

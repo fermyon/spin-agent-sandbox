@@ -1,9 +1,4 @@
-//! Per-request state (sandboxId, allowedHosts) parsed from the envelope by
-//! `lib.rs` before it ever calls into JS, and read by the guarded `kv` and
-//! `outgoing-handler` exports while handling that same request. Safe as plain
-//! thread-local state: Wasm components are single-threaded, and Spin's HTTP
-//! trigger gives each request a fresh component instance, so nothing here
-//! outlives — or leaks into — another request.
+//! Per-request sandbox ID and egress policy in fresh-instance thread-local state.
 
 use std::cell::RefCell;
 

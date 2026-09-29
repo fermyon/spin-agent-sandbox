@@ -1,0 +1,13 @@
+package sandbox:guard@0.1.0;
+
+// Connects request-scoped state from guard-front to guard-io without creating
+// an instantiation cycle. guard-io also owns the captured stdio buffers.
+interface context {
+    // `none` and an empty list both deny outbound requests by default.
+    set-request-context: func(sandbox-id: string, allowed-hosts: option<list<string>>);
+    take-captured-output: func() -> tuple<string, string>;
+}
+
+world context-host {
+    export context;
+}

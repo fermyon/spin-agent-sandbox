@@ -1,8 +1,4 @@
-//! Exported `wasi:http/types` — a transparent pass-through wrapper around the
-//! real import. `outgoing-body.write()`/`incoming-body.stream()` wrap the real
-//! stream in `stdio::Stream::Passthrough{Output,Input}` so it comes out as our
-//! exported stream type (see `stdio.rs`). Only the outgoing/request side is
-//! actually exercised; ts-sandbox no longer exports `wasi:http/incoming-handler`.
+//! Pass-through `wasi:http/types` wrapper that converts stream resource types.
 
 use crate::bindings::exports::wasi::http::types as guarded;
 use crate::bindings::wasi::http::types as real;
