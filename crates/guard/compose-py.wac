@@ -1,0 +1,48 @@
+// Composes guard + guard-io + py-sandbox into the single artifact Spin deploys.
+//
+// Dependency graph (must be a DAG):
+//
+//   guard:io      — needs nothing but the real Spin host.
+//   py-sandbox    — needs guard:io's guarded key-value, stdout/stderr, etc.
+//   guard:front   — needs guard:io's context and py-sandbox's executor.
+//
+// Run via: wac compose -d guard:io=<path> -d py-sandbox:sandbox=<path> \
+//            -d guard:front=<path> -o <out> crates/guard/compose-py.wac
+
+package local:composed;
+
+let io = new guard:io { ... };
+// Generated at build time via `wasm-tools component embed --dummy` from
+// crates/guard-io/wit/dummy-sockets.wit — every export traps with
+// `unreachable`, denying raw sockets.
+let sockets-dummy = new guard:dummy-sockets { ...io, ... };
+// Same technique, from crates/guard-io/wit/dummy-capabilities.wit — denies
+// llm/redis/postgres/mysql/sqlite/mqtt/variables/wasi:keyvalue/wasi:config,
+// which spin_sdk's "spin-imports" world always pulls in
+let caps-dummy = new guard:dummy-capabilities { ... };
+
+// explicitly map interfaces until https://github.com/bytecodealliance/wac/pull/215 makes it into a release
+let sandbox = new py-sandbox:sandbox {
+    "wasi:io/streams@0.2.0": io["wasi:io/streams@0.2.10"],
+    "wasi:cli/stdin@0.2.0": io["wasi:cli/stdin@0.2.10"],
+    "wasi:cli/stdout@0.2.0": io["wasi:cli/stdout@0.2.10"],
+    "wasi:cli/stderr@0.2.0": io["wasi:cli/stderr@0.2.10"],
+    "wasi:http/types@0.2.0": io["wasi:http/types@0.2.10"],
+    "wasi:http/outgoing-handler@0.2.0": io["wasi:http/outgoing-handler@0.2.10"],
+    "wasi:filesystem/types@0.2.0": io["wasi:filesystem/types@0.2.10"],
+    "wasi:filesystem/preopens@0.2.0": io["wasi:filesystem/preopens@0.2.10"],
+    "wasi:sockets/network@0.2.0": sockets-dummy["wasi:sockets/network@0.2.10"],
+    "wasi:sockets/instance-network@0.2.0": sockets-dummy["wasi:sockets/instance-network@0.2.10"],
+    "wasi:sockets/tcp@0.2.0": sockets-dummy["wasi:sockets/tcp@0.2.10"],
+    "wasi:sockets/tcp-create-socket@0.2.0": sockets-dummy["wasi:sockets/tcp-create-socket@0.2.10"],
+    "wasi:sockets/udp@0.2.0": sockets-dummy["wasi:sockets/udp@0.2.10"],
+    "wasi:sockets/udp-create-socket@0.2.0": sockets-dummy["wasi:sockets/udp-create-socket@0.2.10"],
+    "wasi:sockets/ip-name-lookup@0.2.0": sockets-dummy["wasi:sockets/ip-name-lookup@0.2.10"],
+    ...io,
+    ...caps-dummy,
+    ...
+};
+let front = new guard:front { ...io, ...sandbox, ... };
+
+export front...;
+

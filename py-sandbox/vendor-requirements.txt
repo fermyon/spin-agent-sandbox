@@ -13,3 +13,6 @@ pydantic
 idna
 typing_extensions
 annotated-types
+# The real Spin Python SDK: provides key_value.py and http.py used as-is
+spin-sdk==3.4.1
+
