@@ -68,6 +68,8 @@ POST a strict JSON envelope to `/ts/...` or `/py/...`:
 {
   "code": "…source…",          // required: the JS/TS or Python to run
   "sandboxId": "abc123",        // required: scopes the KV store
+  "allowedHosts": ["api.example.com"],  // optional: outbound HTTP allow-list (ts-sandbox
+                                          // only today, see Limitations); absent/empty denies all
   "input": {                     // optional: the request the user code sees
     "method": "POST",
     "path":    "/api/data",       // handler request path (default "/")
@@ -199,15 +201,16 @@ maintenance and report locations.
 
 ### Unit tests (no Wasm build or server needed)
 
-The pure logic of each component (KV scoping, the egress allow-list, envelope
-validation, request shaping) lives in small dependency-free modules that are
-unit-tested directly. The Rust suites also cover envelope validation and bounded
-output capture. Run each command from the repository root:
+The pure logic of each component (KV scoping, envelope validation, request shaping)
+lives in small dependency-free modules that are unit-tested directly. ts-sandbox's
+egress allow-list is enforced in Rust by `guard-io` (`crates/guard-io/src/egress.rs`),
+not in JS:
 
 ```bash
 cargo test --workspace --locked                                       # Rust guard + guard-io
 cd packages/typescript/sandbox && npm test                              # TS logic (esbuild + node --test)
 cd py-sandbox && python3 -m unittest discover -s tests -t .   # Python logic (stdlib unittest)
+cargo test -p guard-io -p guard                                          # guard/guard-io logic, incl. egress
 ```
 
 ### Integration tests (against a running server)
@@ -245,7 +248,11 @@ intentionally mislabeled). Three ways to run them:
 - **Fixed capabilities.** No filesystem, shell, or subprocess, and no `pip`/`npm`
   install at runtime. The pre-bundled dependency set (plus, for JS, whatever the bundler
   can package) is the whole toolbox.
-- **Trust boundary is the Wasm component.** Isolation and egress are enforced by
-  Spin/Wasm.
+- **Trust boundary is the Wasm component.** For ts-sandbox, per-sandbox egress
+  (`allowedHosts`) and KV isolation are enforced by `guard`/`guard-io`, composed in
+  front of the untrusted guest — not by the guest's own code. **py-sandbox does not
+  enforce `allowedHosts` yet**: it calls Spin's HTTP client directly, so its outbound
+  HTTP is unfiltered beyond whatever `allowed_outbound_hosts`/runtime-config the host
+  sets (see AGENTS.md).
 - **Component sizes.** The engines plus bundled deps are large (TS ≈ 30 MB, Python
   ≈ 85 MB).

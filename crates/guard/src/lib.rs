@@ -108,7 +108,7 @@ async fn handle(req: IncomingRequest, response_out: ResponseOutparam) {
     };
 
     // We have to set the request context for the current sandbox before running the code.
-    context::set_request_context(&envelope.sandbox_id);
+    context::set_request_context(&envelope.sandbox_id, envelope.allowed_hosts.as_deref());
 
     let run_input = envelope.input.as_ref().map(build_run_input);
 

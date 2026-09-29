@@ -11,7 +11,8 @@ package sandbox:guard@0.1.0;
 // take-captured-output after ts-sandbox's executor.run to read back what was
 // written and clear the buffers for the next request.
 interface context {
-    set-request-context: func(sandbox-id: string);
+    // `allowed-hosts` is the per-request outbound allow-list 
+    set-request-context: func(sandbox-id: string, allowed-hosts: option<list<string>>);
     take-captured-output: func() -> tuple<string, string>;
 }
 

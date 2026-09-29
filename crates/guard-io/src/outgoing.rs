@@ -1,18 +1,35 @@
 //! Exported `wasi:http/outgoing-handler` — what the guest's `fetch()` calls
-//! into. A transparent forward to the real import; outbound-host policy is
-//! Spin's `allowed_outbound_hosts` (see `spin.toml`), not this component's job.
-//! Exists as an export only because `guard-io` must own all of `wasi:http/types`
-//! (see `http_types.rs`), and this operates on that interface's resource types.
+//! into. Enforces the per-request `allowedHosts` egress policy (see
+//! `egress.rs`) before forwarding to the real import.
 
 use crate::bindings::exports::wasi::http::outgoing_handler as guarded;
 use crate::bindings::wasi::http::outgoing_handler as real;
+use crate::bindings::wasi::http::types::Scheme;
 use crate::http_types::{map_error_code, FutureIncomingResponse, OutgoingRequest, RequestOptions};
+
+/// The scheme string `egress::host_allowed` matches allow-list entries
+/// against. `wasi:http/types` defaults an absent scheme to `http`.
+fn scheme_str(scheme: Option<Scheme>) -> String {
+    match scheme {
+        Some(Scheme::Http) | None => "http".to_string(),
+        Some(Scheme::Https) => "https".to_string(),
+        Some(Scheme::Other(s)) => s,
+    }
+}
 
 pub fn handle(
     request: guarded::OutgoingRequest,
     options: Option<guarded::RequestOptions>,
 ) -> Result<guarded::FutureIncomingResponse, guarded::ErrorCode> {
     let request: OutgoingRequest = request.into_inner();
+
+    let scheme = scheme_str(request.0.scheme());
+    let authority = request.0.authority().unwrap_or_default();
+    let allowed = crate::request_context::allowed_hosts();
+    if !crate::egress::host_allowed(&scheme, &authority, &allowed) {
+        return Err(guarded::ErrorCode::HttpRequestDenied);
+    }
+
     let options = options.map(|o| {
         let o: RequestOptions = o.into_inner();
         o.0

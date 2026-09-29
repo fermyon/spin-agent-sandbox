@@ -12,3 +12,10 @@ wit-bindgen = "0.61.1"
 anyhow = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+# Pure IP-range classification (loopback/link-local/private/CGNAT/is_global) — the same
+# crate Spin's own outbound-networking-config uses for its SSRF backstop. See src/egress.rs.
+ip_network = "0.4"
+# Parses the request's own scheme+authority (host/port normalization, IDNA, default
+# ports) — NOT used for allow-list patterns, which have glob syntax no URL parser
+# understands. See src/egress.rs.
+url = "2"

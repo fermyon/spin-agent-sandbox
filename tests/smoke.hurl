@@ -96,6 +96,42 @@ jsonpath "$.error" == null
 jsonpath "$.stdout" not contains "TOPSECRET"
 jsonpath "$.stdout" contains "leaked=null"
 
+# --- Egress (TypeScript): default-deny with no allowedHosts ---
+POST {{base_url}}/ts/run
+content-type: application/json
+file,bodies/ts-egress-deny.json;
+HTTP 200
+[Asserts]
+jsonpath "$.stdout" contains "DENIED"
+jsonpath "$.stdout" not contains "ALLOWED"
+
+# --- Egress: a bare "*" in the per-request allow-list must NOT grant all ---
+POST {{base_url}}/ts/run
+content-type: application/json
+file,bodies/ts-egress-star.json;
+HTTP 200
+[Asserts]
+jsonpath "$.stdout" contains "DENIED"
+jsonpath "$.stdout" not contains "ALLOWED"
+
+# --- Egress SSRF backstop: an allow-listed INTERNAL target is still refused by policy ---
+POST {{base_url}}/ts/run
+content-type: application/json
+file,bodies/ts-egress-internal.json;
+HTTP 200
+[Asserts]
+jsonpath "$.stdout" contains "DENIED"
+jsonpath "$.stdout" not contains "ALLOWED"
+
+# --- Egress: an explicitly allow-listed public host succeeds ---
+POST {{base_url}}/ts/run
+content-type: application/json
+file,bodies/ts-egress-allow.json;
+HTTP 200
+[Asserts]
+jsonpath "$.stdout" contains "ALLOWED"
+jsonpath "$.stdout" not contains "DENIED"
+
 # --- Both components reject a non-POST request with 405 (the manual method check) ---
 GET {{base_url}}/ts/run
 HTTP 405
