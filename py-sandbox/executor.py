@@ -1,7 +1,4 @@
-"""py-sandbox executor: implements sandbox:guard/executor for composed deployment.
-
-Pure code-execution callee — This module only compiles, runs user code, and returns the outcome.
-"""
+"""Execute user code and return sandbox outcomes."""
 
 from typing import Optional
 
@@ -60,8 +57,7 @@ from executor_logic import build_request, iter_chunks, run_code
 
 
 class _ResponseStream:
-    """BodyStream implementation for a buffered response body — a thin wrapper
-    around executor_logic.iter_chunks that speaks the WIT BodyChunk shape."""
+    """Expose a buffered response body as WIT chunks."""
 
     def __init__(self, body: bytes):
         self._chunks = iter_chunks(body)

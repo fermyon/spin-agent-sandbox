@@ -1,5 +1,4 @@
-//! Envelope parsing: the JSON body contract POSTed to the sandbox
-//! (`{code, sandboxId, input?}`).
+//! Parses the sandbox's JSON request envelope.
 
 use serde::Deserialize;
 

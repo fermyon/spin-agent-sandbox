@@ -35,7 +35,7 @@
   },
   "config": {
     "witDependencies": [
-      { "witPath": "./wit", "package": "sandbox:guard@0.1.0", "world": "executor-host" }
+      { "witPath": "../../../wit/sandbox-guard", "package": "sandbox:guard@0.1.0", "world": "executor-host" }
     ]
   }
 }

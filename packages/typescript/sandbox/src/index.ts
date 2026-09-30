@@ -1,12 +1,3 @@
-// ts-sandbox: transpiles and runs untrusted JS/TS, exporting `sandbox:guard/executor`
-// (see ../wit/executor.wit) instead of raw HTTP. KV isolation, egress, and stdout/stderr
-// capture are enforced by the guard/guard-io components this is composed with, not here
-// — see ARCHITECTURE.md for the full architecture.
-//
-// Two code shapes: a handler (`export default { fetch(request) {...} }`) whose
-// Response is returned verbatim, or a main script that prints, reported as a plain
-// success/failure (guard reads the captured stdout/stderr back from guard-io itself).
-
 import { transform } from "sucrase";
 import { buildRequest, toWireResponse, BodyStream, type RunInput } from "./requestResponse";
 import { makeRequire } from "./registry";

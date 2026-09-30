@@ -1,27 +1,14 @@
-// Composes guard + guard-io + py-sandbox into the single artifact Spin deploys.
-//
-// Dependency graph (must be a DAG):
-//
-//   guard:io      — needs nothing but the real Spin host.
-//   py-sandbox    — needs guard:io's guarded key-value, stdout/stderr, etc.
-//   guard:front   — needs guard:io's context and py-sandbox's executor.
-//
-// Run via: wac compose -d guard:io=<path> -d py-sandbox:sandbox=<path> \
-//            -d guard:front=<path> -o <out> crates/guard/compose-py.wac
+// guard-io sits between the guest and host; guard-front is instantiated last as the HTTP entry point.
+// Keeping them separate avoids a cycle: guard-front consumes the guest executor, and the guest consumes guard-io.
 
 package local:composed;
 
 let io = new guard:io { ... };
-// Generated at build time via `wasm-tools component embed --dummy` from
-// crates/guard-io/wit/dummy-sockets.wit — every export traps with
-// `unreachable`, denying raw sockets.
+// Dummy components deny raw sockets and unsupported Spin capabilities.
 let sockets-dummy = new guard:dummy-sockets { ...io, ... };
-// Same technique, from crates/guard-io/wit/dummy-capabilities.wit — denies
-// llm/redis/postgres/mysql/sqlite/mqtt/variables/wasi:keyvalue/wasi:config,
-// which spin_sdk's "spin-imports" world always pulls in
 let caps-dummy = new guard:dummy-capabilities { ... };
 
-// explicitly map interfaces until https://github.com/bytecodealliance/wac/pull/215 makes it into a release
+// wac requires explicit bridges from componentize-py's WASI 0.2.0 imports to guard-io's 0.2.10 exports.
 let sandbox = new py-sandbox:sandbox {
     "wasi:io/streams@0.2.0": io["wasi:io/streams@0.2.10"],
     "wasi:cli/stdin@0.2.0": io["wasi:cli/stdin@0.2.10"],

@@ -1,12 +1,5 @@
-//! Exported `wasi:cli/stdout`/`stderr` + `wasi:io/streams` — what the guest's
-//! `console.log`/`console.error` write to. `get-stdout`/`get-stderr` allocate a
-//! request-scoped, size-capped buffer; `context::take_captured_output` drains
-//! them after `executor.run` returns. `wasi:io/streams` is exported here (not
-//! just stdout/stderr) because wit-bindgen requires the component that mints a
-//! new output-stream resource to own every interface referencing that type —
-//! see `wit/world.wit`. HTTP bodies reuse this same stream type via a
-//! `Passthrough` variant that forwards to the real host; only stdout/stderr
-//! actually buffer.
+//! Captures guest stdio in request-scoped, capped buffers and owns shared stream resources.
+//! HTTP body streams pass through; only stdout and stderr buffer.
 
 use crate::bindings::exports::wasi::io::streams as guarded;
 use crate::bindings::wasi::io::poll::Pollable as RealPollable;

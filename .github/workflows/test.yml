@@ -79,7 +79,7 @@ jobs:
         run: node --test .github/actions/setup-wasm-tools/install.test.mjs
       - name: Install Rust toolchain and Wasm targets
         run: |
-          rustup toolchain install "$RUST_VERSION" --profile minimal --no-self-update --target wasm32-wasip1 --target wasm32-wasip2
+          rustup toolchain install "$RUST_VERSION" --profile minimal --no-self-update --target wasm32-wasip2
           rustup default "$RUST_VERSION"
       - uses: Swatinem/rust-cache@v2
       - name: Install Spin

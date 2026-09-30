@@ -1,6 +1,4 @@
-//! Exported `wasi:http/outgoing-handler` — what the guest's `fetch()` calls
-//! into. Enforces the per-request `allowedHosts` egress policy (see
-//! `egress.rs`) before forwarding to the real import.
+//! Enforces per-request egress policy before forwarding guest `fetch()` calls.
 
 use crate::bindings::exports::wasi::http::outgoing_handler as guarded;
 use crate::bindings::wasi::http::outgoing_handler as real;

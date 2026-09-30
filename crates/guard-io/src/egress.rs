@@ -1,19 +1,13 @@
-//! Outbound egress control for guard-io's guarded `wasi:http/outgoing-handler`
-//! export — the per-sandbox allow-list layered on top of the broad
-//! `allowed_outbound_hosts` bound in spin.toml (see AGENTS.md invariant #2).
-//! Host-pattern matching is ported from the pre-guard ts-sandbox/py-sandbox
-//! `_egress` implementations; the internal-host classification instead
-//! reuses `ip_network`'s `is_global()`, the same check Spin's own
-//! outbound-networking-config crate uses for its SSRF backstop.
+//! Per-request egress allow-list layered on Spin's host policy, with an SSRF backstop.
 
 use ip_network::IpNetwork;
 use std::net::IpAddr;
 use url::Url;
 
-/// Loopback / link-local / private / internal targets are never reachable,
-/// even if explicitly allow-listed — the primary SSRF backstop (cloud
-/// metadata at 169.254.169.254, `*.spin.internal` service chaining, RFC 1918,
-/// RFC 6598 CGNAT, ...).
+/// Rejects loopback / link-local / private IP literals and local/internal names,
+/// even if explicitly allow-listed. This component sees only an authority, not
+/// DNS results, so Spin or the deployment network must also reject hostnames
+/// that resolve to private addresses.
 pub fn is_internal_host(host: &str) -> bool {
     let h = host.trim().trim_end_matches('.').to_ascii_lowercase();
     if h.is_empty() || h == "localhost" || h.ends_with(".localhost") || h.ends_with(".internal") || h.ends_with(".local") {

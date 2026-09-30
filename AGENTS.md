@@ -1,9 +1,8 @@
 # AGENTS.md: Wasm code sandbox
 
-Guidance for AI agents (and humans) working in this repo. For the user-facing contract
-and dependency list, read [README.md](README.md) first; for how the code is organized
-(components, composition, module layout), read [ARCHITECTURE.md](ARCHITECTURE.md). This
-file covers the invariants you must not break.
+Guidance for AI agents (and humans) working in this repo. Read [README.md](README.md)
+for the user-facing contract and component overview. This file covers the invariants you
+must not break.
 
 ## Security invariants (do not regress these)
 
@@ -16,7 +15,8 @@ and keep the tests in [tests/smoke.hurl](tests/smoke.hurl) green:
    or enumerate another's keys. Keep the namespace unambiguous in both components.
 2. **Egress default-deny.** Absent/empty `allowedHosts` denies all outbound. The
    per-request list may only narrow: a bare `"*"` must not grant all. Loopback,
-   link-local, private, and `.internal` targets are always refused.
+   link-local, private IP literals, and `.internal` targets are always refused.
+   The host/deployment network must also refuse DNS names resolving to private IPs.
 3. **No cross-request state leak.** Per-request scoping (KV prefix, allowedHosts, fetch
    shim, stdout/stderr) is installed before user code and restored in `finally`. This
    relies on Spin's fresh-instance-per-request model.
@@ -43,7 +43,7 @@ spin up --build          # builds the three components, then serves on :3000
 
 ## Module layout
 
-See [ARCHITECTURE.md](ARCHITECTURE.md#module-layout).
+See the composition files in `crates/guard/` for module wiring.
 
 ## Test
 
