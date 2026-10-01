@@ -19,6 +19,8 @@ esac
 : "${RUNNER_TEMP:?RUNNER_TEMP is required}"
 : "${GITHUB_PATH:?GITHUB_PATH is required}"
 : "${GITHUB_OUTPUT:?GITHUB_OUTPUT is required}"
+: "${WASM_TOOLS_VERSION:?wasm-tools version is required}"
+: "${WAC_VERSION:?wac version is required}"
 
 runner_temp=$RUNNER_TEMP
 if [[ "$RUNNER_OS" == Windows ]]; then runner_temp=$(cygpath -u "$runner_temp"); fi
@@ -27,16 +29,28 @@ download_dir=$(mktemp -d "$runner_temp/wasm-tools-downloads.XXXXXX")
 trap 'rm -rf "$download_dir"' EXIT
 
 for tool in wasm-tools wac; do
-  # GitHub's latest endpoint excludes drafts and prereleases.
+  case "$tool" in
+    wasm-tools) version=$WASM_TOOLS_VERSION ;;
+    wac) version=$WAC_VERSION ;;
+  esac
+  if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    echo "::error::$tool version must be a stable semantic version, got $version."
+    exit 1
+  fi
+  tag="v$version"
   metadata="$download_dir/$tool.json"
   curl --fail --silent --show-error --retry 3 --connect-timeout 15 --max-time 120 \
     --proto '=https' \
     --header "Authorization: Bearer $GH_TOKEN" \
     --header 'Accept: application/vnd.github+json' \
     --header 'X-GitHub-Api-Version: 2022-11-28' \
-    "https://api.github.com/repos/bytecodealliance/$tool/releases/latest" \
+    "https://api.github.com/repos/bytecodealliance/$tool/releases/tags/$tag" \
     --output "$metadata"
-  tag=$(jq -er '.tag_name | select(test("^v[0-9]+\\.[0-9]+\\.[0-9]+$"))' "$metadata")
+  actual_tag=$(jq -er '.tag_name' "$metadata")
+  if [[ "$actual_tag" != "$tag" ]]; then
+    echo "::error::Expected $tool $tag, received $actual_tag."
+    exit 1
+  fi
   if [[ "$tool" == wasm-tools ]]; then
     asset="wasm-tools-${tag#v}-$architecture-$wasm_os.$archive_suffix"
   else

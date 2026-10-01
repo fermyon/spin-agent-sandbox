@@ -74,7 +74,7 @@ POST this envelope to `/ts/...` or `/py/...`:
 }
 ```
 
-`code` and `sandboxId` are required. `allowedHosts` narrows TypeScript egress;
+`code` and `sandboxId` are required. `allowedHosts` narrows egress for outbound HTTP;
 missing or empty denies it. `kvEnabled` is `false` by default; set it to `true` to
 allow access to the scoped key-value store. `input` creates the request delivered to
 an HTTP handler.

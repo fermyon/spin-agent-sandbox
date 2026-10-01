@@ -68,8 +68,8 @@ while (( $# )); do
 done
 printf '%s\\n' "$url" >> "$FIXTURE_REQUESTS"
 case "$url" in
-  https://api.github.com/repos/bytecodealliance/wasm-tools/releases/latest) source="$FIXTURE_ROOT/wasm-tools.json" ;;
-  https://api.github.com/repos/bytecodealliance/wac/releases/latest) source="$FIXTURE_ROOT/wac.json" ;;
+  https://api.github.com/repos/bytecodealliance/wasm-tools/releases/tags/v1.246.1) source="$FIXTURE_ROOT/wasm-tools.json" ;;
+  https://api.github.com/repos/bytecodealliance/wac/releases/tags/v0.12.0) source="$FIXTURE_ROOT/wac.json" ;;
   https://github.com/bytecodealliance/*/releases/download/*) source="$FIXTURE_ROOT/assets/\${url##*/}" ;;
   *) echo "Unexpected fixture URL: $url" >&2; exit 1 ;;
 esac
@@ -84,19 +84,19 @@ cp "$source" "$destination"
   }
 
   const executable = runnerOS === 'Windows' ? 'wasm-tools.exe' : 'wasm-tools';
-  const prefix = `wasm-tools-1.258.0-${wasmPlatform}`;
+  const prefix = `wasm-tools-1.246.1-${wasmPlatform}`;
   const archiveName = `${prefix}.${runnerOS === 'Windows' ? 'zip' : 'tar.gz'}`;
   fs.mkdirSync(path.join(root, prefix));
-  fs.writeFileSync(path.join(root, prefix, executable), `#!${bash}\necho 'wasm-tools 1.258.0'\n`, { mode: 0o755 });
+  fs.writeFileSync(path.join(root, prefix, executable), `#!${bash}\necho 'wasm-tools 1.246.1'\n`, { mode: 0o755 });
   if (runnerOS === 'Windows') {
     run(command('zip'), ['-q', path.join(assets, archiveName), `${prefix}/${executable}`], { cwd: root });
   } else {
     run(command('tar'), ['-czf', path.join(assets, archiveName), '-C', root, prefix]);
   }
   const wacName = `wac-cli-${wacPlatform}`;
-  fs.writeFileSync(path.join(assets, wacName), `#!${bash}\necho 'wac 0.11.0'\n`, { mode: 0o755 });
+  fs.writeFileSync(path.join(assets, wacName), `#!${bash}\necho 'wac 0.12.0'\n`, { mode: 0o755 });
 
-  for (const [tool, tag, name] of [['wasm-tools', 'v1.258.0', archiveName], ['wac', 'v0.11.0', wacName]]) {
+  for (const [tool, tag, name] of [['wasm-tools', 'v1.246.1', archiveName], ['wac', 'v0.12.0', wacName]]) {
     const digest = createHash('sha256').update(fs.readFileSync(path.join(assets, name))).digest('hex');
     fs.writeFileSync(path.join(root, `${tool}.json`), JSON.stringify({
       tag_name: tag,
@@ -127,6 +127,10 @@ cp "$source" "$destination"
       FIXTURE_REQUESTS: path.join(root, 'requests'),
       FIXTURE_CHECKSUMS: path.join(root, 'checksums'),
       FIXTURE_SHASUM: command('shasum') ?? '',
+      ...(!options.omitVersions ? {
+        WASM_TOOLS_VERSION: '1.246.1',
+        WAC_VERSION: '0.12.0',
+      } : {}),
     },
   });
   assert.equal(result.error, undefined);
@@ -138,9 +142,9 @@ function assertInstalled(result, runnerOS) {
   const installDir = fs.readFileSync(result.githubPath, 'utf8').trim();
   assert.ok(installDir, 'installation directory is published to GITHUB_PATH');
   const suffix = runnerOS === 'Windows' ? '.exe' : '';
-  assert.match(run(path.join(installDir, `wasm-tools${suffix}`), ['--version']).stdout, /wasm-tools 1\.258\.0/);
-  assert.match(run(path.join(installDir, `wac${suffix}`), ['--version']).stdout, /wac 0\.11\.0/);
-  assert.equal(fs.readFileSync(result.githubOutput, 'utf8'), 'wasm-tools-version=v1.258.0\nwac-version=v0.11.0\n');
+  assert.match(run(path.join(installDir, `wasm-tools${suffix}`), ['--version']).stdout, /wasm-tools 1\.246\.1/);
+  assert.match(run(path.join(installDir, `wac${suffix}`), ['--version']).stdout, /wac 0\.12\.0/);
+  assert.equal(fs.readFileSync(result.githubOutput, 'utf8'), 'wasm-tools-version=v1.246.1\nwac-version=v0.12.0\n');
   const requests = fs.readFileSync(path.join(result.root, 'requests'), 'utf8');
   assert.ok(requests.includes(`/${result.archiveName}\n`));
   assert.ok(requests.includes(`/${result.wacName}\n`));
@@ -167,6 +171,13 @@ test('rejects an asset whose SHA-256 differs from release metadata', (t) => {
   assert.notEqual(result.result.status, 0);
   assert.equal(fs.readFileSync(result.githubPath, 'utf8'), '');
   assert.equal(fs.readFileSync(result.githubOutput, 'utf8'), '');
+});
+
+test('requires callers to specify both tool versions', (t) => {
+  const result = fixture(t, ...supported[0], { omitVersions: true });
+  assert.notEqual(result.result.status, 0);
+  assert.match(result.result.stderr, /WASM_TOOLS_VERSION.*required/);
+  assert.equal(fs.existsSync(path.join(result.root, 'requests')), false);
 });
 
 test('verifies both macOS downloads with shasum when sha256sum is unavailable', (t) => {
