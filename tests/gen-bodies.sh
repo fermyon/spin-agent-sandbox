@@ -32,10 +32,11 @@ for f in $(ls "$EXAMPLES" | sort -t. -k1 -n); do
   [ -f "$src" ] || continue
   lang="$(detect_lang "$src")"
   input="$(input_for "$f")"
+    kv_enabled="$(kv_enabled_for "$f")"
 
   # envelope body (sandboxId derived from the code so reruns are stable)
-  jq -n --rawfile c "$src" --argjson in "$input" \
-     '{code:$c, sandboxId:("ex-"+($c|@base64|.[0:8])), input:$in}' > "$BODIES/$f.json"
+    jq -n --rawfile c "$src" --argjson in "$input" --argjson kv "$kv_enabled" \
+      '{code:$c, sandboxId:("ex-"+($c|@base64|.[0:8])), input:$in, kvEnabled:$kv}' > "$BODIES/$f.json"
   count=$((count + 1))
 
   if is_known_fail "$f"; then

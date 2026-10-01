@@ -1,4 +1,5 @@
 {
   "code": "import * as kv from \"@spinframework/spin-kv\";\nconst s = kv.openDefault();\nconst leaked = s.getJson(\"b-secret\");\nconst keys = s.getKeys();\nconsole.log(\"leaked=\" + JSON.stringify(leaked));\nconsole.log(\"keys=\" + JSON.stringify(keys));",
-  "sandboxId": "iso-a"
+  "sandboxId": "iso-a",
+  "kvEnabled": true
 }

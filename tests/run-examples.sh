@@ -22,9 +22,10 @@ for f in $(ls "$EXAMPLES" | sort -t. -k1 -n); do
   lang="$(detect_lang "$src")"
   route="/$lang/run"
   input="$(input_for "$f")"
+    kv_enabled="$(kv_enabled_for "$f")"
 
-  body="$(jq -n --rawfile c "$src" --argjson in "$input" \
-          '{code:$c, sandboxId:("harness-"+($c|@base64|.[0:8])), input:$in}')"
+    body="$(jq -n --rawfile c "$src" --argjson in "$input" --argjson kv "$kv_enabled" \
+      '{code:$c, sandboxId:("harness-"+($c|@base64|.[0:8])), input:$in, kvEnabled:$kv}')"
   # Capture the response body AND status in one shot (no temp file). The old
   # `-o /tmp/sbx_body` approach silently yielded an empty body when the write failed,
   # which made every check pass vacuously. The status is appended on its own trailing line.

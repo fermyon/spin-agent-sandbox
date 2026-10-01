@@ -31,8 +31,8 @@ built on it.
 - Rust and the Preview 2 target: `rustup target add wasm32-wasip2`;
 - Node.js and npm;
 - Python 3.12;
-- Bytecode Alliance [`wac`](https://github.com/bytecodealliance/wac) and
-  [`wasm-tools`](https://github.com/bytecodealliance/wasm-tools) on `PATH`.
+- Bytecode Alliance [`wac`](https://github.com/bytecodealliance/wac) `>= 0.12.0` and
+  [`wasm-tools`](https://github.com/bytecodealliance/wasm-tools) `>= 1.246.1` on `PATH`.
 
 ## Quick start
 
@@ -69,12 +69,15 @@ POST this envelope to `/ts/...` or `/py/...`:
   "code": "print(6 * 7)",
   "sandboxId": "demo",
   "allowedHosts": ["api.example.com"],
+  "kvEnabled": true,
   "input": { "method": "GET", "path": "/" }
 }
 ```
 
 `code` and `sandboxId` are required. `allowedHosts` narrows TypeScript egress;
-missing or empty denies it. `input` creates the request delivered to an HTTP handler.
+missing or empty denies it. `kvEnabled` is `false` by default; set it to `true` to
+allow access to the scoped key-value store. `input` creates the request delivered to
+an HTTP handler.
 
 Code can be either a script or a handler. A script returns captured output:
 
@@ -107,8 +110,9 @@ component READMEs list the complete language-specific sets.
 
 ### Scoped key-value store
 
-Each `sandboxId` sees a private view of the shared `default` store. Keys use an
-unambiguous length-prefixed namespace, and both runtimes expose the standard Spin KV API:
+When `kvEnabled` is true, each `sandboxId` sees a private view of the shared `default`
+store. Keys use an unambiguous length-prefixed namespace, and both runtimes expose the
+standard Spin KV API:
 
 ```python
 from spin_sdk import key_value

@@ -26,6 +26,9 @@ fn map_err(e: spin_sdk::key_value::Error) -> guarded::Error {
 
 impl guarded::GuestStore for PrefixingStore {
     fn open(label: String) -> Result<guarded::Store, guarded::Error> {
+        if !crate::request_context::kv_enabled() {
+            return Err(guarded::Error::AccessDenied);
+        }
         let sandbox_id = crate::request_context::sandbox_id();
         let real = RealStore::open(&label).map_err(map_err)?;
         Ok(guarded::Store::new(PrefixingStore {

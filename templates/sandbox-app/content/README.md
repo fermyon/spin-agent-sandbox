@@ -28,7 +28,8 @@ POST a strict JSON envelope to `/ts/...` or `/py/...`:
     "query":   { "name": "ada" },
     "body":    { "values": [1, 2, 3] }
   },
-  "allowedHosts": ["api.example.com"]    // optional: per-sandbox outbound allow-list
+  "allowedHosts": ["api.example.com"],  // optional: per-sandbox outbound allow-list
+  "kvEnabled": true                      // optional: enables scoped KV access (default false)
 }
 ```
 

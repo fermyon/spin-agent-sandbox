@@ -155,6 +155,7 @@ export class Interpreter implements CodeRunner {
       sandboxId: o.identity ?? this.newId(),
       input: o.input,
       allowedHosts: o.allowedHosts ?? [],
+      kvEnabled: o.kvEnabled ?? false,
     };
     return { url: `${this.baseUrl}/${route}/run`, body: JSON.stringify(envelope), route };
   }
@@ -275,7 +276,7 @@ export class InterpreterKV {
       `const K = ${JSON.stringify(key)};\n` +
       `const out = (o) => console.log(JSON.stringify(o));\n` +
       bodyExpr;
-    const res = await this.itp.run(code, { lang: "javascript", identity: this.namespace });
+    const res = await this.itp.run(code, { lang: "javascript", identity: this.namespace, kvEnabled: true });
     if (res.error) {
       throw new Error(`interpreter kv op failed: ${res.error.name}: ${res.error.value}`);
     }

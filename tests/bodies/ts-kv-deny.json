@@ -1,0 +1,4 @@
+{
+  "code": "import * as kv from '@spinframework/spin-kv';\ntry {\n  kv.openDefault();\n  console.log('ALLOWED');\n} catch {\n  console.log('DENIED');\n}",
+  "sandboxId": "smoke-ts-kv-deny"
+}

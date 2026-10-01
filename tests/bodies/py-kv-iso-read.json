@@ -1,4 +1,5 @@
 {
   "code": "from spin_sdk import key_value\nstore = key_value.open_default()\nleaked = store.get(\"b-secret\")\nkeys = store.get_keys()\nprint(\"leaked=\" + repr(leaked))\nprint(\"keys=\" + repr(keys))",
-  "sandboxId": "iso-a"
+  "sandboxId": "iso-a",
+  "kvEnabled": true
 }

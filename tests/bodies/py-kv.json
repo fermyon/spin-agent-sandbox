@@ -1,1 +1,1 @@
-{ "code": "from spin_sdk import key_value\nfrom spin_sdk.http import Response\ndef handle_request(req):\n    s = key_value.open_default()\n    s.set('k', b'v')\n    return Response(200, {'content-type': 'text/plain'}, s.get('k'))", "sandboxId": "smoke-py-kv" }
+{ "code": "from spin_sdk import key_value\nfrom spin_sdk.http import Response\ndef handle_request(req):\n    s = key_value.open_default()\n    s.set('k', b'v')\n    return Response(200, {'content-type': 'text/plain'}, s.get('k'))", "sandboxId": "smoke-py-kv", "kvEnabled": true }

@@ -21,6 +21,13 @@ input_for() {
   esac
 }
 
+kv_enabled_for() {
+  case "$1" in
+    3.ts|4.ts|4.py) echo true ;;
+    *)              echo false ;;
+  esac
+}
+
 # main-program shape (no HTTP handler): the response is {stdout, stderr, error}.
 is_main_shape() {
   ! grep -qE 'def handle_request|export default' "$1"

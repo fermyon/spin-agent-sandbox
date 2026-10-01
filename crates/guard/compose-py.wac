@@ -14,7 +14,12 @@ let sandbox = new py-sandbox:sandbox {
     ...caps-dummy,
     ...
 };
-let front = new guard:front { ...io, ...sandbox, ... };
+// Leave guard-front's WASI resources for Spin; semver-wiring io here breaks resource identity.
+let front = new guard:front {
+    "sandbox:guard/context@0.1.0": io["sandbox:guard/context@0.1.0"],
+    "sandbox:guard/executor@0.1.0": sandbox["sandbox:guard/executor@0.1.0"],
+    ...
+};
 
 export front...;
 

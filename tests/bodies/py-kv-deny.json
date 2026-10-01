@@ -1,0 +1,4 @@
+{
+  "code": "from spin_sdk import key_value\ntry:\n    key_value.open_default()\n    print('ALLOWED')\nexcept Exception:\n    print('DENIED')",
+  "sandboxId": "smoke-py-kv-deny"
+}

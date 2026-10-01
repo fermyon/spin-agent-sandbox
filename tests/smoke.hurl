@@ -31,6 +31,15 @@ HTTP 200
 [Asserts]
 jsonpath "$.n" == 7
 
+# --- KV: default-deny (TypeScript) ---
+POST {{base_url}}/ts/run
+content-type: application/json
+file,bodies/ts-kv-deny.json;
+HTTP 200
+[Asserts]
+jsonpath "$.stdout" contains "DENIED"
+jsonpath "$.stdout" not contains "ALLOWED"
+
 # --- Python: main-program shape ---
 POST {{base_url}}/py/run
 content-type: application/json
@@ -48,6 +57,15 @@ file,bodies/py-kv.json;
 HTTP 200
 [Asserts]
 body contains "v"
+
+# --- KV: default-deny (Python) ---
+POST {{base_url}}/py/run
+content-type: application/json
+file,bodies/py-kv-deny.json;
+HTTP 200
+[Asserts]
+jsonpath "$.stdout" contains "DENIED"
+jsonpath "$.stdout" not contains "ALLOWED"
 
 # --- Invalid envelope is rejected ---
 POST {{base_url}}/py/run
