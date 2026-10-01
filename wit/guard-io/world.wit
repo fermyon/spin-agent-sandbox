@@ -15,9 +15,7 @@ world guard-io {
     // component ends up with two definitions of "the same" type and fails
     // validation — see src/stdio.rs. stdin/filesystem are stubs (ts-sandbox
     // never legitimately uses them).
-    //
-    // BUILD NOTE — built via wasm32-wasip1 + `wasm-tools component new` + the
-    // vendored preview1 adapter, not wasip2 — see ../README.md.
+
     export wasi:io/streams@0.2.10;
     export wasi:cli/stdin@0.2.10;
     export wasi:cli/stdout@0.2.10;

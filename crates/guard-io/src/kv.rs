@@ -56,8 +56,7 @@ impl guarded::GuestStore for PrefixingStore {
             .map_err(map_err)
     }
 
-    // TODO: Do we want to even support get_keys? 
-    // This could be expensive if 1000 sandboxes each write 1000 keys which would mean iterating over a million keys to filter out the ones for the current sandbox.
+    // TODO: Decide whether to retain get_keys; it scans the shared store.
     fn get_keys(&self) -> Result<Vec<String>, guarded::Error> {
         let keys = self.real.get_keys().map_err(map_err)?;
         Ok(keys

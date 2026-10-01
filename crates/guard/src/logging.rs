@@ -38,7 +38,3 @@ pub fn warn(msg: &str) {
 pub fn error(msg: &str) {
     emit(Level::Error, "ERROR", msg);
 }
-
-pub fn debug(msg: &str) {
-    emit(Level::Debug, "DEBUG", msg);
-}
