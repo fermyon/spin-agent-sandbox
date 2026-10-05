@@ -26,6 +26,9 @@ fn map_err(e: spin_sdk::key_value::Error) -> guarded::Error {
 
 impl guarded::GuestStore for PrefixingStore {
     fn open(label: String) -> Result<guarded::Store, guarded::Error> {
+        if !crate::request_context::kv_enabled() {
+            return Err(guarded::Error::AccessDenied);
+        }
         let sandbox_id = crate::request_context::sandbox_id();
         let real = RealStore::open(&label).map_err(map_err)?;
         Ok(guarded::Store::new(PrefixingStore {
@@ -56,8 +59,7 @@ impl guarded::GuestStore for PrefixingStore {
             .map_err(map_err)
     }
 
-    // TODO: Do we want to even support get_keys? 
-    // This could be expensive if 1000 sandboxes each write 1000 keys which would mean iterating over a million keys to filter out the ones for the current sandbox.
+    // TODO: Decide whether to retain get_keys; it scans the shared store.
     fn get_keys(&self) -> Result<Vec<String>, guarded::Error> {
         let keys = self.real.get_keys().map_err(map_err)?;
         Ok(keys

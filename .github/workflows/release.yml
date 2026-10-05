@@ -62,10 +62,12 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install latest Bytecode Alliance tools
+      - name: Install Bytecode Alliance tools
         uses: ./.github/actions/setup-wasm-tools
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          wasm-tools-version: "1.246.1"
+          wac-version: "0.12.0"
 
       - name: Download tested TypeScript components
         uses: actions/download-artifact@v4
@@ -92,7 +94,7 @@ jobs:
 
       - name: Collect artifacts and checksums
         run: |
-          cp py-sandbox/app.wasm _dist/py-sandbox.wasm
+          cp dist/py-sandbox.wasm _dist/py-sandbox.wasm
           wasm-tools validate _dist/py-sandbox.wasm
           ( cd _dist && sha256sum ts-sandbox.wasm py-sandbox.wasm bundler.wasm compatibility-*.tar.gz > "checksums-${RELEASE_VERSION}.txt" )
           cat "_dist/checksums-${RELEASE_VERSION}.txt"

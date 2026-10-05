@@ -1,4 +1,5 @@
 {
   "code": "import * as kv from \"@spinframework/spin-kv\";\nconst s = kv.openDefault();\ns.setJson(\"secret\", { v: \"TOPSECRET\" });\nconsole.log(\"wrote\");",
-  "sandboxId": "iso-a-b"
+  "sandboxId": "iso-a-b",
+  "kvEnabled": true
 }

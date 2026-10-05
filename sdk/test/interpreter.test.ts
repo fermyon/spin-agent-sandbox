@@ -25,7 +25,7 @@ test("run() maps the main-program shape and selects the route + envelope", async
   const mock = mockFetch(() => ({ body: JSON.stringify({ stdout: "42\n", stderr: "", error: null }) }));
   const itp = new Interpreter({ baseUrl: "http://wasm.spin.internal/", fetch: mock.fn });
 
-  const res = await itp.run("print(6*7)", { lang: "python", identity: "job-1", allowedHosts: ["api.x.com"] });
+  const res = await itp.run("print(6*7)", { lang: "python", identity: "job-1", allowedHosts: ["api.x.com"], kvEnabled: true });
 
   assert.equal(res.stdout, "42\n");
   assert.equal(res.error, undefined);
@@ -37,9 +37,10 @@ test("run() maps the main-program shape and selects the route + envelope", async
   assert.equal(env.code, "print(6*7)");
   assert.equal(env.sandboxId, "job-1");
   assert.deepEqual(env.allowedHosts, ["api.x.com"]);
+  assert.equal(env.kvEnabled, true);
 });
 
-test("run() defaults allowedHosts to [] (default-deny) and uses /ts for javascript", async () => {
+test("run() defaults allowedHosts and kvEnabled to deny and uses /ts for javascript", async () => {
   const mock = mockFetch(() => ({ body: JSON.stringify({ stdout: "hi", stderr: "", error: null }) }));
   const itp = new Interpreter({ baseUrl: "http://w", fetch: mock.fn, newId: () => "gen-id" });
 
@@ -48,6 +49,7 @@ test("run() defaults allowedHosts to [] (default-deny) and uses /ts for javascri
   assert.equal(mock.calls[0].url, "http://w/ts/run");
   const env = JSON.parse(mock.calls[0].init.body);
   assert.deepEqual(env.allowedHosts, []);
+  assert.equal(env.kvEnabled, false);
   assert.equal(env.sandboxId, "gen-id"); // generated when no identity
 });
 
@@ -134,6 +136,7 @@ test("kv().setJson runs a scoped snippet against the namespace", async () => {
   assert.equal(mock.calls[0].url, "http://w/ts/run");
   const env = JSON.parse(mock.calls[0].init.body);
   assert.equal(env.sandboxId, "ns-1");
+  assert.equal(env.kvEnabled, true);
   assert.match(env.code, /openDefault/);
   assert.match(env.code, /setJson/);
   assert.match(env.code, /"counter"/);

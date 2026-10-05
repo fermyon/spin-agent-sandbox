@@ -11,7 +11,7 @@
 set -euo pipefail
 
 VERSION="${1:?usage: $0 <version> [owner/repo]}"
-REPO="${2:-lepton/wasm-sandbox}"
+REPO="${2:-fermyon/functions-agent-sandbox}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 sha256() {

@@ -72,6 +72,8 @@ export interface RunOpts {
    * egress.
    */
   allowedHosts?: string[];
+  /** Enables access to the sandbox's scoped KV store for this run. Default: false. */
+  kvEnabled?: boolean;
   /**
    * A stable identity for the run. On the interpreter it is the scoped-KV
    * namespace (`sandboxId`); a future backend may use it as a create/reuse key.
@@ -112,7 +114,7 @@ export interface Caps {
   sessions: boolean;
   /** Subprocess / argv exec. Interpreter: false. */
   exec: boolean;
-  /** Scoped key-value store. Interpreter: true. */
+  /** Scoped key-value store when enabled for a run. Interpreter: true. */
   kv: boolean;
   /** Real lifecycle (create/destroy/idle-reap/status). Interpreter: false. */
   lifecycle: boolean;

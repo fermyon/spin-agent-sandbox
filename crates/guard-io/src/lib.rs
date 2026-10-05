@@ -30,8 +30,8 @@ impl bindings::exports::wasi::http::outgoing_handler::Guest for Component {
 }
 
 impl bindings::exports::sandbox::guard::context::Guest for Component {
-    fn set_request_context(sandbox_id: String, allowed_hosts: Option<Vec<String>>) {
-        context::set_request_context(sandbox_id, allowed_hosts)
+    fn set_request_context(sandbox_id: String, allowed_hosts: Option<Vec<String>>, kv_enabled: bool) {
+        context::set_request_context(sandbox_id, allowed_hosts, kv_enabled)
     }
 
     fn take_captured_output() -> (String, String) {

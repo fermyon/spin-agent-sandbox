@@ -31,6 +31,8 @@ pub struct RawEnvelope {
     // default-deny for outbound HTTP.
     #[serde(rename = "allowedHosts", default)]
     pub allowed_hosts: Option<Vec<String>>,
+    #[serde(rename = "kvEnabled", default)]
+    pub kv_enabled: bool,
 }
 
 #[derive(Debug)]
@@ -39,6 +41,7 @@ pub struct Envelope {
     pub sandbox_id: String,
     pub input: Option<RawInput>,
     pub allowed_hosts: Option<Vec<String>>,
+    pub kv_enabled: bool,
 }
 
 #[derive(Debug)]
@@ -68,6 +71,7 @@ pub fn validate(body: &[u8]) -> Result<Envelope, EnvelopeError> {
         sandbox_id: raw.sandbox_id,
         input: raw.input,
         allowed_hosts: raw.allowed_hosts,
+        kv_enabled: raw.kv_enabled,
     })
 }
 
@@ -81,7 +85,8 @@ mod tests {
             "code": "console.log(1)",
             "sandboxId": "tenant-a",
             "input": {"method": "POST", "path": "/x", "body": "hi"},
-            "allowedHosts": ["api.example.com"]
+            "allowedHosts": ["api.example.com"],
+            "kvEnabled": true
         }"#;
         let env = validate(body).expect("valid envelope");
         assert_eq!(env.code, "console.log(1)");
@@ -90,6 +95,7 @@ mod tests {
         assert_eq!(input.method, Some("POST".to_string()));
         assert_eq!(input.path, Some("/x".to_string()));
         assert_eq!(env.allowed_hosts, Some(vec!["api.example.com".to_string()]));
+        assert!(env.kv_enabled);
     }
 
     #[test]
@@ -99,6 +105,7 @@ mod tests {
         assert!(env.input.is_none());
         // Absent allowedHosts means no outbound is permitted.
         assert_eq!(env.allowed_hosts, None);
+        assert!(!env.kv_enabled);
     }
 
     #[test]
