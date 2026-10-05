@@ -18,7 +18,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.69.0",
-    "hono": "^4.7.4",
+    "hono": "^4.13.7",
     "@spinframework/build-tools": "1.0.7",
     "@spinframework/sandbox": "file:../../../sdk",
     "@spinframework/spin-variables": "^1.0.0",
