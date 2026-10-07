@@ -44,6 +44,7 @@ from wit_world.exports.executor import (
     BodyChunk,
     BodyChunk_Chunk,
     BodyChunk_Done,
+    BodyChunk_Error,
     HandlerResponse,
     Outcome,
     Outcome_CompileError,
@@ -57,14 +58,23 @@ from executor_logic import build_request, iter_chunks, run_code
 
 
 class _ResponseStream:
-    """Expose a buffered response body as WIT chunks."""
+    """Pull a buffered body or user-supplied iterable through the WIT stream."""
 
     def __init__(self, body: bytes):
         self._chunks = iter_chunks(body)
 
     def read(self) -> BodyChunk:
-        chunk = next(self._chunks, None)
-        return BodyChunk_Done() if chunk is None else BodyChunk_Chunk(chunk)
+        if self._chunks is None:
+            return BodyChunk_Done()
+        try:
+            chunk = next(self._chunks)
+        except StopIteration:
+            self._chunks = None
+            return BodyChunk_Done()
+        except Exception as error:  # A user generator can fail after headers are sent.
+            self._chunks = None
+            return BodyChunk_Error(str(error))
+        return BodyChunk_Chunk(chunk)
 
 
 class Executor:

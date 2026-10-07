@@ -87,6 +87,9 @@ Code can be either a script or a handler. A script returns captured output:
 
 For a handler, TypeScript exports `default { async fetch(request) {} }` and Python
 defines `handle_request(request) -> Response`; its response is returned directly.
+A Python handler can stream its body by returning `(status, headers, chunks)`, where
+`chunks` is an iterable of `bytes` or `str`; a generator failure truncates the response
+after its headers.
 
 ```bash
 # Python script

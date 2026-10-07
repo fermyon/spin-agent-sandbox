@@ -45,6 +45,19 @@ class TestNormalizeResponse(unittest.TestCase):
         _, _, body = normalize_response((200, {}, None))
         self.assertEqual(body, b"")
 
+    def test_iterable_body_is_not_buffered(self):
+        def body():
+            yield "first"
+            yield b"second"
+
+        _, _, stream = normalize_response((200, {}, body()))
+        self.assertEqual(list(iter_chunks(stream)), [b"first", b"second"])
+
+    def test_mapping_and_set_bodies_are_rejected(self):
+        for body in ({"a": 1}, {"a"}):
+            with self.assertRaises(TypeError):
+                normalize_response((200, {}, body))
+
     def test_scalar_value_defaults_200(self):
         status, _, body = normalize_response(42)
         self.assertEqual((status, body), (200, b"42"))
@@ -75,6 +88,26 @@ class TestIterChunks(unittest.TestCase):
     def test_exact_boundary_is_one_chunk(self):
         data = b"y" * 65536
         self.assertEqual(list(iter_chunks(data)), [data])
+
+    def test_stream_chunks_are_pulled_lazily(self):
+        pulled = []
+
+        def body():
+            pulled.append("first")
+            yield b"first"
+            pulled.append("second")
+            yield b"second"
+
+        chunks = iter_chunks(iter(body()))
+        self.assertEqual(pulled, [])
+        self.assertEqual(next(chunks), b"first")
+        self.assertEqual(pulled, ["first"])
+        self.assertEqual(next(chunks), b"second")
+        self.assertEqual(pulled, ["first", "second"])
+
+    def test_stream_rejects_non_byte_chunks(self):
+        with self.assertRaisesRegex(TypeError, "bytes or str"):
+            list(iter_chunks(iter([b"ok", 1])))
 
 
 class TestRunCode(unittest.TestCase):
@@ -107,6 +140,17 @@ class TestRunCode(unittest.TestCase):
         req = build_request(method="POST", path="/x", query=[("a", "1")])
         _, _, _, body = run_code(code, req)
         self.assertEqual(body, b"POST /x?a=1")
+
+    def test_handle_request_can_return_a_streaming_body(self):
+        code = """def handle_request(req):
+    def body():
+        yield 'first'
+        yield b'second'
+    return (200, {'content-type': 'text/plain'}, body())
+"""
+        _, status, _, body = run_code(code, self.REQ)
+        self.assertEqual(status, 200)
+        self.assertEqual(list(iter_chunks(body)), [b"first", b"second"])
 
     def test_handler_that_raises_is_handler_error(self):
         code = "def handle_request(req):\n    raise RuntimeError('nope')"

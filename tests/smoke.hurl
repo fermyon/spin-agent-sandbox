@@ -50,6 +50,14 @@ jsonpath "$.stdout" contains "hi from py"
 jsonpath "$.stdout" contains "42"
 jsonpath "$.error" == null
 
+# --- Python: handler response streams iterable chunks ---
+POST {{base_url}}/py/run
+content-type: application/json
+file,bodies/py-handler-stream.json;
+HTTP 200
+[Asserts]
+body == "first-second"
+
 # --- Python: handler shape + scoped KV via the documented spin_sdk.key_value API ---
 POST {{base_url}}/py/run
 content-type: application/json

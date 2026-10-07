@@ -21,13 +21,24 @@ async function compute(runner: CodeRunner, code: string) {
   return r.stdout;
 }
 
-const runner = new Interpreter({ baseUrl: "http://py-sandbox.spin.internal" });
+const runner = Interpreter.python({ baseUrl: "http://py-sandbox.spin.internal" });
 console.log(await compute(runner, "print(6 * 7)"));
 ```
 
 `run()` returns data (`{ stdout, stderr, results, error? }`): an exception inside the
 sandbox is `Result.error`, not a thrown error. `run()` only throws for transport, auth,
 or validation failures.
+
+## Agent tools
+
+`interpreterTool()` returns context for the languages served by one interpreter endpoint.
+Adapt it to Anthropic or OpenAI tool shapes with `toAnthropicTool()` or `toOpenAITool()`.
+
+```ts
+import { interpreterTool, toAnthropicTool } from "@spinframework/sandbox/tools";
+
+const tools = [toAnthropicTool(interpreterTool({ languages: ["javascript"] }))];
+```
 
 ## Backends
 
@@ -41,10 +52,26 @@ or validation failures.
   component:
 
   ```ts
-  const js = new Interpreter({ baseUrl: "http://ts-sandbox.spin.internal" });
-  const py = new Interpreter({ baseUrl: "http://py-sandbox.spin.internal" });
-  await js.run(code, { lang: "javascript" }); // ts-sandbox
-  await py.run(code, { lang: "python" });      // py-sandbox
+  const js = Interpreter.javascript({ baseUrl: "http://ts-sandbox.spin.internal" });
+  const py = Interpreter.python({ baseUrl: "http://py-sandbox.spin.internal" });
+  await js.execute(code); // ts-sandbox
+  await py.execute(code); // py-sandbox
+  ```
+
+  `Interpreter.javascript({ baseUrl })` is shorthand for `new Interpreter({ baseUrl,
+  lang: "javascript" })`. Language-bound clients reject a mismatched `lang` option. Create an unbound
+  `new Interpreter({ baseUrl })` only when one endpoint really serves both `/ts` and
+  `/py`; scoped KV and npm bundling require that unbound client or a JavaScript client.
+
+  To invoke an HTTP handler, use `runHandler()` rather than manually constructing an
+  envelope. It returns the handler's `Response`, including a streamed response body:
+
+  ```ts
+  const response = await py.runHandler(
+    `def handle_request(request): return (200, {}, "hello")`,
+    { path: "/hello" },
+  );
+  console.log(await response.text());
   ```
 
   See [`examples/ai-code-executor`](../examples/ai-code-executor). (A single combined
@@ -78,3 +105,9 @@ npm run check        # both
 
 `npm test` runs the TypeScript tests through Node's built-in runner with no build step, so
 it needs Node 24+ (native type stripping, plus `--test` glob support).
+
+To test the SDK against real sandbox components, first start the root application, then run:
+
+```bash
+SANDBOX_BASE_URL=http://127.0.0.1:3007 npm run test:components
+```

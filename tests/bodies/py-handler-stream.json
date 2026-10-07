@@ -1,0 +1,5 @@
+{
+  "code": "def handle_request(request):\n    def chunks():\n        yield 'first-'\n        yield b'second'\n    return (200, {'content-type': 'text/plain'}, chunks())",
+  "sandboxId": "py-handler-stream",
+  "input": {"path": "/stream"}
+}

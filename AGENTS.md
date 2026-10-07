@@ -13,6 +13,7 @@ and keep the tests in [tests/smoke.hurl](tests/smoke.hurl) green:
    Length-prefixing avoids collisions: a bare `"{sandboxId}-{key}"` separator collides
    (id `a` + key `b-k` == id `a-b` + key `k`), which would let one sandbox read, write,
    or enumerate another's keys. Keep the namespace unambiguous in both components.
+   KV is also default-off: it is denied unless the request sets `kvEnabled: true`.
 2. **Egress default-deny.** Absent/empty `allowedHosts` denies all outbound. The
    per-request list may only narrow: a bare `"*"` must not grant all. Loopback,
    link-local, private IP literals, and `.internal` targets are always refused.

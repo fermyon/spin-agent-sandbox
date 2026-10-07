@@ -13,54 +13,11 @@ import Anthropic from "@anthropic-ai/sdk";
 import * as variables from "@spinframework/spin-variables";
 
 import { Interpreter, type Language } from "@spinframework/sandbox/interpreter";
+import type { HttpInput } from "@spinframework/sandbox/core";
+import { interpreterTool, toAnthropicTool } from "@spinframework/sandbox/tools";
 import { log, initLogger } from "./logger";
 
-const INTERPRETER_TOOL: Anthropic.Tool = {
-  name: "run_in_wasm_interpreter",
-  description:
-    "Execute self-contained Python or JavaScript in a FAST, lightweight WebAssembly sandbox. " +
-    "Best for quick computations, math, data transformations, parsing, and string/JSON work. " +
-    "Pre-bundled libraries are available (Python: numpy, pydantic, regex, beautifulsoup4, " +
-    "jinja2, markdown, tabulate, tiktoken; JavaScript: lodash, zod, date-fns, dayjs, cheerio, uuid, nanoid). " +
-    "For JavaScript you may pull ADDITIONAL npm packages by listing them in `dependencies` " +
-    "(name -> semver); they are fetched and bundled in before the code runs. Import them with ESM " +
-    "`import` syntax (e.g. `import M from 'mustache'`), NOT `require()`; `require` returns the module " +
-    "namespace, so the package's API would be under `.default`. Python cannot add packages. " +
-    "NO filesystem, NO shell, stateless. Print results to stdout. " +
-    "Network egress is DENIED by default. If the code calls an external API/tool with `fetch`, " +
-    "list the hosts it will reach in `allowedHosts` (e.g. [\"api.github.com\"]); only those are permitted.",
-  input_schema: {
-    type: "object",
-    properties: {
-      language: { type: "string", enum: ["python", "javascript"] },
-      code: {
-        type: "string",
-        description:
-          "The full program to run. Print results to stdout. Top-level `await` IS supported " +
-          "(write `const res = await fetch(url)` directly, with or without `dependencies`). Do NOT wrap " +
-          "async work in a floating `(async () => { … })()` IIFE: its promise is discarded before output " +
-          "is captured; use top-level `await` (or `await` the async call) instead.",
-      },
-      dependencies: {
-        type: "object",
-        description:
-          "JavaScript only. Extra npm dependencies to bundle in, as name -> semver range, " +
-          'e.g. { "mustache": "^4.2.0" }. Omit for Python or when only the pre-bundled libraries are used. ' +
-          "Use each dep via ESM `import` (e.g. `import M from 'mustache'`), not `require()`.",
-        additionalProperties: { type: "string" },
-      },
-      allowedHosts: {
-        type: "array",
-        items: { type: "string" },
-        description:
-          "Outbound hosts the code is allowed to reach with `fetch` (default-deny; omit for no network). " +
-          'Give hostnames, optionally with a port or a leading "*." wildcard, e.g. ' +
-          '["api.github.com", "*.openai.com"]. Internal/loopback/metadata hosts are always blocked.',
-      },
-    },
-    required: ["language", "code"],
-  },
-};
+const INTERPRETER_TOOL: Anthropic.Tool = toAnthropicTool(interpreterTool());
 
 function systemPrompt(): string {
   return (
@@ -120,8 +77,8 @@ async function runAgent(prompt: string, history: Anthropic.MessageParam[], emit:
   // the client by the language the model chose. The JS interpreter also knows the bundler, so
   // model code can pull extra npm dependencies (see the tool's `dependencies` field).
   const interpreters: Record<Language, Interpreter> = {
-    javascript: new Interpreter({ baseUrl: tsUrl, bundlerUrl }),
-    python: new Interpreter({ baseUrl: pyUrl }),
+    javascript: Interpreter.javascript({ baseUrl: tsUrl, bundlerUrl }),
+    python: Interpreter.python({ baseUrl: pyUrl }),
   };
 
   log.info(`chat: model=${model} prompt=${JSON.stringify(clip(prompt, 80))}`);
@@ -159,7 +116,15 @@ async function runAgent(prompt: string, history: Anthropic.MessageParam[], emit:
     for (const block of res.content) {
       // Text blocks were already streamed above as text_delta events.
       if (block.type === "tool_use") {
-        const input = block.input as { language: Language; code: string; dependencies?: Record<string, string>; allowedHosts?: string[] };
+        const input = block.input as {
+          language: Language;
+          code: string;
+          dependencies?: Record<string, string>;
+          allowedHosts?: string[];
+          identity?: string;
+          input?: HttpInput;
+          kvEnabled?: boolean;
+        };
         const id = toolId++;
 
         // Stream the code the moment the model produces it (before it runs), along with the
@@ -180,20 +145,25 @@ async function runAgent(prompt: string, history: Anthropic.MessageParam[], emit:
         let execMs = 0;
         try {
           const t = Date.now();
-          const r = await interpreters[input.language].run(input.code, {
-            lang: input.language,
-            // The model lists the hosts its code may call; egress is default-deny otherwise.
+          const runOpts = {
             allowedHosts: Array.isArray(input.allowedHosts) ? input.allowedHosts : [],
-            // JS only: pull the model's requested npm deps (bundled in before the code runs).
+            identity: input.identity,
+            kvEnabled: input.kvEnabled ?? false,
             packageJson:
               input.language === "javascript" && input.dependencies && Object.keys(input.dependencies).length
                 ? { dependencies: input.dependencies }
                 : undefined,
-          });
+          };
+          if (input.input) {
+            const response = await interpreters[input.language].runHandler(input.code, input.input, runOpts);
+            stdout = `HTTP ${response.status}\n${await response.text()}`;
+          } else {
+            const r = await interpreters[input.language].execute(input.code, runOpts);
+            stdout = r.stdout;
+            stderr = r.stderr;
+            error = r.error ? `${r.error.name}: ${r.error.value}` : null;
+          }
           execMs = Date.now() - t;
-          stdout = r.stdout;
-          stderr = r.stderr;
-          error = r.error ? `${r.error.name}: ${r.error.value}` : null;
         } catch (e: any) {
           error = `sandbox error: ${String(e?.message ?? e)}`;
         }
@@ -310,4 +280,5 @@ app.post("/api/chat", async (c: Context) => {
   });
 });
 
-fire(app);
+// Without this, Hono re-fetches the request itself on any 404, which Spin blocks (500).
+fire(app, { fetch: undefined });

@@ -53,6 +53,53 @@ test("run() defaults allowedHosts and kvEnabled to deny and uses /ts for javascr
   assert.equal(env.sandboxId, "gen-id"); // generated when no identity
 });
 
+test("language-bound clients use their language for direct run() and runHandler() calls", async () => {
+  const mock = mockFetch(() => ({ body: JSON.stringify({ stdout: "ok", stderr: "", error: null }) }));
+  const javascript = Interpreter.javascript({ baseUrl: "http://w", fetch: mock.fn });
+
+  await javascript.run("console.log('ok')");
+  await javascript.runHandler("export default { fetch() {} }", { path: "/handler" });
+
+  assert.equal(mock.calls[0].url, "http://w/ts/run");
+  assert.equal(mock.calls[1].url, "http://w/ts/run");
+  assert.equal(JSON.parse(mock.calls[1].init.body).input.path, "/handler");
+  assert.deepEqual(javascript.capabilities().languages, ["javascript"]);
+});
+
+test("constructor lang defaults direct run() calls", async () => {
+  const mock = mockFetch(() => ({ body: JSON.stringify({ stdout: "ok", stderr: "", error: null }) }));
+  const javascript = new Interpreter({ baseUrl: "http://w", lang: "javascript", fetch: mock.fn });
+
+  await javascript.run("console.log('ok')");
+
+  assert.equal(mock.calls[0].url, "http://w/ts/run");
+  assert.equal(JSON.parse(mock.calls[0].init.body).code, "console.log('ok')");
+});
+
+test("language-bound clients reject a mismatched language before making a request", async () => {
+  const mock = mockFetch(() => ({ body: "{}" }));
+  const python = Interpreter.python({ baseUrl: "http://py", fetch: mock.fn, bundlerUrl: "http://bundler" });
+
+  await assert.rejects(() => python.run("console.log(1)", { lang: "javascript" }), /bound to python/);
+  await assert.rejects(() => python.runRaw("src", { lang: "javascript" }), /bound to python/);
+  await assert.rejects(() => python.bundle("src", { dependencies: {} }), /only supported/);
+  assert.throws(() => python.kv("ns"), /only supported/);
+  assert.equal(mock.calls.length, 0);
+  assert.equal(python.capabilities().arbitraryImage, false);
+});
+
+test("an unbound client retains access to both language routes and JavaScript KV", async () => {
+  const mock = mockFetch(() => ({ body: JSON.stringify({ stdout: "", stderr: "", error: null }) }));
+  const itp = new Interpreter({ baseUrl: "http://combined", fetch: mock.fn, bundlerUrl: "http://bundler" });
+
+  await itp.run("console.log(1)", { lang: "javascript" });
+  itp.kv("ns");
+
+  assert.equal(mock.calls[0].url, "http://combined/ts/run");
+  assert.deepEqual(itp.capabilities().languages, ["python", "javascript"]);
+  assert.equal(itp.capabilities().arbitraryImage, true);
+});
+
 test("run() surfaces a runtime error string as Result.error (data, not throw)", async () => {
   const mock = mockFetch(() => ({
     body: JSON.stringify({ stdout: "", stderr: "", error: "Traceback...\nNameError: x" }),

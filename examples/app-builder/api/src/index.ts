@@ -29,7 +29,8 @@ const CREATE_APP_TOOL: Anthropic.Tool = {
     "(name -> semver); they are bundled into the app at publish time. Import them with ESM `import` " +
     "(e.g. `import { marked } from 'marked'`), NOT `require()`. Python cannot add packages. " +
     "The app's network egress is DENIED by default. If the app calls an external API/tool with `fetch`, " +
-    "list the hosts it will reach in `allowedHosts` (e.g. [\"api.openweathermap.org\"]); only those are permitted.",
+    "list the hosts it will reach in `allowedHosts` (e.g. [\"api.openweathermap.org\"]); only those are permitted. " +
+    "The app's private key-value store is DISABLED by default; set `kvEnabled` to true if the app persists state.",
   input_schema: {
     type: "object",
     properties: {
@@ -51,6 +52,10 @@ const CREATE_APP_TOOL: Anthropic.Tool = {
           "Outbound hosts the app is allowed to reach with `fetch` (default-deny; omit for no network). " +
           'Give hostnames, optionally with a port or a leading "*." wildcard, e.g. ' +
           '["api.openweathermap.org", "*.githubusercontent.com"]. Internal/loopback/metadata hosts are always blocked.',
+      },
+      kvEnabled: {
+        type: "boolean",
+        description: "Set true if the app uses its private key-value store to persist state. Default false: KV access fails.",
       },
     },
     required: ["language", "title", "code"],
@@ -78,14 +83,15 @@ function systemPrompt(): string {
     "   (e.g. `import { marked } from 'marked'`), NOT `require()`. It is bundled into the app at publish time",
     "   (not fetched at runtime). Python cannot add packages.",
     "5. To persist state across requests (counters, saved items, notes), use the app's private key-value",
-    "   store, Spin's DEFAULT store, which is automatically scoped to this app and durable across requests:",
+    "   store, Spin's DEFAULT store, which is automatically scoped to this app and durable across requests.",
+    "   It is DISABLED unless you pass `kvEnabled: true` to create_app, so set it whenever the app uses KV:",
     "   - JS: `import { openDefault } from '@spinframework/spin-kv'; const store = openDefault();` then",
     "     `store.getJson(k)`, `store.setJson(k, v)`, `store.delete(k)`, `store.exists(k)`, `store.getKeys()`.",
     "   - Python (synchronous in this sandbox): `from spin_sdk import key_value; store = key_value.open_default()`",
     "     then `store.get_json(k)`, `store.set_json(k, v)`, `store.get(k)`/`store.set(k, b'…')` (bytes),",
     "     `store.delete(k)`, `store.exists(k)`, `store.get_keys()`.",
     "   Reference: https://spinframework.dev/v4/kv-store-api-guide",
-    "6. Keep it one self-contained file, then call create_app with { language, title, code }.",
+    "6. Keep it one self-contained file, then call create_app with { language, title, code } (plus `kvEnabled` if it uses KV).",
     "After publishing, reply with a single short sentence naming the app.",
   ].join("\n");
 }
@@ -154,8 +160,8 @@ function makeStore() {
   // The JS interpreter also knows the bundler, so apps can pull extra npm deps, bundled once
   // at publish (see create_app below).
   const interpreters: Record<Language, Interpreter> = {
-    javascript: new Interpreter({ baseUrl: tsUrl, bundlerUrl }),
-    python: new Interpreter({ baseUrl: pyUrl }),
+    javascript: Interpreter.javascript({ baseUrl: tsUrl, bundlerUrl }),
+    python: Interpreter.python({ baseUrl: pyUrl }),
   };
   const store = new KvCodeStore({ interpreter: interpreters.javascript, namespace: "apps" });
   // Per-app conversation blobs (opaque to the api; the UI owns the shape), in their own
@@ -247,6 +253,7 @@ async function runAgent(
           code: string;
           dependencies?: Record<string, string>;
           allowedHosts?: string[];
+          kvEnabled?: boolean;
         };
         const blockId = `${turn}-${idx}`; // same index as the streamed content block
         emit({ t: "tool_saving", block: blockId });
@@ -270,6 +277,7 @@ async function runAgent(
           title: input.title,
           dependencies: deps,
           allowedHosts,
+          kvEnabled: input.kvEnabled === true,
           bundled,
         });
         appId = meta.id; // subsequent turns in this session edit the same app
@@ -503,4 +511,5 @@ function escapeHtml(s: string): string {
   );
 }
 
-fire(app);
+// Without this, Hono re-fetches the request itself on any 404, which Spin blocks (500).
+fire(app, { fetch: undefined });

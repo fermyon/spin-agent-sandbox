@@ -1,7 +1,11 @@
 """Pure executor logic kept free of generated bindings for unit tests."""
 
 import traceback
-from typing import Any, Dict, List, Optional, Tuple
+from collections.abc import Iterable, Iterator, Mapping, Set as AbstractSet
+from typing import Any, Dict, List, Optional, Tuple, Union
+
+
+ResponseBody = Union[bytes, Iterator[Union[bytes, str]]]
 
 
 class Request:
@@ -26,8 +30,12 @@ def build_request(method: str = "GET", path: str = "/", headers: Optional[dict] 
     return {"method": method, "uri": uri, "headers": dict(headers) if headers else {}, "body": body}
 
 
-def normalize_response(handler_result: Any) -> Tuple[int, List[Tuple[str, str]], bytes]:
-    """Extract (status, headers, body-bytes) from a user handler's return value."""
+def normalize_response(handler_result: Any) -> Tuple[int, List[Tuple[str, str]], ResponseBody]:
+    """Extract (status, headers, body) from a user handler's return value.
+
+    A bytes/string body is buffered; an iterable of bytes/string chunks is preserved
+    for the WIT body-stream adapter to pull incrementally.
+    """
     if hasattr(handler_result, "status"):
         status = handler_result.status
         raw_headers = handler_result.headers
@@ -43,8 +51,17 @@ def normalize_response(handler_result: Any) -> Tuple[int, List[Tuple[str, str]],
 
     if isinstance(body, str):
         body = body.encode("utf-8")
+    elif isinstance(body, (bytearray, memoryview)):
+        body = bytes(body)
     elif body is None:
         body = b""
+    elif isinstance(body, (Mapping, AbstractSet)):
+        raise TypeError("response body must be bytes, str, or an iterable of bytes/str chunks")
+    elif not isinstance(body, bytes):
+        if not isinstance(body, Iterable):
+            body = str(body).encode("utf-8")
+        else:
+            body = iter(body)
 
     headers: List[Tuple[str, str]] = []
     for k, v in (raw_headers or {}).items():
@@ -57,12 +74,22 @@ def normalize_response(handler_result: Any) -> Tuple[int, List[Tuple[str, str]],
     return status, headers, body
 
 
-def iter_chunks(body: bytes, chunk_size: int = 65536):
-    """Split body into chunk_size-byte pieces (the last may be smaller)."""
-    pos = 0
-    while pos < len(body):
-        yield body[pos:pos + chunk_size]
-        pos += chunk_size
+def iter_chunks(body: ResponseBody, chunk_size: int = 65536) -> Iterator[bytes]:
+    """Yield buffered data in bounded pieces or preserve supplied stream chunks."""
+    if isinstance(body, bytes):
+        pos = 0
+        while pos < len(body):
+            yield body[pos:pos + chunk_size]
+            pos += chunk_size
+        return
+
+    for chunk in body:
+        if isinstance(chunk, str):
+            yield chunk.encode("utf-8")
+        elif isinstance(chunk, (bytes, bytearray, memoryview)):
+            yield bytes(chunk)
+        else:
+            raise TypeError("response stream chunks must be bytes or str")
 
 
 def run_code(code: str, request: Dict[str, Any]) -> tuple:
@@ -72,7 +99,7 @@ def run_code(code: str, request: Dict[str, Any]) -> tuple:
       ("compile_error", message)
       ("main", None)
       ("main_error", traceback_str)
-      ("handler_response", status, headers, body_bytes)
+      ("handler_response", status, headers, body)
       ("handler_error", traceback_str)
     """
     try:
