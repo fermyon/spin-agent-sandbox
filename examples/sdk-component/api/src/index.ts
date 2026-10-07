@@ -18,6 +18,18 @@ interface HandlerBody extends RunBody {
   input?: HttpInput;
 }
 
+// Returning (status, headers, iterable) streams each chunk as the generator yields it.
+const PYTHON_STREAM_DEMO = `
+import time
+
+def handle_request(request):
+    def chunks():
+        for i in range(1, 6):
+            yield f"chunk {i}\\n"
+            time.sleep(0.5)
+    return (200, {"content-type": "text/plain"}, chunks())
+`;
+
 function validRun(body: RunBody): body is RunBody & { language: Language; code: string } {
   return (body.language === "python" || body.language === "javascript") && typeof body.code === "string";
 }
@@ -25,6 +37,8 @@ function validRun(body: RunBody): body is RunBody & { language: Language; code: 
 const app = new Hono();
 
 app.get("/health", (context) => context.json({ ok: true }));
+
+app.get("/stream-demo", () => interpreters.python.runHandler(PYTHON_STREAM_DEMO));
 
 app.post("/run", async (context) => {
   let body: RunBody;
@@ -51,4 +65,5 @@ app.post("/handler", async (context) => {
   return interpreters[body.language].runHandler(body.code, body.input);
 });
 
-fire(app);
+// Without this, Hono re-fetches the request itself on any 404, which Spin blocks (500).
+fire(app, { fetch: undefined });

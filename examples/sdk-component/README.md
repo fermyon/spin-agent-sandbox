@@ -38,3 +38,11 @@ curl -s http://127.0.0.1:3000/handler \
 
 `POST /run` returns the SDK `Result` JSON. `POST /handler` forwards the sandbox
 handler response, including its status, headers, and streamed body.
+
+`GET /stream-demo` runs a built-in Python handler that returns
+`(status, headers, generator)`. Each yielded chunk is forwarded as it is produced, so
+the five lines arrive half a second apart:
+
+```bash
+curl -N http://127.0.0.1:3000/stream-demo
+```

@@ -511,4 +511,5 @@ function escapeHtml(s: string): string {
   );
 }
 
-fire(app);
+// Without this, Hono re-fetches the request itself on any 404, which Spin blocks (500).
+fire(app, { fetch: undefined });

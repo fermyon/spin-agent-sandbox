@@ -280,4 +280,5 @@ app.post("/api/chat", async (c: Context) => {
   });
 });
 
-fire(app);
+// Without this, Hono re-fetches the request itself on any 404, which Spin blocks (500).
+fire(app, { fetch: undefined });

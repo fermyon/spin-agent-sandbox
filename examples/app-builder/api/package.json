@@ -18,10 +18,9 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.69.0",
-    "hono": "^4.7.4",
-    "@spinframework/build-tools": "1.0.7",
     "@spinframework/sandbox": "file:../../../sdk",
-    "@spinframework/spin-variables": "^1.0.0",
-    "@spinframework/wasi-http-proxy": "^1.0.0"
+    "@spinframework/spin-variables": "^1.0.1",
+    "@spinframework/wasi-http-proxy": "^2.0.0",
+    "hono": "^4.7.4"
   }
 }
