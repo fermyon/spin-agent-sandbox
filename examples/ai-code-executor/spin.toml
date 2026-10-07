@@ -4,12 +4,19 @@ spin_manifest_version = 2
 name = "ai-code-executor"
 version = "0.1.0"
 authors = ["Spin Sandbox"]
-description = "AI Code Executor: a Claude agent that runs model-written code in private, service-chained Wasm interpreter components."
+description = "AI Code Executor: an LLM agent that runs model-written code in private, service-chained Wasm interpreter components."
 
 [variables]
 log_level = { default = "info" }
-anthropic_api_key = { required = true, secret = true }
-model = { default = "claude-opus-4-8" }
+# The LLM provider is chosen at build time: Anthropic by default, OpenAI (or any server
+# implementing the Responses API, e.g. Ollama) with `--profile openai`.
+anthropic_api_key = { default = "", secret = true }
+anthropic_base_url = { default = "https://api.anthropic.com" }
+openai_api_key = { default = "", secret = true }
+openai_base_url = { default = "https://api.openai.com" }
+openai_api_path = { default = "/v1" }
+# Empty = the provider's default model.
+model = { default = "" }
 ts_interpreter_url = { default = "http://ts-sandbox.spin.internal" }
 py_interpreter_url = { default = "http://py-sandbox.spin.internal" }
 bundler_url = { default = "http://bundler.spin.internal" }
@@ -34,10 +41,11 @@ route = "/api/..."
 component = "api"
 
 [component.api]
-source = "api/dist/api.wasm"
-# Reach Claude, the two private interpreter components, and the bundler via service chaining
+source = "api/dist/api-anthropic.wasm"
+# Reach the LLM, the two private interpreter components, and the bundler via service chaining
 allowed_outbound_hosts = [
-  "https://api.anthropic.com",
+  "{{ anthropic_base_url }}",
+  "{{ openai_base_url }}",
   "http://ts-sandbox.spin.internal",
   "http://py-sandbox.spin.internal",
   "http://bundler.spin.internal",
@@ -45,14 +53,22 @@ allowed_outbound_hosts = [
 [component.api.variables]
 log_level = "{{ log_level }}"
 anthropic_api_key = "{{ anthropic_api_key }}"
+anthropic_base_url = "{{ anthropic_base_url }}"
+openai_api_key = "{{ openai_api_key }}"
+openai_base_url = "{{ openai_base_url }}"
+openai_api_path = "{{ openai_api_path }}"
 model = "{{ model }}"
 ts_interpreter_url = "{{ ts_interpreter_url }}"
 py_interpreter_url = "{{ py_interpreter_url }}"
 bundler_url = "{{ bundler_url }}"
 access_token = "{{ access_token }}"
 [component.api.build]
-command = "npm install && npm run build"
+command = "npm install && LLM_PROVIDER=anthropic npm run build"
 workdir = "api"
+[component.api.profile.openai]
+source = "api/dist/api-openai.wasm"
+[component.api.profile.openai.build]
+command = "npm install && LLM_PROVIDER=openai npm run build"
 
 [[trigger.http]]
 route = { private = true }

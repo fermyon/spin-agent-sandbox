@@ -1,12 +1,12 @@
 {
   "name": "api",
   "version": "1.0.0",
-  "description": "App Builder API, Claude generates HTTP-handler apps, stores them, and serves each live",
+  "description": "App Builder API, an LLM generates HTTP-handler apps, stores them, and serves each live",
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "build": "node build.mjs && mkdirp dist && j2w -i build/bundle.js --initLocation http://api.localhost -o dist/api.wasm",
-    "build:debug": "node build.mjs && mkdirp dist && j2w -d -i build/bundle.js --initLocation http://api.localhost -o dist/api.wasm",
+    "build": "node build.mjs && mkdirp dist && j2w -i build/${LLM_PROVIDER:-anthropic}/bundle.js --initLocation http://api.localhost -o dist/api-${LLM_PROVIDER:-anthropic}.wasm",
+    "build:debug": "node build.mjs && mkdirp dist && j2w -d -i build/${LLM_PROVIDER:-anthropic}/bundle.js --initLocation http://api.localhost -o dist/api-${LLM_PROVIDER:-anthropic}.wasm",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -21,6 +21,7 @@
     "@spinframework/sandbox": "file:../../../sdk",
     "@spinframework/spin-variables": "^1.0.1",
     "@spinframework/wasi-http-proxy": "^2.0.0",
-    "hono": "^4.7.4"
+    "hono": "^4.7.4",
+    "openai": "^7.30.0"
   }
 }

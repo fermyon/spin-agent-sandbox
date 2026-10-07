@@ -1,6 +1,7 @@
 # AI Code Executor: an agent whose tool is a sandbox
 
-A Spin application: Claude writes code and runs it in the fast Wasm interpreter
+A Spin application: an LLM (Claude by default, or an OpenAI-compatible model) writes
+code and runs it in the fast Wasm interpreter
 through [`@spinframework/sandbox`](../../sdk), with the transcript streamed
 back to a chat UI.
 
@@ -8,7 +9,7 @@ back to a chat UI.
       public routes                          private components (no public route)
 ┌──────────────┐  POST /api/chat  ┌─────────────────────┐  ts-sandbox.spin.internal  ┌─────────────┐
 │  Nuxt SPA    │ ───────────────▶ │  api (Hono, Wasm)   │ ─────────────────────────▶ │  ts-sandbox │
-│  /...        │ ◀─────────────── │  Claude tool loop   │  py-sandbox.spin.internal  │  py-sandbox │
+│  /...        │ ◀─────────────── │  LLM tool loop      │  py-sandbox.spin.internal  │  py-sandbox │
 └──────────────┘  NDJSON (live)   └─────────────────────┘ ─────────────────────────▶ └─────────────┘
 ```
 
@@ -29,14 +30,14 @@ standard agentic loop with dynamic code execution as the action. (Background:
 [Why: CodeAct](../../README.md#why-codeact).)
 
 1. You ask a question in the chat.
-2. Claude writes code. It picks Python or JavaScript and produces a small program,
+2. The model writes code. It picks Python or JavaScript and produces a small program,
    streamed into the UI as it is typed.
 3. A private Wasm sandbox runs it. The code executes in an isolated WebAssembly
    interpreter (`ts-sandbox` / `py-sandbox`) with no filesystem, no shell, and
    default-deny egress. Because model-written code is untrusted, the sandbox is a
    private component reached only over internal service chaining, never a public
    endpoint.
-4. The output loops back. stdout, stderr, and errors return to Claude (the
+4. The output loops back. stdout, stderr, and errors return to the model (the
    observation), which fixes and re-runs or, once satisfied, writes the final answer.
 
 Why let the model write code instead of only calling fixed tools? The action space is
@@ -69,7 +70,8 @@ by turn.
 - `{"t":"tool_end", id, execMs, stdout, stderr, error}`: the output, the moment the
   sandbox returns (`genMs` is the model turn latency that produced the code, `execMs`
   the interpreter run).
-- `{"t":"done"}` / `{"t":"error"}`.
+- `{"t":"done", history}` / `{"t":"error"}`. `history` is the provider-tagged
+  conversation the UI sends back to continue it.
 
 Each tool card shows "generated in" (`genMs`) and "ran in" (`execMs`). Spin/StarlingMonkey forwards a guest streaming
 body chunk by chunk, which is what makes the incremental flush work.
@@ -84,12 +86,31 @@ text streams in. Because the HTML comes from model output it is treated as untru
 language is only echoed into the DOM when it matches a registered highlight.js
 language.
 
+## Choosing the LLM provider
+
+The provider is fixed at build time with a [Spin build
+profile](https://spinframework.dev/v4/build#building-with-profiles), so only its SDK is
+bundled into the `api` component:
+
+| Build | Provider | API |
+|---|---|---|
+| default (no profile) | Anthropic, `api/dist/api-anthropic.wasm` | Messages API |
+| `--profile openai` | OpenAI, `api/dist/api-openai.wasm` | Responses API (stateless) |
+
+Both builds share one agent loop; the provider code lives in [`api/src/llm/`](api/src/llm).
+The base URLs are variables and also form the `api` component's outbound allow-list, so
+either build can target any compatible server.
+
 ## Configuration (Spin application variables)
 
 | Variable | Default | Notes |
 |---|---|---|
-| `anthropic_api_key` | (required, secret) | `SPIN_VARIABLE_ANTHROPIC_API_KEY=sk-ant-…` |
-| `model` | `claude-opus-4-8` | any Claude model id |
+| `anthropic_api_key` | empty (secret) | `SPIN_VARIABLE_ANTHROPIC_API_KEY=sk-ant-…`; used by the default build |
+| `anthropic_base_url` | `https://api.anthropic.com` | any Anthropic Messages-compatible server |
+| `openai_api_key` | empty (secret) | `SPIN_VARIABLE_OPENAI_API_KEY=sk-…`; used by `--profile openai` |
+| `openai_base_url` | `https://api.openai.com` | any Responses-compatible server (origin only) |
+| `openai_api_path` | `/v1` | path prefix appended to `openai_base_url` |
+| `model` | empty | empty = `claude-opus-4-8` (Anthropic) or `gpt-5` (OpenAI) |
 | `ts_interpreter_url` | `http://ts-sandbox.spin.internal` | the private JS/TS interpreter component |
 | `py_interpreter_url` | `http://py-sandbox.spin.internal` | the private Python interpreter component |
 | `access_token` | empty = open | set `SPIN_VARIABLE_ACCESS_TOKEN=…` to gate the UI + API behind an access-token page |
@@ -111,18 +132,38 @@ Everything is one app, with no separate interpreter to start.
    repo's components, built in place from `../../`).
 3. Run (the API key comes from the environment):
    ```bash
-   SPIN_VARIABLE_ANTHROPIC_API_KEY=sk-ant-... spin up
+   SPIN_VARIABLE_ANTHROPIC_API_KEY=sk-ant-... spin up              # Anthropic
+   SPIN_VARIABLE_OPENAI_API_KEY=sk-... spin up --profile openai    # OpenAI
    ```
+   Build and run a profile together with `spin up --profile openai --build`, so a stale
+   build of the other profile is never served.
 4. Open the served URL and click a prompt, e.g. "What is the factorial of 15?". The
    model writes Python/JS and runs it in the matching private interpreter, then
    answers.
+
+### Local models with Ollama
+
+[Ollama](https://ollama.com) serves both the
+[Anthropic](https://docs.ollama.com/api/anthropic-compatibility) and
+[OpenAI Responses](https://docs.ollama.com/api/openai-compatibility) APIs locally and
+ignores the API key, so either build runs without a cloud account:
+
+```bash
+ollama pull qwen3:4b
+spin up --build --variable anthropic_base_url=http://localhost:11434 --variable model=qwen3:4b
+spin up --profile openai --build --variable openai_base_url=http://localhost:11434 --variable model=qwen3:4b
+```
+
+Small local models are slower and less reliable at multi-step tool use than hosted
+ones.
 
 ## Layout
 
 ```
 spin.toml          wires 5 components: public ui + api, private ts-sandbox + py-sandbox + bundler
-api/               Hono component: the Claude tool-use loop + the interpreter tool
+api/               Hono component: the LLM tool-use loop + the interpreter tool
   src/index.ts     the agent; imports @spinframework/sandbox; one Interpreter client per component
+  src/llm/         provider interface + Anthropic and OpenAI implementations (one bundled per build)
 ui/                Nuxt SPA chat (near-verbatim from upstream; one filesystem prompt swapped)
   pages/index.vue  the chat UI
 ../../packages/typescript/sandbox   private JS/TS interpreter, built in place, reached via ts-sandbox.spin.internal
