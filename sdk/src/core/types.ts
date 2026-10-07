@@ -147,6 +147,8 @@ export interface CodeMeta {
   /** Outbound host allow-list the stored code runs with when served (default-deny when
    * empty/omitted). `serveStoredCode` passes these through to the sandbox envelope. */
   allowedHosts?: string[];
+  /** Whether the stored code may use the sandbox's scoped KV when served (default-deny). */
+  kvEnabled?: boolean;
   /** Unix epoch millis when saved. */
   createdAt: number;
 }
@@ -180,6 +182,8 @@ export interface CodeStore {
     dependencies?: Record<string, string>;
     /** Outbound host allow-list the served app runs with (default-deny when empty/omitted). */
     allowedHosts?: string[];
+    /** Lets the served app use its scoped KV (default-deny when omitted). */
+    kvEnabled?: boolean;
     bundled?: string;
   }): Promise<CodeMeta>;
   /** Load one entry with its source, or null if absent. */

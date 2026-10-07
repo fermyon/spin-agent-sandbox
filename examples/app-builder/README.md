@@ -43,7 +43,8 @@ Generated apps can persist state, too. Each runs with its own private, scoped
 [Spin KV](https://spinframework.dev/v4/kv-store-api-guide): the `default` store, which
 the sandbox scopes per app (`identity = code:<id>`), isolated from other apps and from
 the code registry. So a counter or a saved list survives across requests. The model is
-told to reach it via `openDefault()` (JS) / `key_value.open_default()` (Python).
+told to reach it via `openDefault()` (JS) / `key_value.open_default()` (Python) and to
+set `kvEnabled: true` in `create_app`; KV is off for apps that don't.
 
 ## The two surfaces (one component)
 

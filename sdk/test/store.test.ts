@@ -104,7 +104,12 @@ test("serveStoredCode: routes by stored language, scopes identity, denies egress
   assert.equal(calls[0].lang, "py"); // routed by the stored language, not the KV transport
   assert.equal(calls[0].opts.identity, "code:x");
   assert.deepEqual(calls[0].opts.allowedHosts, []);
+  assert.equal(calls[0].opts.kvEnabled, false);
   assert.equal(calls[0].opts.input.path, "/data");
+
+  record.kvEnabled = true;
+  await serveStoredCode(store, interpreters, "x", {});
+  assert.equal(calls[1].opts.kvEnabled, true);
 
   const missing = await serveStoredCode(store, interpreters, "nope", {});
   assert.equal(missing.status, 404);
