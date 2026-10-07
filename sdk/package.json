@@ -8,7 +8,8 @@
     ".": "./src/index.ts",
     "./core": "./src/core/index.ts",
     "./interpreter": "./src/interpreter/index.ts",
-    "./store": "./src/store/index.ts"
+    "./store": "./src/store/index.ts",
+    "./tools": "./src/tools.ts"
   },
   "files": [
     "src"
@@ -16,6 +17,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "node --test \"test/*.test.ts\"",
+    "test:components": "node --test test/components.test.ts",
     "check": "npm run typecheck && npm run test"
   },
   "keywords": [

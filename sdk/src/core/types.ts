@@ -122,7 +122,7 @@ export interface Caps {
   arbitraryImage: boolean;
   /** `timeoutMs` actually kills the process. Interpreter: false (best-effort). */
   realTimeout: boolean;
-  /** Live incremental output. Interpreter: false, `run()` is buffered. */
+  /** Live incremental `Result` output. Interpreter: false; `run()` is buffered. */
   streaming: boolean;
 }
 

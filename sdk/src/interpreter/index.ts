@@ -1,18 +1,18 @@
 // @spinframework/sandbox/interpreter, the Wasm code interpreter backend.
 //
 // A thin client over a wasm-sandbox component's `POST /ts/run` (JS/TS) and `/py/run`
-// (Python) routes. Inherently single-shot and buffered, which is exactly the portable
-// `core.run()` contract.
+// (Python) routes. `core.run()` is intentionally single-shot and buffered. HTTP handler
+// responses retain their streaming body through `runRaw()`.
 //
 // In the intended deployment the interpreter is TWO PRIVATE components, ts-sandbox and
 // py-sandbox, reached via service chaining. `.spin.internal` resolves to a COMPONENT id,
-// so each language has its own host: use one Interpreter per language, each `baseUrl`
+// so each language has its own host: use one language-bound Interpreter per language, each `baseUrl`
 // pointed at its component (see examples/ai-code-executor/api/src/index.ts):
 //
-//   const js = new Interpreter({ baseUrl: "http://ts-sandbox.spin.internal" });
-//   const py = new Interpreter({ baseUrl: "http://py-sandbox.spin.internal" });
-//   await js.run(code, { lang: "javascript" });   // -> ts-sandbox
-//   await py.run(code, { lang: "python" });        // -> py-sandbox
+//   const js = Interpreter.javascript({ baseUrl: "http://ts-sandbox.spin.internal" });
+//   const py = Interpreter.python({ baseUrl: "http://py-sandbox.spin.internal" });
+//   await js.execute(code); // -> ts-sandbox
+//   await py.execute(code); // -> py-sandbox
 //
 // (A single combined app that routes both /ts and /py by path also works; then one
 // `baseUrl` at the app suffices, but the private two-component form is the default.)
@@ -24,7 +24,7 @@
 //                                bundlerUrl: "http://bundler.spin.internal" });
 //   await js.run(code, { lang: "javascript", packageJson: { dependencies: { mustache: "^4.2.0" } } });
 
-import type { Caps, CodeRunner, PackageJson, Result, RunOpts } from "../core/index.ts";
+import type { Caps, CodeRunner, HttpInput, Language, PackageJson, Result, RunOpts } from "../core/index.ts";
 import { langToRoute, withDefaults } from "../core/index.ts";
 
 // Re-exported so a consumer can name run languages (and import `Interpreter`)
@@ -47,7 +47,12 @@ export interface InterpreterOptions {
   fetch?: FetchLike;
   /** Override sandbox-id generation for runs without an explicit identity. */
   newId?: () => string;
+  /** Default language for `run()` and `runRaw()`. Prefer `Interpreter.python()` or `.javascript()`. */
+  lang?: Language;
 }
+
+/** Options for a language-bound Interpreter method. */
+export type BoundRunOpts = Omit<RunOpts, "lang" | "input">;
 
 const CAPS: Caps = {
   languages: ["python", "javascript"],
@@ -83,12 +88,24 @@ export class Interpreter implements CodeRunner {
   private readonly bundlerUrl?: string;
   private readonly fetchImpl: FetchLike;
   private readonly newId: () => string;
+  private readonly boundLanguage?: Language;
 
   constructor(opts: InterpreterOptions) {
     this.baseUrl = opts.baseUrl.replace(/\/+$/, "");
     this.bundlerUrl = opts.bundlerUrl ? opts.bundlerUrl.replace(/\/+$/, "") : undefined;
     this.fetchImpl = opts.fetch ?? (globalThis.fetch as FetchLike);
     this.newId = opts.newId ?? defaultNewId;
+    this.boundLanguage = opts.lang;
+  }
+
+  /** Create a client whose `run()` and `runHandler()` calls target Python by default. */
+  static python(opts: Omit<InterpreterOptions, "lang">): Interpreter {
+    return new Interpreter({ ...opts, lang: "python" });
+  }
+
+  /** Create a client whose `run()` and `runHandler()` calls target JavaScript by default. */
+  static javascript(opts: Omit<InterpreterOptions, "lang">): Interpreter {
+    return new Interpreter({ ...opts, lang: "javascript" });
   }
 
   backend(): "interpreter" {
@@ -97,7 +114,9 @@ export class Interpreter implements CodeRunner {
 
   capabilities(): Caps {
     // A configured bundler lets JavaScript pull dependencies beyond the frozen libs.
-    return this.bundlerUrl ? { ...CAPS, arbitraryImage: true } : CAPS;
+    const languages = this.boundLanguage ? [this.boundLanguage] : CAPS.languages;
+    const arbitraryImage = Boolean(this.bundlerUrl) && this.boundLanguage !== "python";
+    return { ...CAPS, languages, arbitraryImage };
   }
 
   /**
@@ -107,6 +126,9 @@ export class Interpreter implements CodeRunner {
    * rather than on every request.
    */
   async bundle(code: string, packageJson: PackageJson): Promise<string> {
+    if (this.boundLanguage === "python") {
+      throw new Error("bundle() is only supported by an unbound or JavaScript Interpreter");
+    }
     if (!this.bundlerUrl) {
       throw new Error("bundle() requires the Interpreter to have a bundlerUrl");
     }
@@ -160,13 +182,27 @@ export class Interpreter implements CodeRunner {
     return { url: `${this.baseUrl}/${route}/run`, body: JSON.stringify(envelope), route };
   }
 
+  private withLanguage(opts: BoundRunOpts | undefined): RunOpts {
+    return { ...opts, lang: this.boundLanguage ?? "python" };
+  }
+
+  private resolveRunOpts(opts: RunOpts | undefined): RunOpts {
+    const lang = opts?.lang ?? this.boundLanguage ?? "python";
+    if (this.boundLanguage && lang !== this.boundLanguage) {
+      throw new Error(`this Interpreter is bound to ${this.boundLanguage}; create a ${lang} Interpreter instead`);
+    }
+    return withDefaults({ ...opts, lang });
+  }
+
   /**
-   * Like run(), but returns the sandbox's raw HTTP Response verbatim. For the HTTP-handler
-   * shape, where the handler's Response (status/headers/body) is the payload you want, not
-   * the parsed {stdout,stderr}. Throws only on transport failure.
+   * Like run(), but returns the sandbox's raw HTTP Response verbatim. Use it for the
+   * HTTP-handler shape, where the handler's Response (status/headers/body) is the payload
+   * you want, not parsed {stdout,stderr}. JavaScript `ReadableStream` bodies and Python
+   * iterable response bodies are streamed through the sandbox. Throws only on transport
+   * failure.
    */
   async runRaw(code: string, opts?: RunOpts): Promise<Response> {
-    const o = withDefaults(opts);
+    const o = this.resolveRunOpts(opts);
     const bundled = await this.maybeBundle(code, o);
     const { url, body } = this.buildEnvelope(bundled, o);
     return this.fetchImpl(url, {
@@ -176,12 +212,20 @@ export class Interpreter implements CodeRunner {
     });
   }
 
+  /**
+   * Run an HTTP handler against `input` and return its HTTP response. This is the ergonomic
+   * handler counterpart to `run()`; use `runRaw()` only when constructing `RunOpts` directly.
+   */
+  async runHandler(code: string, input: HttpInput = {}, opts?: BoundRunOpts): Promise<Response> {
+    return this.runRaw(code, { ...this.withLanguage(opts), input });
+  }
+
   // Runs `code` and returns the parsed main-shape `{ stdout, stderr, error }`. For
   // handler-shape code (`export default { fetch }` / `def handle_request`) the sandbox
   // returns the handler's Response instead, which does not match this shape and yields an
   // empty Result; use runRaw() for that case.
   async run(code: string, opts?: RunOpts): Promise<Result> {
-    const o = withDefaults(opts);
+    const o = this.resolveRunOpts(opts);
     const bundled = await this.maybeBundle(code, o);
     const { url, body, route } = this.buildEnvelope(bundled, o);
 
@@ -225,6 +269,11 @@ export class Interpreter implements CodeRunner {
     return result;
   }
 
+  /** Run code using this client's configured default language. */
+  async execute(code: string, opts?: BoundRunOpts): Promise<Result> {
+    return this.run(code, this.withLanguage(opts));
+  }
+
   /**
    * INTERPRETER-ONLY power: the per-namespace scoped key-value store, reached by running a
    * tiny snippet against the shared `default` store (the sandbox namespaces keys as
@@ -233,6 +282,9 @@ export class Interpreter implements CodeRunner {
    * value whose JSON exceeds that cannot be read back (getJson throws rather than truncating).
    */
   kv(namespace: string): InterpreterKV {
+    if (this.boundLanguage === "python") {
+      throw new Error("kv() is only supported by an unbound or JavaScript Interpreter");
+    }
     return new InterpreterKV(this, namespace);
   }
 }

@@ -154,8 +154,8 @@ function makeStore() {
   // The JS interpreter also knows the bundler, so apps can pull extra npm deps, bundled once
   // at publish (see create_app below).
   const interpreters: Record<Language, Interpreter> = {
-    javascript: new Interpreter({ baseUrl: tsUrl, bundlerUrl }),
-    python: new Interpreter({ baseUrl: pyUrl }),
+    javascript: Interpreter.javascript({ baseUrl: tsUrl, bundlerUrl }),
+    python: Interpreter.python({ baseUrl: pyUrl }),
   };
   const store = new KvCodeStore({ interpreter: interpreters.javascript, namespace: "apps" });
   // Per-app conversation blobs (opaque to the api; the UI owns the shape), in their own

@@ -13,5 +13,6 @@
 // backend-neutral.
 
 export * from "./core/index.ts";
-export { Interpreter, InterpreterKV, type InterpreterOptions } from "./interpreter/index.ts";
+export { Interpreter, InterpreterKV, type BoundRunOpts, type InterpreterOptions } from "./interpreter/index.ts";
 export { KvCodeStore, serveStoredCode, type KvCodeStoreOptions } from "./store/index.ts";
+export { interpreterTool, toAnthropicTool, toOpenAITool, type InterpreterToolOptions, type ToolDefinition } from "./tools.ts";
