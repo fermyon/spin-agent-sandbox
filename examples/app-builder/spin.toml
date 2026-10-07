@@ -66,7 +66,7 @@ route = { private = true }
 component = "ts-sandbox"
 
 [component.ts-sandbox]
-source = "../../packages/typescript/sandbox/dist/ts-sandbox.wasm"
+source = "../../dist/ts-sandbox.wasm"
 exclude_files = ["**/node_modules"]
 key_value_stores = ["default"]
 # Broad dev outer bound for user code; the component's fetch shim enforces the
@@ -75,7 +75,7 @@ allowed_outbound_hosts = ["https://*:*", "http://*:*"]
 [component.ts-sandbox.variables]
 log_level = "{{ log_level }}"
 [component.ts-sandbox.build]
-command = "npm ci && npm run build"
+command = "bash build-composed.sh"
 workdir = "../../packages/typescript/sandbox"
 
 [[trigger.http]]
@@ -83,11 +83,11 @@ route = { private = true }
 component = "py-sandbox"
 
 [component.py-sandbox]
-source = "../../py-sandbox/app.wasm"
+source = "../../dist/py-sandbox.wasm"
 key_value_stores = ["default"]
 allowed_outbound_hosts = ["https://*:*", "http://*:*"]
 [component.py-sandbox.build]
-command = "bash build.sh"
+command = "bash build-composed.sh"
 workdir = "../../py-sandbox"
 watch = ["*.py", "requirements.txt"]
 

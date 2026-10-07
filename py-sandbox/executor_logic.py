@@ -1,7 +1,7 @@
 """Pure executor logic kept free of generated bindings for unit tests."""
 
 import traceback
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable, Iterator, Mapping, Set as AbstractSet
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 
@@ -55,6 +55,8 @@ def normalize_response(handler_result: Any) -> Tuple[int, List[Tuple[str, str]],
         body = bytes(body)
     elif body is None:
         body = b""
+    elif isinstance(body, (Mapping, AbstractSet)):
+        raise TypeError("response body must be bytes, str, or an iterable of bytes/str chunks")
     elif not isinstance(body, bytes):
         if not isinstance(body, Iterable):
             body = str(body).encode("utf-8")
@@ -97,7 +99,7 @@ def run_code(code: str, request: Dict[str, Any]) -> tuple:
       ("compile_error", message)
       ("main", None)
       ("main_error", traceback_str)
-    ("handler_response", status, headers, body)
+      ("handler_response", status, headers, body)
       ("handler_error", traceback_str)
     """
     try:

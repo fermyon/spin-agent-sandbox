@@ -53,6 +53,11 @@ class TestNormalizeResponse(unittest.TestCase):
         _, _, stream = normalize_response((200, {}, body()))
         self.assertEqual(list(iter_chunks(stream)), [b"first", b"second"])
 
+    def test_mapping_and_set_bodies_are_rejected(self):
+        for body in ({"a": 1}, {"a"}):
+            with self.assertRaises(TypeError):
+                normalize_response((200, {}, body))
+
     def test_scalar_value_defaults_200(self):
         status, _, body = normalize_response(42)
         self.assertEqual((status, body), (200, b"42"))
