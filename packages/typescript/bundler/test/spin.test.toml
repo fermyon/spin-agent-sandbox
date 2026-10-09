@@ -9,6 +9,8 @@ version = "0.1.0"
 
 [variables]
 log_level = { default = "info" }
+# Tests use the public esm.sh; override with SPIN_VARIABLE_ESM_BASE_URL to test a self-hosted one.
+esm_base_url = { default = "https://esm.sh" }
 
 [[trigger.http]]
 route = "/ts/..."
@@ -25,4 +27,6 @@ route = "/bundle/..."
 component = "bundler"
 [component.bundler]
 source = "../dist/bundler.wasm"
-allowed_outbound_hosts = ["https://esm.sh", "https://*.esm.sh"]
+allowed_outbound_hosts = ["{{ esm_base_url }}"]
+[component.bundler.variables]
+esm_base_url = "{{ esm_base_url }}"

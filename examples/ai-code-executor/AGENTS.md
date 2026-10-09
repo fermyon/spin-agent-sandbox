@@ -21,9 +21,10 @@ Five components; only `ui` and `api` have public routes.
   They have no public route and are reachable only from `api` via service chaining
   (`ts-sandbox.spin.internal` / `py-sandbox.spin.internal`), which the API lists in its
   `allowed_outbound_hosts`.
-- **`bundler`** (private): packages extra npm dependencies for JavaScript runs. The SDK
+- **`bundler`** (private, experimental): packages extra npm dependencies for JavaScript runs. The SDK
   POSTs (source + package.json) to it and runs the returned self-contained bundle. It
-  fetches from esm.sh and runs no user code, so it stays isolated from the
+  fetches from the esm.sh server named by `esm_base_url` (public esm.sh by default) and runs
+  no user code, so it stays isolated from the
   code-executing sandboxes.
 
 ## Invariants

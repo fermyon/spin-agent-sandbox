@@ -60,7 +60,7 @@ each sandbox's `build-composed.sh` produces the deployment artifact.
 | --- | --- | --- |
 | `ts-sandbox` | `POST /ts/...` | Run JavaScript or TypeScript |
 | `py-sandbox` | `POST /py/...` | Run Python |
-| `bundler` | `POST /bundle/...` | Bundle extra npm dependencies |
+| `bundler` (experimental) | `POST /bundle/...` | Bundle extra npm dependencies |
 
 POST this envelope to `/ts/...` or `/py/...`:
 
@@ -108,8 +108,14 @@ TypeScript includes `cheerio`, `node-html-parser`, `zod`, `js-yaml`, `nanoid`,
 
 Python includes `numpy`, `tabulate`, `markdown`, `jinja2`, `regex`, `beautifulsoup4`,
 `sqlalchemy`, `tiktoken`, `pydantic`, `pyyaml`, and the standard library. The
-[bundler](packages/typescript/bundler) packages additional npm dependencies; the
+[bundler](packages/typescript/bundler) (experimental) packages additional npm dependencies; the
 component READMEs list the complete language-specific sets.
+
+### Bundler (experimental)
+
+The bundler resolves npm packages through the [esm.sh](https://github.com/esm-dev/esm.sh/) project, which allows it to download and use packages without an installation or build step. This is an experimental integration: some packages may not bundle or run. See the [compatibility report](packages/typescript/bundler/test/compat/COMPATIBILITY.md) for the packages tested in the integration suite.
+
+By default, the bundler uses the publicly hosted and rate-limited [https://esm.sh](https://esm.sh) server. If you require higher limits or more control, you can also use a self-hosted mirror (see [esm.sh HOSTING.md](https://github.com/esm-dev/esm.sh/blob/main/HOSTING.md) for instructions). For this, point the `esm_base_url` variable at your own instance, for example via `SPIN_VARIABLE_ESM_BASE_URL=https://esm.example.com`.
 
 ### Scoped key-value store
 

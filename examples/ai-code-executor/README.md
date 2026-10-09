@@ -16,7 +16,7 @@ back to a chat UI.
 The two interpreters (`ts-sandbox`, `py-sandbox`) are private components of this app
 (`route = { private = true }`), so they have no public route and are reachable only
 from the `api` component via local service chaining (`<component>.spin.internal`). A
-private `bundler` component packages any extra npm dependencies the model requests. The
+private `bundler` component (experimental) packages any extra npm dependencies the model requests. The
 API depends on the sandbox client from this repo ([`@spinframework/sandbox`](../../sdk),
 a local `file:` dependency) and holds one `Interpreter` per language, each pointed at
 its component's internal URL.
@@ -112,6 +112,7 @@ build can target any compatible server.
 | `ts_interpreter_url` | `http://ts-sandbox.spin.internal` | the private JS/TS interpreter component |
 | `py_interpreter_url` | `http://py-sandbox.spin.internal` | the private Python interpreter component |
 | `access_token` | empty = open | set `SPIN_VARIABLE_ACCESS_TOKEN=…` to gate the UI + API behind an access-token page |
+| `esm_base_url` | `https://esm.sh` | origin of the esm.sh server used by the experimental bundler for the model's npm `dependencies`; point it at a [self-hosted instance](https://github.com/esm-dev/esm.sh/blob/main/HOSTING.md) if you prefer |
 
 The interpreter URLs default to service chaining, so nothing needs to run separately;
 the interpreters are built and served as part of this app. Override them only to point

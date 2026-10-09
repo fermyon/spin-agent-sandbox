@@ -14,7 +14,9 @@ app has no build step. The components are built and published by
 | `sandbox-app` | app with both sandboxes                  | not supported             | ts + py              |
 
 `sandbox-ts` gives JavaScript npm-dependency support: it wires the code sandbox
-together with its bundler (which fetches deps from esm.sh), both as private components.
+together with its experimental bundler, both as private components. The bundler uses the
+public esm.sh by default; set the `esm_base_url` variable to use a
+[self-hosted instance](https://github.com/esm-dev/esm.sh/blob/main/HOSTING.md).
 Drive them from your own component with `new Interpreter({ baseUrl, bundlerUrl })` and
 `run(code, { lang: "javascript", packageJson })`. The two stay separate so the "fetch
 npm" capability is isolated from the "run untrusted code" capability.

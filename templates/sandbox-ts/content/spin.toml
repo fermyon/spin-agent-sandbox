@@ -8,6 +8,12 @@ version = "0.1.0"
 authors = ["{{authors}}"]
 description = "{{project-description}}"
 
+# EXPERIMENTAL bundler: uses the public esm.sh by default. To self-host, see
+# https://github.com/esm-dev/esm.sh/blob/main/HOSTING.md and set
+# SPIN_VARIABLE_ESM_BASE_URL=https://esm.example.com
+[variables]
+esm_base_url = { default = "https://esm.sh" }
+
 # This app scaffolds two PRIVATE building blocks: a JS/TS code sandbox and its dependency
 # bundler. Both are private (no public route) and reachable only via service chaining from
 # another component in this app. Add your own component that drives them through
@@ -34,12 +40,14 @@ allowed_outbound_hosts = ["https://*:*", "http://*:*"]
 [component.{{project-name | kebab_case}}.variables]
 log_level = "info"
 
-# --- Bundler: fetches npm deps from esm.sh, runs no user code ---
+# --- Bundler (EXPERIMENTAL): fetches npm deps from esm.sh, runs no user code ---
 [[trigger.http]]
 route = { private = true }
 component = "{{project-name | kebab_case}}-bundler"
 
 [component.{{project-name | kebab_case}}-bundler]
 source = { url = "https://github.com/lepton/wasm-sandbox/releases/download/v0.1.0/bundler.wasm", digest = "sha256:0000000000000000000000000000000000000000000000000000000000000000" }
-# The bundler's only egress is esm.sh (trusted build infra).
-allowed_outbound_hosts = ["https://esm.sh", "https://*.esm.sh"]
+# The bundler's only egress is the esm.sh server named by esm_base_url (trusted build infra).
+allowed_outbound_hosts = ["{% raw %}{{ esm_base_url }}{% endraw %}"]
+[component.{{project-name | kebab_case}}-bundler.variables]
+esm_base_url = "{% raw %}{{ esm_base_url }}{% endraw %}"
