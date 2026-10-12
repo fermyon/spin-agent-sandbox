@@ -38,7 +38,7 @@ fn parse_authority(scheme: &str, authority: &str) -> Option<(String, Option<u16>
 
 /// Splits the host part of an allow-list pattern (`host` or `host:port-spec`,
 /// with an IPv6 host in brackets) into its host and the raw, not-yet-parsed
-/// port spec — unlike `split_authority`, the port half may also be `*`.
+/// port spec — unlike `parse_authority`, the port half may also be `*`.
 fn split_pattern(pat: &str) -> (&str, Option<&str>) {
     if let Some(rest) = pat.strip_prefix('[') {
         if let Some((host, tail)) = rest.split_once(']') {
@@ -64,8 +64,8 @@ fn well_known_port(scheme: &str) -> Option<u16> {
 /// Returns true if `port` (the request's actual port, if any) satisfies an
 /// allow-list entry's port spec: `*` allows any port; an explicit number must
 /// match exactly; an entry with no port at all means the scheme's default
-/// port (80/http, 443/https) rather than "any port". No ranges — mirrors the
-/// pre-guard ts-sandbox/py-sandbox `_egress` semantics, kept deliberately simple.
+/// port (80/http, 443/https) rather than "any port". No ranges, kept
+/// deliberately simple.
 fn port_matches(pat_port: Option<&str>, scheme: &str, port: Option<u16>) -> bool {
     match pat_port {
         Some("*") => true,
@@ -187,8 +187,8 @@ mod tests {
 
     #[test]
     fn wildcard_subdomain_matches_any_depth_and_the_bare_domain() {
-        // Mirrors the pre-guard ts-sandbox/py-sandbox semantics: "*.example.com" also
-        // covers the bare "example.com", not just strict subdomains.
+        // By design, "*.example.com" also covers the bare "example.com", not just
+        // strict subdomains.
         let allowed = vec!["*.example.com".to_string()];
         assert!(host_allowed("https", "a.example.com", &allowed));
         assert!(host_allowed("https", "a.b.example.com", &allowed));

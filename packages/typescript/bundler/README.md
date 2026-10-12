@@ -5,7 +5,7 @@
 > and its behavior and HTTP contract may change.
 
 A Spin/StarlingMonkey component that turns `(source + package.json)` into one
-self-contained CommonJS blob the unchanged `ts-sandbox` can execute.
+self-contained CommonJS blob the `ts-sandbox` can execute.
 
 It runs entirely inside StarlingMonkey (SpiderMonkey compiled to Wasm): no Node, no
 esbuild at runtime. It is built the same way as `ts-sandbox` (esbuild bundles `src/`
@@ -100,7 +100,7 @@ the sandbox skips its own sucrase pass and goes straight to
 
 ```
 npm ci && npm run build     # -> dist/bundler.wasm
-spin up                     # route /bundle is added in ../../spin.toml
+spin up                     # route /bundle is added in ../../../spin.toml
 ```
 
 ## Known limits

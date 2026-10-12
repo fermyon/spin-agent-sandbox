@@ -1,6 +1,6 @@
 # Trimmed manifest for the bundler integration tests: only ts-sandbox + bundler, so the
 # suite does not require building py-sandbox. Sources point at the artifacts produced by
-# `spin build` against the main wasm/spin.toml. Used by test/integration-run.mjs.
+# `spin build` against the repo's root spin.toml. Used by test/integration-run.mjs.
 spin_manifest_version = 2
 
 [application]

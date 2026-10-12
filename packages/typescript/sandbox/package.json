@@ -1,7 +1,9 @@
 {
   "name": "ts-sandbox",
-  "version": "1.0.0",
+  "private": true,
+  "version": "0.1.0",
   "description": "Wasm sandbox that executes dynamic JS/TS code via Spin",
+  "license": "Apache-2.0",
   "main": "index.js",
   "type": "module",
   "scripts": {
@@ -10,7 +12,6 @@
     "test": "node --experimental-test-module-mocks test/run.mjs"
   },
   "keywords": [],
-  "author": "",
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
     "@types/lodash": "^4.17.7",

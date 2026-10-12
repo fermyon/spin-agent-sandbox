@@ -1,7 +1,8 @@
 name: Release
 
-# Tests and builds all three components, then publishes them as GitHub release assets so the
-# Spin templates (templates/sandbox-*) can reference them by URL + digest.
+# Runs the full test workflow, then builds the three components from the same commit and
+# publishes them, with the test run's bundler compatibility reports, as GitHub release
+# assets so the Spin templates (templates/sandbox-*) can reference them by URL + digest.
 #
 #   - push a tag `vX.Y.Z`  -> a versioned release with that tag
 #   - run manually         -> a rolling `canary` prerelease
@@ -18,6 +19,9 @@ on:
 permissions:
   contents: read
 
+env:
+  RUST_VERSION: "1.95"
+
 # New canary runs supersede older ones, even across branches. Versioned releases
 # remain serialized per tag without cancelling an in-progress release.
 concurrency:
@@ -28,19 +32,18 @@ jobs:
   tests:
     uses: ./.github/workflows/test.yml
     with:
-      run-integration: true
+      run-bundler: true
 
   release:
     needs: tests
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     permissions:
       contents: write # create releases and (for canary) move the tag
     steps:
-      - name: Checkout (with the spin-python-deps submodule)
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: recursive # py-sandbox's prebuilt wasm32-wasi packages
 
       - name: Determine version
         run: |
@@ -52,15 +55,27 @@ jobs:
             echo "PRERELEASE=true" >> "$GITHUB_ENV"
           fi
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: |
+            packages/typescript/sandbox/package-lock.json
+            packages/typescript/bundler/package-lock.json
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Rust toolchain and Wasm targets
+        run: |
+          rustup toolchain install "$RUST_VERSION" --profile minimal --no-self-update --target wasm32-wasip2
+          rustup default "$RUST_VERSION"
+
       - name: Install Spin
         uses: fermyon/actions/spin/setup@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
 
       - name: Install Bytecode Alliance tools
         uses: ./.github/actions/setup-wasm-tools
@@ -69,33 +84,29 @@ jobs:
           wasm-tools-version: "1.246.1"
           wac-version: "0.12.0"
 
-      - name: Download tested TypeScript components
-        uses: actions/download-artifact@v4
-        with:
-          name: typescript-components
-          path: _dist
+      - name: Build components
+        # The same commit the test workflow just passed.
+        run: spin build
 
-      - name: Download compatibility reports from the tested run
+      - name: Validate components and their imports
+        run: |
+          wasm-tools validate dist/ts-sandbox.wasm
+          wasm-tools validate dist/py-sandbox.wasm
+          wasm-tools validate packages/typescript/bundler/dist/bundler.wasm
+          node tests/check-imports.mjs
+
+      - name: Download compatibility reports from the test run
         uses: actions/download-artifact@v4
         with:
           name: bundler-test-results
           path: _reports
 
-      - name: Archive compatibility reports
-        # A unique filename preserves reports across rolling canary releases.
-        run: |
-          tar -czf "_dist/compatibility-${GITHUB_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.tar.gz" -C _reports .
-
-      - name: Build Python sandbox
-        # py-sandbox/build.sh finds the prebuilt wasm32-wasi packages via the
-        # spin-python-deps submodule (checked out above).
-        # TS comes from the passing test workflow, including guard + guard-io composition.
-        run: spin build -c py-sandbox
-
       - name: Collect artifacts and checksums
+        # A unique archive name preserves reports across rolling canary releases.
         run: |
-          cp dist/py-sandbox.wasm _dist/py-sandbox.wasm
-          wasm-tools validate _dist/py-sandbox.wasm
+          mkdir -p _dist
+          cp dist/ts-sandbox.wasm dist/py-sandbox.wasm packages/typescript/bundler/dist/bundler.wasm _dist/
+          tar -czf "_dist/compatibility-${GITHUB_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.tar.gz" -C _reports .
           ( cd _dist && sha256sum ts-sandbox.wasm py-sandbox.wasm bundler.wasm compatibility-*.tar.gz > "checksums-${RELEASE_VERSION}.txt" )
           cat "_dist/checksums-${RELEASE_VERSION}.txt"
 

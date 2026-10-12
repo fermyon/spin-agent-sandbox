@@ -19,8 +19,8 @@ component = "{{project-name | kebab_case}}"
 # Prebuilt component from this project's GitHub releases (built + published by
 # .github/workflows/release.yml). Update the version + digest with a new release
 # (see scripts/update-template-refs.sh). PLACEHOLDER url/digest until first release.
-source = { url = "https://github.com/lepton/wasm-sandbox/releases/download/v0.1.0/py-sandbox.wasm", digest = "sha256:0000000000000000000000000000000000000000000000000000000000000000" }
-# The component scopes KV keys per sandboxId; its fetch shim enforces the per-request
+source = { url = "https://github.com/fermyon/functions-agent-sandbox/releases/download/v0.1.0/py-sandbox.wasm", digest = "sha256:0000000000000000000000000000000000000000000000000000000000000000" }
+# The component scopes KV keys per sandboxId; its guard-io layer enforces the per-request
 # allow-list on top of this broad dev bound; tighten it per-deployment.
 key_value_stores = ["default"]
 allowed_outbound_hosts = ["https://*:*", "http://*:*"]

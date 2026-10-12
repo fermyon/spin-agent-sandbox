@@ -390,7 +390,7 @@ const gateError = ref("");
 async function checkAuth() {
   try {
     const d = await (await fetch("/api/health")).json();
-    llmName.value = d.provider === "anthropic" ? "Claude" : "The model";
+    llmName.value = /^claude/i.test(d.model ?? "") ? "Claude" : "The model";
     gate.value = !d.authRequired || d.authed ? "open" : "locked";
   } catch {
     gate.value = "open"; // health unreachable, don't hard-lock local dev

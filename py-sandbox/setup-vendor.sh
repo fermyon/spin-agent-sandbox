@@ -14,7 +14,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # directory (run `git submodule update --init` if it is empty). SPIN_PYTHON_DEPS overrides it.
 DEPS="${SPIN_PYTHON_DEPS:-$HERE/spin-python-deps}"
 VENDOR="$HERE/vendor"
-PY="${PYTHON:-/opt/homebrew/opt/python@3.12/bin/python3.12}"
+PY="${PYTHON:-python3.12}"
 
 # Prebuilt wasm32-wasi packages (cpython-312-wasm32-wasi .so + sources).
 PREBUILT=(_yaml charset_normalizer frozenlist multidict numpy pydantic_core \

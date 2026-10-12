@@ -1,4 +1,4 @@
-# Smoke tests for the Wasm sandbox. Request bodies are read from disk (tests/bodies/*.json)
+# Smoke tests for Spin Sandbox. Request bodies are read from disk (tests/bodies/*.json)
 # via hurl's `file,<path>;` keyword rather than inlined here. Run with:
 #   spin up --listen 127.0.0.1:3007 &
 #   hurl --variable base_url=http://127.0.0.1:3007 --test tests/smoke.hurl
@@ -82,13 +82,13 @@ file,bodies/bad-envelope.json;
 HTTP 400
 
 # ===========================================================================
-# Security regression gates. The KV-isolation gates fail on the historical
+# Security regression gates. The KV-isolation gates fail under an unprefixed
 # "{id}-{key}" scheme.
 # ===========================================================================
 
 # --- KV isolation (Python): sandbox "iso-a" must NOT see sandbox "iso-a-b"'s key ---
-# Prefix-collision attack: "iso-a" + key "b-secret" once mapped to the same physical
-# key as "iso-a-b" + key "secret". Write first, then attempt the cross-sandbox read.
+# Prefix-collision attack: under that scheme, "iso-a" + key "b-secret" maps to the same
+# physical key as "iso-a-b" + key "secret". Write first, then attempt the cross-sandbox read.
 POST {{base_url}}/py/run
 content-type: application/json
 file,bodies/py-kv-iso-write.json;
@@ -104,6 +104,7 @@ HTTP 200
 jsonpath "$.error" == null
 jsonpath "$.stdout" not contains "TOPSECRET"
 jsonpath "$.stdout" contains "leaked=None"
+jsonpath "$.stdout" contains "keys=[]"
 
 # --- KV isolation (TypeScript): same cross-sandbox read must be blocked ---
 POST {{base_url}}/ts/run
@@ -121,6 +122,7 @@ HTTP 200
 jsonpath "$.error" == null
 jsonpath "$.stdout" not contains "TOPSECRET"
 jsonpath "$.stdout" contains "leaked=null"
+jsonpath "$.stdout" contains "keys=[]"
 
 # --- Egress (TypeScript): default-deny with no allowedHosts ---
 POST {{base_url}}/ts/run
@@ -141,11 +143,14 @@ jsonpath "$.stdout" contains "DENIED"
 jsonpath "$.stdout" not contains "ALLOWED"
 
 # --- Egress SSRF backstop: an allow-listed INTERNAL target is still refused by policy ---
+# The TS error text does not name the cause, so the duration bound tells a policy denial
+# (immediate) apart from a connection attempt that merely failed or timed out.
 POST {{base_url}}/ts/run
 content-type: application/json
 file,bodies/ts-egress-internal.json;
 HTTP 200
 [Asserts]
+duration < 2000
 jsonpath "$.stdout" contains "DENIED"
 jsonpath "$.stdout" not contains "ALLOWED"
 
@@ -153,6 +158,40 @@ jsonpath "$.stdout" not contains "ALLOWED"
 POST {{base_url}}/ts/run
 content-type: application/json
 file,bodies/ts-egress-allow.json;
+HTTP 200
+[Asserts]
+jsonpath "$.stdout" contains "ALLOWED"
+jsonpath "$.stdout" not contains "DENIED"
+
+# --- Egress (Python): the same gates through spin_sdk.http. The Python error names the
+# cause, so these assert the policy denial itself. ---
+POST {{base_url}}/py/run
+content-type: application/json
+file,bodies/py-egress-deny.json;
+HTTP 200
+[Asserts]
+jsonpath "$.stdout" contains "HttpRequestDenied"
+jsonpath "$.stdout" not contains "ALLOWED"
+
+POST {{base_url}}/py/run
+content-type: application/json
+file,bodies/py-egress-star.json;
+HTTP 200
+[Asserts]
+jsonpath "$.stdout" contains "HttpRequestDenied"
+jsonpath "$.stdout" not contains "ALLOWED"
+
+POST {{base_url}}/py/run
+content-type: application/json
+file,bodies/py-egress-internal.json;
+HTTP 200
+[Asserts]
+jsonpath "$.stdout" contains "HttpRequestDenied"
+jsonpath "$.stdout" not contains "ALLOWED"
+
+POST {{base_url}}/py/run
+content-type: application/json
+file,bodies/py-egress-allow.json;
 HTTP 200
 [Asserts]
 jsonpath "$.stdout" contains "ALLOWED"

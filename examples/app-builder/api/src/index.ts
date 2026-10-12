@@ -3,7 +3,7 @@
 // (Anthropic or OpenAI) is chosen at build time; see build.mjs.
 //
 // Two surfaces on one component:
-//   /api/...   control plane: generate (model loop) + list apps
+//   /api/...   control plane: generate (model loop), app records + conversations, health/auth
 //   /a/<id>/   live app: load stored code from KV, run it in the sandbox, forward its Response
 
 import { Hono } from "hono";

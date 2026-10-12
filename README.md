@@ -1,4 +1,4 @@
-# Sandboxes for AI-generated code
+# Spin Sandbox
 
 Run untrusted JavaScript/TypeScript and Python in isolated WebAssembly components on
 [Spin](https://spinframework.dev). This repository includes the sandboxes, an npm
@@ -45,7 +45,7 @@ spin up --build
 
 ## How it works
 
-An agent or application sends code and a `sandboxId` to either the JavaScript or Python Sandbox.The sandbox runs either a script or HTTP handler, returning captured output or the handler response. Use the SDK or Spin service chaining to keep sandbox endpoints private.
+An agent or application sends code and a `sandboxId` to either the JavaScript or Python sandbox. The sandbox runs either a script or HTTP handler, returning captured output or the handler response. Use the SDK or Spin service chaining to keep sandbox endpoints private.
 
 ## Architecture
 
@@ -151,7 +151,16 @@ cd packages/typescript/sandbox && npm test
 cd py-sandbox && python3 -m unittest discover -s tests -t .
 ```
 
-See [RELEASES.md](RELEASES.md) for CI, integration gates, publishing, and template updates.
+Run the end-to-end suites, including the security gates, against both sandboxes:
+
+```bash
+spin up --build --listen 127.0.0.1:3007 &
+hurl --variable base_url=http://127.0.0.1:3007 --test tests/smoke.hurl
+BASE=http://127.0.0.1:3007 tests/run-examples.sh
+```
+
+See [RELEASES.md](RELEASES.md) for CI, the on-demand bundler gates, publishing, and
+template updates.
 
 ## Limitations
 

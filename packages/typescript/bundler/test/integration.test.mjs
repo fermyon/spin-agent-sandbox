@@ -6,7 +6,7 @@
 //   npm run test:integration          # builds (if needed) + starts spin + runs these
 //   BUNDLER_BASE_URL=http://127.0.0.1:3000 node --test test/integration.test.mjs
 //
-// With no BUNDLER_BASE_URL set, every test SKIPS (so `node --test test/*.mjs` stays green
+// With no BUNDLER_BASE_URL set, every test SKIPS (so `node --test test/integration.test.mjs` stays green
 // in environments without Spin).
 
 import { test } from "node:test";

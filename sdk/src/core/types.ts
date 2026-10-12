@@ -118,9 +118,9 @@ export interface Caps {
   kv: boolean;
   /** Real lifecycle (create/destroy/idle-reap/status). Interpreter: false. */
   lifecycle: boolean;
-  /** Arbitrary dependency set beyond the frozen libs. Interpreter: false. */
+  /** Arbitrary dependency set beyond the frozen libs. Interpreter: true for JavaScript with a bundlerUrl. */
   arbitraryImage: boolean;
-  /** `timeoutMs` actually kills the process. Interpreter: false (best-effort). */
+  /** `timeoutMs` actually kills the process. Interpreter: false (`timeoutMs` is ignored). */
   realTimeout: boolean;
   /** Live incremental `Result` output. Interpreter: false; `run()` is buffered. */
   streaming: boolean;

@@ -34,7 +34,7 @@ component = "{{project-name | kebab_case}}"
 # Prebuilt component from this project's GitHub releases (built + published by
 # .github/workflows/release.yml). Update the version + digest with a new release
 # (see scripts/update-template-refs.sh). PLACEHOLDER url/digest until first release.
-source = { url = "https://github.com/lepton/wasm-sandbox/releases/download/v0.1.0/ts-sandbox.wasm", digest = "sha256:0000000000000000000000000000000000000000000000000000000000000000" }
+source = { url = "https://github.com/fermyon/functions-agent-sandbox/releases/download/v0.1.0/ts-sandbox.wasm", digest = "sha256:0000000000000000000000000000000000000000000000000000000000000000" }
 key_value_stores = ["default"]
 allowed_outbound_hosts = ["https://*:*", "http://*:*"]
 [component.{{project-name | kebab_case}}.variables]
@@ -46,7 +46,7 @@ route = { private = true }
 component = "{{project-name | kebab_case}}-bundler"
 
 [component.{{project-name | kebab_case}}-bundler]
-source = { url = "https://github.com/lepton/wasm-sandbox/releases/download/v0.1.0/bundler.wasm", digest = "sha256:0000000000000000000000000000000000000000000000000000000000000000" }
+source = { url = "https://github.com/fermyon/functions-agent-sandbox/releases/download/v0.1.0/bundler.wasm", digest = "sha256:0000000000000000000000000000000000000000000000000000000000000000" }
 # The bundler's only egress is the esm.sh server named by esm_base_url (trusted build infra).
 allowed_outbound_hosts = ["{% raw %}{{ esm_base_url }}{% endraw %}"]
 [component.{{project-name | kebab_case}}-bundler.variables]

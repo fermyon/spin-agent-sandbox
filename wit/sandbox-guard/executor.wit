@@ -1,11 +1,11 @@
 package sandbox:guard@0.1.0;
 
-// Exported by ts-sandbox, imported by guard-front. ts-sandbox is a pure
-// code-execution callee: no stdout/stderr fields here — that capture now
-// happens entirely in guard-io's guarded wasi:cli/stdout`/`stderr` exports
-// (see crates/guard-io/src/stdio.rs), which guard-front reads back via
-// `context.take-captured-output` after calling `run`. ts-sandbox only needs
-// to report whether a handler-shape response, a plain success/failure, or a
+// Exported by the language guest (ts-sandbox or py-sandbox), imported by
+// guard-front. The guest is a pure code-execution callee: no stdout/stderr
+// fields here — guard-io's guarded `wasi:cli/stdout`/`stderr` exports capture
+// that (see crates/guard-io/src/stdio.rs), and guard-front reads it back via
+// `context.take-captured-output` after calling `run`. The guest only reports
+// whether a handler-shape response, a plain success/failure, or a
 // compile/handler error occurred.
 interface executor {
     record run-input {
@@ -17,7 +17,7 @@ interface executor {
     }
 
     // Mirrors wasi:io/streams' pull-based read contract, scoped to this
-    // package rather than reusing that interface directly — ts-sandbox would
+    // package rather than reusing that interface directly — the guest would
     // otherwise have to implement wasi:io/streams' full output-stream side too,
     // just to export a resource it only ever produces the input half of.
     // `chunk` = more data, `done` = clean EOF, `error` = the underlying stream
@@ -48,7 +48,7 @@ interface executor {
         main(option<string>),
         // Syntax/transpile error, or a malformed `input` — a client error (400).
         compile-error(string),
-        // The handler shape's `fetch()` threw — a server error (500).
+        // The handler (TS `fetch()` / Python `handle_request`) threw — a server error (500).
         handler-error(string),
     }
 

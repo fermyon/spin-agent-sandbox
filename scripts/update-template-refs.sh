@@ -4,7 +4,7 @@
 #
 #   scripts/update-template-refs.sh <version> [owner/repo]
 #   scripts/update-template-refs.sh v0.1.0
-#   scripts/update-template-refs.sh v0.1.0 myorg/wasm-sandbox
+#   scripts/update-template-refs.sh v0.1.0 myorg/functions-agent-sandbox
 #
 # Downloads each released *.wasm, computes its digest, and updates the templates in place.
 # Review with `git diff templates/` afterwards.

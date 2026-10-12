@@ -1,0 +1,7 @@
+{
+  "code": "from spin_sdk.http import send, Request\ntry:\n    r = send(Request(\"GET\", \"https://example.com/\", {}, None))\n    print(\"ALLOWED status=\" + str(r.status))\nexcept Exception as e:\n    print(\"DENIED: \" + type(e).__name__ + \": \" + str(e))",
+  "sandboxId": "egress-test",
+  "allowedHosts": [
+    "*"
+  ]
+}

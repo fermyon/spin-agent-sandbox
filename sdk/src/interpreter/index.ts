@@ -1,6 +1,6 @@
 // @spinframework/sandbox/interpreter, the Wasm code interpreter backend.
 //
-// A thin client over a wasm-sandbox component's `POST /ts/run` (JS/TS) and `/py/run`
+// A thin client over a sandbox component's `POST /ts/run` (JS/TS) and `/py/run`
 // (Python) routes. `core.run()` is intentionally single-shot and buffered. HTTP handler
 // responses retain their streaming body through `runRaw()`.
 //
@@ -79,7 +79,7 @@ interface MainShape {
 
 interface ErrorShape {
   error?: string;
-  /** ts-sandbox keys the detail as `message`; py-sandbox keys it as `trace`. */
+  /** Both sandboxes (via the guard) key the detail as `message`; `trace` is a fallback. */
   message?: string;
   trace?: string;
 }
@@ -242,7 +242,7 @@ export class Interpreter implements CodeRunner {
     if (!res.ok) {
       const e = (json ?? {}) as ErrorShape;
       const kind = e.error ?? "internal";
-      // ts-sandbox reports the detail as `message`, py-sandbox as `trace` (a traceback).
+      // Both sandboxes report the detail as `message` (the guard's JSON errors); `trace` is a fallback.
       const detail = e.message ?? e.trace;
       if (CODE_ERROR_KINDS.has(kind)) {
         // A syntax/compile/handler error is data about the user's code.

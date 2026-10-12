@@ -1,7 +1,7 @@
 package guard:host;
 
 // A trivial component generated at build time via `wasm-tools component embed
-// --dummy` (see spin.toml's py-sandbox build command / build.sh), composed
+// --dummy` (see py-sandbox/build-composed.sh), composed
 // alongside guard-io to satisfy py-sandbox's forced `wasi:sockets/*` imports —
 // every exported function traps with `unreachable` when called.
 world dummy-sockets {

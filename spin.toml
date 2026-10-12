@@ -1,7 +1,7 @@
 spin_manifest_version = 2
 
 [application]
-name = "wasm-agent-sandbox"
+name = "spin-sandbox"
 version = "0.1.0"
 
 [variables]

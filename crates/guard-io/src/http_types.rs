@@ -172,9 +172,9 @@ fn unmap_field_size_payload(p: guarded::FieldSizePayload) -> real::FieldSizePayl
 }
 
 /// The reverse of `map_error_code` — needed only by `response-outparam.set`,
-/// which is unreachable in practice (ts-sandbox no longer handles incoming
-/// HTTP), but must still type-check since the whole `wasi:http/types`
-/// interface is exported as one unit.
+/// which is unreachable in practice (the guests never handle incoming HTTP;
+/// guard-front does), but must still type-check since the whole
+/// `wasi:http/types` interface is exported as one unit.
 pub fn unmap_error_code(e: guarded::ErrorCode) -> real::ErrorCode {
     use guarded::ErrorCode as G;
     use real::ErrorCode as R;

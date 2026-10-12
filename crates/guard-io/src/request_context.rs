@@ -1,4 +1,4 @@
-//! Per-request sandbox ID and egress policy in fresh-instance thread-local state.
+//! Per-request sandbox ID, egress allow-list, and KV flag in fresh-instance thread-local state.
 
 use std::cell::{Cell, RefCell};
 

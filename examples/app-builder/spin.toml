@@ -83,7 +83,7 @@ component = "ts-sandbox"
 source = "../../dist/ts-sandbox.wasm"
 exclude_files = ["**/node_modules"]
 key_value_stores = ["default"]
-# Broad dev outer bound for user code; the component's fetch shim enforces the
+# Broad dev outer bound for user code; the component's guard-io layer enforces the
 # per-request allow-list on top. Tighten per deployment.
 allowed_outbound_hosts = ["https://*:*", "http://*:*"]
 [component.ts-sandbox.variables]
