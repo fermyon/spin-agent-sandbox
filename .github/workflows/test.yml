@@ -116,10 +116,13 @@ jobs:
       - name: Check the host capabilities each sandbox imports
         run: node tests/check-imports.mjs
       - name: Start the app
+        # A cold runner compiles the Wasm modules on first start, which can take minutes.
         run: |
           spin up --listen 127.0.0.1:3007 > "$RUNNER_TEMP/spin.log" 2>&1 &
-          for _ in $(seq 60); do
+          spin_pid=$!
+          for _ in $(seq 300); do
             curl -s -o /dev/null http://127.0.0.1:3007/ts/run && exit 0
+            kill -0 "$spin_pid" 2>/dev/null || break # spin exited: fail now
             sleep 1
           done
           cat "$RUNNER_TEMP/spin.log"
