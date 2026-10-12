@@ -89,6 +89,7 @@ under the other build starts a fresh edit session from the app's current code.
 | `ts_interpreter_url` | `http://ts-sandbox.spin.internal` | private JS/TS interpreter component |
 | `py_interpreter_url` | `http://py-sandbox.spin.internal` | private Python interpreter component |
 | `access_token` | empty = open | set `SPIN_VARIABLE_ACCESS_TOKEN=…` to gate the UI, API and live apps behind an access-token page |
+| `esm_base_url` | `https://esm.sh` | origin of the esm.sh server used by the experimental bundler when an app lists npm `dependencies`; point it at a [self-hosted instance](https://github.com/esm-dev/esm.sh/blob/main/HOSTING.md) if you prefer |
 
 ## Run it
 

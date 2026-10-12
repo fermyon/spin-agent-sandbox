@@ -22,7 +22,7 @@ Five components; only `ui` and `api` have public routes.
   interpreter components, built in place from `../../`. They execute the stored handler
   and hold the code store in their scoped `default` KV. Reachable only from `api` via
   service chaining.
-- **`bundler`** (private): bundles a JS app's npm `dependencies` once at publish time;
+- **`bundler`** (private, experimental): bundles a JS app's npm `dependencies` once at publish time;
   the store keeps both the editable source and the self-contained bundle.
 
 ## Invariants

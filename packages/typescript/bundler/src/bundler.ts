@@ -1,6 +1,7 @@
 // The linker. Runs in StarlingMonkey using only fetch + sucrase + URL.
 //
-// Strategy: offload dependency-graph resolution and tree-shaking to esm.sh (?bundle).
+// Strategy: offload dependency-graph resolution and tree-shaking to an esm.sh server (?bundle).
+// The server is named by the esm_base_url variable (see README).
 // For each bare specifier in the user source, fetch its (near-)standalone esm.sh module,
 // close the graph over esm.sh's own polyfill URLs (substituting curated Node shims that
 // sucrase can transpile cleanly), convert each module ESM->CJS with sucrase, and stitch a
@@ -18,7 +19,6 @@ const BUILTINS = [
   "lodash", "date-fns", "dayjs", "@spinframework/spin-kv",
 ];
 const BSET = new Set(BUILTINS);
-const ESM = "https://esm.sh";
 const MAX_MODULES = 300;
 // Source-size budgets. Very large libraries otherwise exhaust memory and surface as an opaque
 // "out of memory". Two independent limits: the per-module cap catches a single huge minified
@@ -46,8 +46,8 @@ const rootOf = (s: string) => (s.startsWith("@") ? s.split("/").slice(0, 2).join
 const isBuiltin = (s: string) => BSET.has(rootOf(s));
 const isBare = (s: string) => !(s.startsWith("/") || s.startsWith("./") || s.startsWith("../") || /^https?:\/\//.test(s));
 
-const stripImportMeta = (t: string) =>
-  t.replace(/import\.meta\.url/g, JSON.stringify(ESM + "/")).replace(/import\.meta/g, "({})");
+const stripImportMeta = (t: string, esmBase: string) =>
+  t.replace(/import\.meta\.url/g, JSON.stringify(esmBase + "/")).replace(/import\.meta/g, "({})");
 
 // Collect the `require("...")` specifiers from already-transpiled CJS. We scan the CJS
 // (not the raw ESM) because esm.sh's minified bundle output uses forms with no whitespace
@@ -66,8 +66,8 @@ function requireSpecs(cjs: string): string[] {
 // Also make sucrase's prepended `__esModule` marker writable+configurable: some esm.sh bundle
 // outputs later run `exports.__esModule = X`, which otherwise throws "'__esModule' is read-only"
 // against the default non-writable value descriptor (StarlingMonkey enforces the strict-mode assign).
-const toCjs = (esm: string) =>
-  sucrase(stripImportMeta(esm), { transforms: ["imports"], preserveDynamicImport: false }).code
+const toCjs = (esm: string, esmBase: string) =>
+  sucrase(stripImportMeta(esm, esmBase), { transforms: ["imports"], preserveDynamicImport: false }).code
     .replace(
       /Object\.defineProperty\(exports, "__esModule", \{value: true\}\)/g,
       'Object.defineProperty(exports, "__esModule", {value: true, writable: true, configurable: true})'
@@ -77,17 +77,21 @@ const toCjs = (esm: string) =>
     // (`returnawait` is never a real identifier, so this is safe.)
     .replace(/\breturnawait\b/g, "return await");
 
-function esmUrl(spec: string, deps: Record<string, string>): string {
+/** The configured `esm_base_url` is unusable. */
+export class EsmConfigError extends Error {}
+
+function esmUrl(spec: string, deps: Record<string, string>, esmBase: string): string {
   const root = rootOf(spec);
   const range = deps[root];
   const ver = range ? "@" + encodeURIComponent(range) : "";
-  return `${ESM}/${root}${ver}${spec.slice(root.length)}?bundle&target=es2020`;
+  return `${esmBase}/${root}${ver}${spec.slice(root.length)}?bundle&target=es2020`;
 }
 
 interface Mod { base: string; cjs: string; }
 export interface BundleResult { blob: string; ms: number; fetches: number; modules: number; }
 
-export async function bundle(userSource: string, deps: Record<string, string>): Promise<BundleResult> {
+/** `esmBase` is the origin of the esm.sh server, e.g. "https://esm.sh". */
+export async function bundle(userSource: string, deps: Record<string, string>, esmBase: string): Promise<BundleResult> {
   const t0 = Date.now();
   const mods = new Map<string, Mod | null>(); // absolute URL -> module (null = reserved, cycle guard)
   const entry = new Map<string, string>();    // bare entry specifier -> resolved URL key
@@ -113,7 +117,7 @@ export async function bundle(userSource: string, deps: Record<string, string>): 
     if (text.length > MAX_MODULE_BYTES) throw new Error(moduleTooLarge(Math.round(text.length / 1024), url));
     if (totalBytes > MAX_TOTAL_BYTES) throw new Error(graphTooLarge(totalBytes, mods.size));
     const finalUrl = res.url || url;
-    const rec: Mod = { base: finalUrl, cjs: toCjs(text) };
+    const rec: Mod = { base: finalUrl, cjs: toCjs(text, esmBase) };
     mods.set(url, rec);
     if (finalUrl !== url) mods.set(finalUrl, rec); // alias after redirect
 
@@ -135,7 +139,7 @@ export async function bundle(userSource: string, deps: Record<string, string>): 
 
   for (const spec of requireSpecs(userCjs)) {
     if (isBuiltin(spec) || !isBare(spec)) continue;
-    entry.set(spec, await process(esmUrl(spec, deps)));
+    entry.set(spec, await process(esmUrl(spec, deps, esmBase)));
   }
 
   const modLiteral = [...mods.entries()]

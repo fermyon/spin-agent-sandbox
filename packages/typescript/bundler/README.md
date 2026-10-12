@@ -1,11 +1,38 @@
 # bundler
 
+> **Experimental.** The bundler resolves packages through [esm.sh](https://github.com/esm-dev/esm.sh/).
+> Some packages may not bundle or run (see the [compatibility report](test/compat/COMPATIBILITY.md)),
+> and its behavior and HTTP contract may change.
+
 A Spin/StarlingMonkey component that turns `(source + package.json)` into one
 self-contained CommonJS blob the unchanged `ts-sandbox` can execute.
 
 It runs entirely inside StarlingMonkey (SpiderMonkey compiled to Wasm): no Node, no
 esbuild at runtime. It is built the same way as `ts-sandbox` (esbuild bundles `src/`
 and `sucrase`, then `j2w`/componentize-js produces the Wasm component).
+
+## Configuration
+
+| Variable | Required | Notes |
+|---|---|---|
+| `esm_base_url` | no | Origin of the esm.sh server. Defaults to the public, rate-limited `https://esm.sh`; set it (e.g. `https://esm.example.com`) to use a [self-hosted instance](https://github.com/esm-dev/esm.sh/blob/main/HOSTING.md). Only the origin is used (no path), and it must match the component's `allowed_outbound_hosts`. |
+
+Set it for the component and use it for the allow-list:
+
+```toml
+[variables]
+esm_base_url = { default = "https://esm.sh" }
+
+[component.bundler]
+allowed_outbound_hosts = ["{{ esm_base_url }}"]
+[component.bundler.variables]
+esm_base_url = "{{ esm_base_url }}"
+```
+
+If the variable is empty or not passed to the component, the bundler uses `https://esm.sh`;
+the manifest must still allow that host. An invalid value returns
+`500 { "error": "esm_base_url_invalid" }`. A request whose imports are all pre-bundled packages
+fetches nothing. A self-hosted server must serve every module from its own origin.
 
 ## HTTP contract
 
@@ -73,7 +100,7 @@ the sandbox skips its own sucrase pass and goes straight to
 
 ```
 npm ci && npm run build     # -> dist/bundler.wasm
-spin up                     # route /bundle is added in ../../spin.toml (wasm/spin.toml)
+spin up                     # route /bundle is added in ../../spin.toml
 ```
 
 ## Known limits
@@ -89,7 +116,8 @@ spin up                     # route /bundle is added in ../../spin.toml (wasm/sp
 - **No caching yet.** Every request re-fetches from esm.sh. A Spin KV cache keyed by
   `hash(source + deps)` (or per `package@version`) would make the warm path
   single-digit ms.
-- **esm.sh is a third-party dependency.** Egress is limited to `esm.sh` in `spin.toml`.
+- **esm.sh is a third-party dependency.** The bundler trusts whatever `esm_base_url` serves, and its
+  egress is limited to that origin in `spin.toml`.
 
 ## Validated (live, bundler component to sandbox component)
 

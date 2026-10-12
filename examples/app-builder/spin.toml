@@ -15,6 +15,10 @@ model_base_url = { required = true }
 model_api_key = { default = "", secret = true }
 # Empty = the provider's default model.
 model = { default = "" }
+# Origin of the esm.sh server used by the experimental bundler. Defaults to the public
+# https://esm.sh; to self-host, see https://github.com/esm-dev/esm.sh/blob/main/HOSTING.md and set
+# SPIN_VARIABLE_ESM_BASE_URL=https://esm.example.com
+esm_base_url = { default = "https://esm.sh" }
 ts_interpreter_url = { default = "http://ts-sandbox.spin.internal" }
 py_interpreter_url = { default = "http://py-sandbox.spin.internal" }
 bundler_url = { default = "http://bundler.spin.internal" }
@@ -101,9 +105,10 @@ command = "bash build-composed.sh"
 workdir = "../../py-sandbox"
 watch = ["*.py", "requirements.txt"]
 
-# Private bundler for JavaScript npm dependencies. Apps with deps are bundled once at publish
-# (KvCodeStore stores the self-contained blob) and served from it. It fetches deps from esm.sh
-# and runs no user code, so it stays isolated from the code-executing sandboxes.
+# EXPERIMENTAL private bundler for JavaScript npm dependencies. Apps with deps are bundled once
+# at publish (KvCodeStore stores the self-contained blob) and served from it. It fetches deps
+# from esm.sh (esm_base_url) and runs no user code, so it stays isolated from the
+# code-executing sandboxes.
 [[trigger.http]]
 route = { private = true }
 component = "bundler"
@@ -111,7 +116,9 @@ component = "bundler"
 [component.bundler]
 source = "../../packages/typescript/bundler/dist/bundler.wasm"
 exclude_files = ["**/node_modules"]
-allowed_outbound_hosts = ["https://esm.sh", "https://*.esm.sh"]
+allowed_outbound_hosts = ["{{ esm_base_url }}"]
+[component.bundler.variables]
+esm_base_url = "{{ esm_base_url }}"
 [component.bundler.build]
 command = "npm ci && npm run build"
 workdir = "../../packages/typescript/bundler"

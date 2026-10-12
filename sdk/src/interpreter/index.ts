@@ -41,7 +41,8 @@ export interface InterpreterOptions {
   /** Optional. Base URL of the bundler component, e.g. "http://bundler.spin.internal".
    * Enables `RunOpts.packageJson` for JavaScript: the source + package.json are POSTed to
    * `${bundlerUrl}/bundle` and the returned self-contained bundle is what runs. Without it,
-   * passing `packageJson` throws. Python is unaffected (its libraries are frozen in). */
+   * passing `packageJson` throws. Python is unaffected (its libraries are frozen in).
+   * Experimental: the bundler fetches from esm.sh (see its `esm_base_url` variable). */
   bundlerUrl?: string;
   /** Override the global fetch (mainly for tests). */
   fetch?: FetchLike;
