@@ -1,6 +1,7 @@
 # App Builder: an agent that writes web apps and runs them live
 
-A Spin application: Claude writes a self-contained web app (an HTTP handler serving an
+A Spin application: an LLM (Claude by default, or an OpenAI-compatible model) writes a
+self-contained web app (an HTTP handler serving an
 HTML UI plus a JSON API), stores the code with [`@spinframework/sandbox`](../../sdk),
 and serves each stored app live at its own URL, executed on demand in a private Wasm
 sandbox. Click any app to keep editing it by chatting; each change updates it in place
@@ -10,7 +11,7 @@ at the same URL.
    public routes                              private components (no public route)
 ┌────────────┐  POST /api/generate  ┌─────────────────────┐  ts-sandbox.spin.internal  ┌─────────────┐
 │  Nuxt SPA  │ ───────────────────▶ │  api (Hono, Wasm)   │ ─────────────────────────▶ │  ts-sandbox │
-│  /...      │ ◀─────────────────── │  Claude loop +      │  py-sandbox.spin.internal  │  py-sandbox │
+│  /...      │ ◀─────────────────── │  LLM loop +         │  py-sandbox.spin.internal  │  py-sandbox │
 │  /a/<id>/ ─┼──── live app ──────▶ │  code store + serve │ ─────────────────────────▶ └─────────────┘
 └────────────┘                      └─────────────────────┘        (code stored in the sandbox KV)
 ```
@@ -18,7 +19,7 @@ at the same URL.
 ## How it works
 
 1. **You describe an app.** The SPA posts your prompt to `POST /api/generate`.
-2. **Claude writes it and publishes it.** The model writes one HTTP handler (HTML UI
+2. **The model writes it and publishes it.** It writes one HTTP handler (HTML UI
    plus JSON API) and calls the `create_app` tool. The api stores the code via the
    SDK's `KvCodeStore` (persisted in the sandbox's scoped KV) and streams back the new
    app's URL. A JavaScript app that lists npm `dependencies` is bundled once here, at
@@ -53,7 +54,7 @@ surface) and routes internally with Hono:
 
 | Route | Purpose |
 |---|---|
-| `POST /api/generate` | `{prompt, id?, history?}` runs the Claude loop, `create_app` saves via `store.save({id})`, and `{id, url}` streams back as NDJSON. An `id` means edit in place. |
+| `POST /api/generate` | `{prompt, id?, history?}` runs the model loop, `create_app` saves via `store.save({id})`, and `{id, url}` streams back as NDJSON. An `id` means edit in place. |
 | `GET /api/apps` | list stored apps (`store.list()`) |
 | `GET /api/apps/<id>` | one app's record (source + saved conversation); backs the Code view and the restored chat |
 | `PUT /api/apps/<id>/convo` | save an app's conversation (transcript + model history), so it survives reloads |
@@ -64,12 +65,27 @@ A served app is mounted under `/a/<id>/`: the api strips that prefix and passes 
 remainder as the request path. Generated apps use relative URLs (`fetch('data')`), and
 the api also injects `<base href="/a/<id>/">` into served HTML as a backstop.
 
+## Choosing the LLM provider
+
+The provider is fixed at build time with a [Spin build
+profile](https://spinframework.dev/v4/build#building-with-profiles), so only its SDK is
+bundled into the `api` component: the default build uses the Anthropic Messages API
+(`api/dist/api-anthropic.wasm`), and `--profile openai` uses the OpenAI Responses API,
+statelessly (`api/dist/api-openai.wasm`). The provider code lives in
+[`api/src/llm/`](api/src/llm). Both builds read the same variables: the profile picks the API
+format, `model_base_url` picks the server and is also the `api` component's outbound
+allow-list entry.
+
+Saved conversations are tagged with the provider that produced them. Reopening an app
+under the other build starts a fresh edit session from the app's current code.
+
 ## Configuration (Spin application variables)
 
 | Variable | Default | Notes |
 |---|---|---|
-| `anthropic_api_key` | (required, secret) | `SPIN_VARIABLE_ANTHROPIC_API_KEY=sk-ant-…` |
-| `model` | `claude-opus-4-8` | any Claude model id |
+| `model_base_url` | (required) | origin (no path) of the model server, `SPIN_VARIABLE_MODEL_BASE_URL=<model-base-url>`; also the `api` component's outbound allow-list entry |
+| `model_api_key` | empty (secret) | `SPIN_VARIABLE_MODEL_API_KEY=<api-key>`, the key for the model server |
+| `model` | empty | empty = `claude-opus-4-8` (Anthropic) or `gpt-5` (OpenAI) |
 | `ts_interpreter_url` | `http://ts-sandbox.spin.internal` | private JS/TS interpreter component |
 | `py_interpreter_url` | `http://py-sandbox.spin.internal` | private Python interpreter component |
 | `access_token` | empty = open | set `SPIN_VARIABLE_ACCESS_TOKEN=…` to gate the UI, API and live apps behind an access-token page |
@@ -82,8 +98,13 @@ the api also injects `<base href="/a/<id>/">` into served HTML as a backstop.
    ```
 2. Build and run:
    ```bash
-   SPIN_VARIABLE_ANTHROPIC_API_KEY=sk-ant-... spin up --build
+   export SPIN_VARIABLE_MODEL_BASE_URL=<model-base-url> SPIN_VARIABLE_MODEL_API_KEY=<api-key>
+   spin up --build                    # Anthropic Messages API
+   spin up --profile openai --build   # OpenAI Responses API
    ```
+   For a local model, run [Ollama](https://ollama.com) (it serves both APIs and ignores
+   the key) and point either build at it, e.g. `spin up --profile openai --build
+   --variable model_base_url=http://localhost:11434 --variable model=qwen3:4b`.
 3. Open the served URL, describe an app (e.g. "a click counter with a /data JSON
    endpoint"), then click "Open live". It opens the generated app in a new tab,
    running in the sandbox.
@@ -104,8 +125,9 @@ control-plane API. Do not rely on the referer guard alone.
 
 ```
 spin.toml          5 components: public ui + api (two triggers), private ts-sandbox + py-sandbox + bundler
-api/               Hono component: the Claude loop, the code store, and the live-serve routes
+api/               Hono component: the LLM loop, the code store, and the live-serve routes
   src/index.ts     imports @spinframework/sandbox/{interpreter,store}
+  src/llm/         provider interface + Anthropic and OpenAI implementations (one bundled per build)
 ui/                Nuxt SPA: build gallery + create flow
   pages/index.vue  the gallery + "describe an app" UI
 ../../packages/typescript/sandbox   private JS/TS interpreter, built in place, reached via ts-sandbox.spin.internal

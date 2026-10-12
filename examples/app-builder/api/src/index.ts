@@ -1,24 +1,27 @@
-// App Builder API: Claude generates a self-contained HTTP-handler web app; we store it via
-// @spinframework/sandbox and serve each stored app live at its own URL.
+// App Builder API: an LLM generates a self-contained HTTP-handler web app; we store it via
+// @spinframework/sandbox and serve each stored app live at its own URL. The LLM provider
+// (Anthropic or OpenAI) is chosen at build time; see build.mjs.
 //
 // Two surfaces on one component:
-//   /api/...   control plane: generate (Claude loop) + list apps
+//   /api/...   control plane: generate (model loop) + list apps
 //   /a/<id>/   live app: load stored code from KV, run it in the sandbox, forward its Response
 
 import { Hono } from "hono";
 import { fire } from "hono/service-worker";
 import { getCookie, setCookie } from "hono/cookie";
 import type { Context } from "hono";
-import Anthropic from "@anthropic-ai/sdk";
 import * as variables from "@spinframework/spin-variables";
+import { createProvider } from "#llm-provider";
 
 import { Interpreter, type Language } from "@spinframework/sandbox/interpreter";
 import { KvCodeStore, serveStoredCode } from "@spinframework/sandbox/store";
+import type { ToolDefinition } from "@spinframework/sandbox/tools";
+import { historyFor, type History, type ToolResult } from "./llm/types";
 import { log, initLogger } from "./logger";
 
 // ---- the tool the model calls to publish an app ----
 
-const CREATE_APP_TOOL: Anthropic.Tool = {
+const CREATE_APP_TOOL: ToolDefinition = {
   name: "create_app",
   description:
     "Publish a complete, self-contained web app. The app is ONE HTTP handler that serves its HTML UI " +
@@ -31,7 +34,7 @@ const CREATE_APP_TOOL: Anthropic.Tool = {
     "The app's network egress is DENIED by default. If the app calls an external API/tool with `fetch`, " +
     "list the hosts it will reach in `allowedHosts` (e.g. [\"api.openweathermap.org\"]); only those are permitted. " +
     "The app's private key-value store is DISABLED by default; set `kvEnabled` to true if the app persists state.",
-  input_schema: {
+  inputSchema: {
     type: "object",
     properties: {
       language: { type: "string", enum: ["javascript", "python"] },
@@ -104,7 +107,7 @@ type WireEvent =
   | { t: "tool_delta"; block: string; code: string; language: string; title: string } // code streaming in
   | { t: "tool_saving"; block: string } // tool call done, persisting to the sandbox
   | { t: "app_saved"; block: string; id: string; url: string; title: string; language: string; code: string; prevCode: string | null }
-  | { t: "done"; messages: Anthropic.MessageParam[] }
+  | { t: "done"; history: History }
   | { t: "error"; error: string };
 
 type Emit = (e: WireEvent) => void;
@@ -172,143 +175,150 @@ function makeStore() {
 
 async function runAgent(
   prompt: string,
-  session: { id?: string; history: Anthropic.MessageParam[] },
+  session: { id?: string; history: unknown },
   emit: Emit,
 ): Promise<void> {
-  const apiKey = variables.get("anthropic_api_key") ?? "";
-  const model = variables.get("model") ?? "claude-opus-4-8";
-  const anthropic = new Anthropic({ apiKey });
+  const llm = createProvider();
   const { store, interpreters } = makeStore();
   let appId = session.id;
 
   // Continue the conversation, or seed a fresh edit session with the app's current code.
-  const messages: Anthropic.MessageParam[] = [...session.history];
+  // History from a different provider is dropped, so an edit restarts from the stored code.
+  const messages = historyFor(llm, session.history);
   if (messages.length === 0 && appId) {
     const current = await store.get(appId);
     if (current) {
       const fence = current.language === "python" ? "python" : "javascript";
-      messages.push({
-        role: "user",
-        content:
+      messages.push(
+        llm.userMessage(
           `You are editing an existing app titled "${current.title ?? appId}" (${current.language}). ` +
-          `Its current code is:\n\n\`\`\`${fence}\n${current.code}\n\`\`\`\n\n` +
-          `Apply this change and re-publish the FULL updated app with create_app: ${prompt}`,
-      });
+            `Its current code is:\n\n\`\`\`${fence}\n${current.code}\n\`\`\`\n\n` +
+            `Apply this change and re-publish the FULL updated app with create_app: ${prompt}`,
+        ),
+      );
     } else {
-      messages.push({ role: "user", content: prompt });
+      messages.push(llm.userMessage(prompt));
     }
   } else {
-    messages.push({ role: "user", content: prompt });
+    messages.push(llm.userMessage(prompt));
   }
+  const done = () => emit({ t: "done", history: { provider: llm.name, items: messages } });
 
-  log.info(`generate: model=${model} ${appId ? `edit=${appId}` : "new"} prompt=${JSON.stringify(prompt.slice(0, 80))}`);
+  log.info(
+    `generate: provider=${llm.name} model=${llm.model} ${appId ? `edit=${appId}` : "new"} prompt=${JSON.stringify(prompt.slice(0, 80))}`,
+  );
 
   // Let the model reason, (re)write the app, and call create_app; loop until it stops.
   for (let turn = 0; turn < 4; turn++) {
-    const stream = anthropic.messages.stream({
-      model,
-      max_tokens: 8192,
-      system: systemPrompt(),
-      tools: [CREATE_APP_TOOL],
-      messages,
-    });
     const toolBufs: Record<number, string> = {}; // accumulated partial JSON per tool block
     const toolEmitLen: Record<number, number> = {}; // last code length we streamed (throttle)
-    for await (const event of stream) {
-      if (event.type === "content_block_start" && event.content_block.type === "tool_use" && event.content_block.name === "create_app") {
-        toolBufs[event.index] = "";
-        toolEmitLen[event.index] = -1;
-        emit({ t: "tool_start", block: `${turn}-${event.index}` });
-      } else if (event.type === "content_block_delta" && event.delta.type === "text_delta" && event.delta.text) {
-        emit({ t: "text_delta", block: `${turn}-${event.index}`, text: event.delta.text });
-      } else if (event.type === "content_block_delta" && event.delta.type === "input_json_delta" && toolBufs[event.index] !== undefined) {
-        toolBufs[event.index] += event.delta.partial_json;
-        const buf = toolBufs[event.index];
-        const codeF = extractField(buf, "code");
-        const codeLen = codeF?.value.length ?? 0;
-        // Throttle: stream the code once it grows ~24 chars (or the first bytes appear).
-        if (codeLen - toolEmitLen[event.index] >= 24 || (toolEmitLen[event.index] === -1 && codeLen > 0)) {
-          toolEmitLen[event.index] = codeLen;
-          const langF = extractField(buf, "language");
-          const titleF = extractField(buf, "title");
-          emit({
-            t: "tool_delta",
-            block: `${turn}-${event.index}`,
-            code: (codeF?.value ?? "").slice(-1600), // a tail is enough for a live preview
-            language: langF?.complete ? langF.value : "",
-            title: titleF?.complete ? titleF.value : "",
-          });
-        }
-      }
-    }
-    const res = await stream.finalMessage();
+    const res = await llm.turn(
+      messages,
+      { system: systemPrompt(), tools: [CREATE_APP_TOOL], maxTokens: 8192 },
+      {
+        onToolStart(block, name) {
+          if (name !== "create_app") return;
+          toolBufs[block] = "";
+          toolEmitLen[block] = -1;
+          emit({ t: "tool_start", block: `${turn}-${block}` });
+        },
+        onText(block, text) {
+          emit({ t: "text_delta", block: `${turn}-${block}`, text });
+        },
+        onToolInput(block, partialJson) {
+          if (toolBufs[block] === undefined) return;
+          toolBufs[block] += partialJson;
+          const buf = toolBufs[block];
+          const codeF = extractField(buf, "code");
+          const codeLen = codeF?.value.length ?? 0;
+          // Throttle: stream the code once it grows ~24 chars (or the first bytes appear).
+          if (codeLen - toolEmitLen[block] >= 24 || (toolEmitLen[block] === -1 && codeLen > 0)) {
+            toolEmitLen[block] = codeLen;
+            const langF = extractField(buf, "language");
+            const titleF = extractField(buf, "title");
+            emit({
+              t: "tool_delta",
+              block: `${turn}-${block}`,
+              code: (codeF?.value ?? "").slice(-1600), // a tail is enough for a live preview
+              language: langF?.complete ? langF.value : "",
+              title: titleF?.complete ? titleF.value : "",
+            });
+          }
+        },
+      },
+    );
 
-    const toolResults: Anthropic.ToolResultBlockParam[] = [];
-    for (let idx = 0; idx < res.content.length; idx++) {
-      const block = res.content[idx];
-      if (block.type === "tool_use" && block.name === "create_app") {
-        const input = block.input as {
-          language: Language;
-          title: string;
-          code: string;
-          dependencies?: Record<string, string>;
-          allowedHosts?: string[];
-          kvEnabled?: boolean;
-        };
-        const blockId = `${turn}-${idx}`; // same index as the streamed content block
-        emit({ t: "tool_saving", block: blockId });
-        // The code being replaced (when editing), so the UI can show a diff.
-        const before = appId ? await store.get(appId) : null;
-        // JS apps with extra deps are bundled ONCE here at publish; the store keeps the source
-        // (for editing/diffs) and the self-contained bundle (what serveStoredCode runs).
-        const deps =
-          input.language === "javascript" && input.dependencies && Object.keys(input.dependencies).length
-            ? input.dependencies
-            : undefined;
-        const bundled = deps ? await interpreters.javascript.bundle(input.code, { dependencies: deps }) : undefined;
-        // The model lists the hosts the app may call; egress is default-deny otherwise. Stored with
-        // the app so serveStoredCode applies it on every request.
-        const allowedHosts = Array.isArray(input.allowedHosts) ? input.allowedHosts : undefined;
-        // Save at the app's id when editing (update in place); otherwise mint a new one.
-        const meta = await store.save({
-          id: appId,
-          code: input.code,
-          language: input.language,
-          title: input.title,
-          dependencies: deps,
-          allowedHosts,
-          kvEnabled: input.kvEnabled === true,
-          bundled,
-        });
-        appId = meta.id; // subsequent turns in this session edit the same app
-        const url = `/a/${meta.id}/`;
-        log.info(`saved app id=${meta.id} lang=${input.language} bytes=${input.code.length}`);
-        emit({
-          t: "app_saved",
-          block: blockId,
-          id: meta.id,
-          url,
-          title: input.title,
-          language: input.language,
-          code: input.code,
-          prevCode: before?.code ?? null,
-        });
+    const toolResults: ToolResult[] = [];
+    for (const call of res.toolCalls) {
+      if (call.name !== "create_app") {
+        toolResults.push({ id: call.id, content: `error: unknown tool ${call.name}`, isError: true });
+        continue;
+      }
+      const input = call.input as {
+        language: Language;
+        title: string;
+        code: string;
+        dependencies?: Record<string, string>;
+        allowedHosts?: string[];
+        kvEnabled?: boolean;
+      };
+      if ((input.language !== "python" && input.language !== "javascript") || typeof input.code !== "string") {
         toolResults.push({
-          type: "tool_result",
-          tool_use_id: block.id,
-          content: `Published "${input.title}", live at ${url}`,
+          id: call.id,
+          content: "error: create_app needs language (python|javascript), title, and code",
+          isError: true,
         });
+        continue;
       }
+      const title = typeof input.title === "string" && input.title ? input.title : "Untitled app";
+      const blockId = `${turn}-${call.block}`; // same index as the streamed output block
+      emit({ t: "tool_saving", block: blockId });
+      // The code being replaced (when editing), so the UI can show a diff.
+      const before = appId ? await store.get(appId) : null;
+      // JS apps with extra deps are bundled ONCE here at publish; the store keeps the source
+      // (for editing/diffs) and the self-contained bundle (what serveStoredCode runs).
+      const deps =
+        input.language === "javascript" && input.dependencies && Object.keys(input.dependencies).length
+          ? input.dependencies
+          : undefined;
+      const bundled = deps ? await interpreters.javascript.bundle(input.code, { dependencies: deps }) : undefined;
+      // The model lists the hosts the app may call; egress is default-deny otherwise. Stored with
+      // the app so serveStoredCode applies it on every request.
+      const allowedHosts = Array.isArray(input.allowedHosts) ? input.allowedHosts : undefined;
+      // Save at the app's id when editing (update in place); otherwise mint a new one.
+      const meta = await store.save({
+        id: appId,
+        code: input.code,
+        language: input.language,
+        title,
+        dependencies: deps,
+        allowedHosts,
+        kvEnabled: input.kvEnabled === true,
+        bundled,
+      });
+      appId = meta.id; // subsequent turns in this session edit the same app
+      const url = `/a/${meta.id}/`;
+      log.info(`saved app id=${meta.id} lang=${input.language} bytes=${input.code.length}`);
+      emit({
+        t: "app_saved",
+        block: blockId,
+        id: meta.id,
+        url,
+        title,
+        language: input.language,
+        code: input.code,
+        prevCode: before?.code ?? null,
+      });
+      toolResults.push({ id: call.id, content: `Published "${title}", live at ${url}` });
     }
 
-    messages.push({ role: "assistant", content: res.content });
-    if (res.stop_reason !== "tool_use") {
-      emit({ t: "done", messages });
+    if (res.toolCalls.length === 0) {
+      done();
       return;
     }
-    messages.push({ role: "user", content: toolResults });
+    messages.push(...llm.toolResults(toolResults));
   }
-  emit({ t: "done", messages });
+  done();
 }
 
 // ---- HTTP surface ----
@@ -352,9 +362,11 @@ app.use("/api/*", async (c: Context, next) => {
 
 app.get("/api/health", (c: Context) => {
   const token = accessToken();
+  const llm = createProvider();
   return c.json({
     ok: true,
-    model: variables.get("model") ?? "claude-opus-4-8",
+    provider: llm.name,
+    model: llm.model,
     authRequired: token !== "",
     authed: token === "" || getCookie(c, AUTH_COOKIE) === token,
   });
@@ -389,7 +401,7 @@ app.get("/api/apps/:id", async (c: Context) => {
   const id = c.req.param("id") ?? "";
   const rec = await store.get(id);
   if (!rec) return c.json({ error: "not found" }, 404);
-  const convo = (await convos.getJson<unknown>(id)) ?? { messages: [], history: [] };
+  const convo = (await convos.getJson<unknown>(id)) ?? { messages: [], history: null };
   return c.json({ ...rec, convo });
 });
 
@@ -410,12 +422,12 @@ app.put("/api/apps/:id/convo", async (c: Context) => {
 app.post("/api/generate", async (c: Context) => {
   let prompt = "";
   let id: string | undefined;
-  let history: Anthropic.MessageParam[] = [];
+  let history: unknown = null;
   try {
-    const body = await c.req.json<{ prompt?: string; id?: string; history?: Anthropic.MessageParam[] }>();
+    const body = await c.req.json<{ prompt?: string; id?: string; history?: unknown }>();
     prompt = (body.prompt ?? "").trim();
     if (typeof body.id === "string") id = body.id;
-    if (Array.isArray(body.history)) history = body.history;
+    history = body.history ?? null;
   } catch {
     return c.json({ error: "expected JSON body { prompt: string, id?, history? }" }, 400);
   }

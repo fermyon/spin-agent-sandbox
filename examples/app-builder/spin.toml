@@ -4,12 +4,17 @@ spin_manifest_version = 2
 name = "app-builder"
 version = "0.1.0"
 authors = ["Spin Sandbox"]
-description = "App Builder: Claude generates HTTP-handler web apps, stores them via @spinframework/sandbox, and serves each live at its own URL."
+description = "App Builder: an LLM generates HTTP-handler web apps, stores them via @spinframework/sandbox, and serves each live at its own URL."
 
 [variables]
 log_level = { default = "info" }
-anthropic_api_key = { required = true, secret = true }
-model = { default = "claude-opus-4-8" }
+# Where the model runs. Set it on `spin up`: SPIN_VARIABLE_MODEL_BASE_URL=<model-base-url>.
+# Origin only (no path): it is also the api's outbound allow-list entry. The build profile only
+# picks the API format: Anthropic Messages by default, OpenAI Responses with `--profile openai`.
+model_base_url = { required = true }
+model_api_key = { default = "", secret = true }
+# Empty = the provider's default model.
+model = { default = "" }
 ts_interpreter_url = { default = "http://ts-sandbox.spin.internal" }
 py_interpreter_url = { default = "http://py-sandbox.spin.internal" }
 bundler_url = { default = "http://bundler.spin.internal" }
@@ -30,7 +35,7 @@ command = "npm install && npx nuxt generate"
 workdir = "ui"
 
 # The api component is reached from TWO routes: the control plane (/api/...) and the
-# live-app surface (/a/...). Both hit the same api.wasm; Hono routes internally.
+# live-app surface (/a/...). Both hit the same api component; Hono routes internally.
 [[trigger.http]]
 route = "/api/..."
 component = "api"
@@ -40,26 +45,31 @@ route = "/a/..."
 component = "api"
 
 [component.api]
-source = "api/dist/api.wasm"
-# Reach Claude, the two private interpreter components, and the bundler via service chaining.
+source = "api/dist/api-anthropic.wasm"
+# Reach the LLM, the two private interpreter components, and the bundler via service chaining.
 # The api holds no KV of its own; code is stored in the sandbox's KV via the SDK.
 allowed_outbound_hosts = [
-  "https://api.anthropic.com",
+  "{{ model_base_url }}",
   "http://ts-sandbox.spin.internal",
   "http://py-sandbox.spin.internal",
   "http://bundler.spin.internal",
 ]
 [component.api.variables]
 log_level = "{{ log_level }}"
-anthropic_api_key = "{{ anthropic_api_key }}"
+model_base_url = "{{ model_base_url }}"
+model_api_key = "{{ model_api_key }}"
 model = "{{ model }}"
 ts_interpreter_url = "{{ ts_interpreter_url }}"
 py_interpreter_url = "{{ py_interpreter_url }}"
 bundler_url = "{{ bundler_url }}"
 access_token = "{{ access_token }}"
 [component.api.build]
-command = "npm install && npm run build"
+command = "npm install && LLM_PROVIDER=anthropic npm run build"
 workdir = "api"
+[component.api.profile.openai]
+source = "api/dist/api-openai.wasm"
+[component.api.profile.openai.build]
+command = "npm install && LLM_PROVIDER=openai npm run build"
 
 [[trigger.http]]
 route = { private = true }

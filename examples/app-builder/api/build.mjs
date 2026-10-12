@@ -5,6 +5,20 @@ import fs from 'fs';
 
 const spinPlugin = await SpinEsbuildPlugin();
 
+// The LLM provider is fixed at build time so only its SDK is bundled (see spin.toml profiles).
+const provider = process.env.LLM_PROVIDER ?? 'anthropic';
+if (!['anthropic', 'openai'].includes(provider)) {
+    throw new Error(`LLM_PROVIDER must be "anthropic" or "openai", got "${provider}"`);
+}
+const providerPlugin = {
+    name: 'llm-provider',
+    setup(build) {
+        build.onResolve({ filter: /^#llm-provider$/ }, () => ({
+            path: path.resolve(`src/llm/${provider}.ts`),
+        }));
+    },
+};
+
 let SourceMapPlugin = {
     name: 'excludeVendorFromSourceMap',
     setup(build) {
@@ -23,13 +37,13 @@ let SourceMapPlugin = {
 
 await build({
     entryPoints: ['./src/index.ts'],
-    outfile: './build/bundle.js',
+    outfile: `./build/${provider}/bundle.js`,
     bundle: true,
     format: 'esm',
     platform: 'browser',
     sourcemap: true,
     minify: false,
-    plugins: [spinPlugin, SourceMapPlugin],
+    plugins: [providerPlugin, spinPlugin, SourceMapPlugin],
     logLevel: 'error',
     loader: {
         '.ts': 'ts',

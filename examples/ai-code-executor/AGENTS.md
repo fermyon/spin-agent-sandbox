@@ -1,6 +1,6 @@
 # AGENTS.md: AI Code Executor example
 
-A Spin app that puts a Claude tool-use loop in front of the Wasm code sandbox. See
+A Spin app that puts an LLM tool-use loop in front of the Wasm code sandbox. See
 [README.md](README.md) for the full picture; this covers the layout and the invariants.
 
 ## Components
@@ -30,6 +30,9 @@ Five components; only `ui` and `api` have public routes.
 
 - **Streaming must stay incremental.** Every `emit()` is a flush point; don't buffer
   the transcript.
+- **One provider per build.** `build.mjs` resolves `#llm-provider` to
+  `src/llm/$LLM_PROVIDER.ts`; the agent loop only uses the `LlmProvider` interface in
+  `src/llm/types.ts`. Keep provider SDK imports inside `src/llm/<provider>.ts`.
 - **Model output is untrusted.** The UI renders it with `html: false`, link-scheme
   allowlisting, and registered-language-only highlighting. Don't loosen that.
 
@@ -40,7 +43,9 @@ separately.
 
 ```bash
 (cd ../.. && git submodule update --init)                    # py-sandbox's prebuilt deps
-SPIN_VARIABLE_ANTHROPIC_API_KEY=sk-ant-... spin up --build   # builds all 5 components + serves
+export SPIN_VARIABLE_MODEL_BASE_URL=<model-base-url> SPIN_VARIABLE_MODEL_API_KEY=<api-key>
+spin up --build                    # Anthropic Messages API; builds all 5 components + serves
+spin up --profile openai --build   # OpenAI Responses API
 ```
 
 `ts_interpreter_url` / `py_interpreter_url` default to the components' `spin.internal`

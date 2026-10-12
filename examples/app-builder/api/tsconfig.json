@@ -15,7 +15,10 @@
         "noImplicitReturns": true,
         "moduleResolution": "bundler",
         "allowImportingTsExtensions": true,
-        "noEmit": true
+        "noEmit": true,
+        "paths": {
+            "#llm-provider": ["./src/llm/anthropic.ts"]
+        }
     },
     "include": [
         "src/**/*"

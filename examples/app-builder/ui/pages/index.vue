@@ -75,7 +75,7 @@
         <div v-else ref="scrollEl" class="transcript">
           <section v-if="!messages.length && activeId === null" class="welcome">
             <h2>Describe an app to build</h2>
-            <p class="welcome-sub">Claude writes a self-contained web app, runs it live, and you can keep editing it by chatting.</p>
+            <p class="welcome-sub">{{ llmName }} writes a self-contained web app, runs it live, and you can keep editing it by chatting.</p>
             <div class="suggestions">
               <button v-for="p in SUGGESTIONS" :key="p" class="chip" @click="send(p)">{{ p }}</button>
             </div>
@@ -127,7 +127,7 @@
       </main>
     </div>
 
-    <!-- How it works: describe → Claude writes an app → sandbox serves it live → edit loop -->
+    <!-- How it works: describe → the model writes an app → sandbox serves it live → edit loop -->
     <div v-if="showHelp" class="help-overlay" @click.self="showHelp = false">
       <div class="help-card">
         <button class="help-close" @click="showHelp = false" aria-label="Close">×</button>
@@ -146,7 +146,7 @@
         </p>
 
         <div class="diagram">
-          <svg viewBox="0 0 720 250" role="img" aria-label="You describe an app, Claude writes it, a private Wasm sandbox stores and serves it live at its own URL, and editing loops back to Claude.">
+          <svg viewBox="0 0 720 250" role="img" :aria-label="`You describe an app, ${llmName} writes it, a private Wasm sandbox stores and serves it live at its own URL, and editing loops back to ${llmName}.`">
             <defs>
               <marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
                 <path d="M0 0 L10 5 L0 10 z" fill="#9aa0a8" />
@@ -156,7 +156,7 @@
               </marker>
             </defs>
 
-            <!-- edit loop: the live app is re-published by Claude, in place -->
+            <!-- edit loop: the live app is re-published by the model, in place -->
             <path d="M664 118 C 664 46, 251 46, 251 118" fill="none" stroke="#1d4ed8" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#ahb)" />
             <text x="457" y="38" text-anchor="middle" font-size="12.5" fill="#1d4ed8" font-weight="600">edit: updates in place, same URL</text>
 
@@ -173,7 +173,7 @@
             <text x="64" y="155" text-anchor="middle" font-size="14" fill="#1f2328" font-weight="600">You</text>
 
             <rect x="176" y="120" width="150" height="60" rx="12" fill="#eef4ff" stroke="#c7d7fe" />
-            <text x="251" y="146" text-anchor="middle" font-size="13.5" fill="#1d4ed8" font-weight="700">Claude</text>
+            <text x="251" y="146" text-anchor="middle" font-size="13.5" fill="#1d4ed8" font-weight="700">{{ llmName }}</text>
             <text x="251" y="165" text-anchor="middle" font-size="12" fill="#3b5bdb">writes an app</text>
 
             <rect x="390" y="120" width="170" height="60" rx="12" fill="#ecfdf5" stroke="#a7f3d0" />
@@ -193,7 +193,7 @@
             <div><strong>You describe an app.</strong> Say what you want in the chat.</div>
           </li>
           <li><span class="n">2</span>
-            <div><strong>Claude writes it.</strong> One self-contained HTTP handler (an HTML UI plus a JSON API) streamed in live as it is written.</div>
+            <div><strong>{{ llmName }} writes it.</strong> One self-contained HTTP handler (an HTML UI plus a JSON API) streamed in live as it is written.</div>
           </li>
           <li><span class="n">3</span>
             <div><strong>It runs at its own URL.</strong> The code is stored in the sandbox's KV and executed on demand at <code>/a/&lt;id&gt;/</code>, returning the app's response verbatim.</div>
@@ -260,7 +260,8 @@ const apps = ref<AppMeta[]>([]);
 const activeId = ref<string | null>(null); // null = building a new app
 const activeMeta = ref<AppBar | null>(null);
 const messages = ref<Msg[]>([]);
-const history = ref<any[]>([]); // Anthropic message history for the active session
+const history = ref<unknown>(null); // provider-tagged model history for the active session
+const llmName = ref("The model"); // set from /api/health
 const draft = ref("");
 const building = ref(false);
 const error = ref("");
@@ -389,6 +390,7 @@ const gateError = ref("");
 async function checkAuth() {
   try {
     const d = await (await fetch("/api/health")).json();
+    llmName.value = d.provider === "anthropic" ? "Claude" : "The model";
     gate.value = !d.authRequired || d.authed ? "open" : "locked";
   } catch {
     gate.value = "open"; // health unreachable, don't hard-lock local dev
@@ -424,7 +426,7 @@ function newApp() {
   activeId.value = null;
   activeMeta.value = null;
   messages.value = [];
-  history.value = [];
+  history.value = null;
   draft.value = "";
   error.value = "";
   activeCode.value = "";
@@ -438,7 +440,7 @@ async function openEdit(a: AppMeta) {
   activeId.value = a.id;
   activeMeta.value = { title: a.title || a.id, language: a.language, url: `/a/${a.id}/` };
   messages.value = [];
-  history.value = [];
+  history.value = null;
   draft.value = "";
   error.value = "";
   activeCode.value = "";
@@ -453,9 +455,9 @@ async function openEdit(a: AppMeta) {
       const rec = await r.json();
       activeCode.value = rec.code ?? "";
       activeLang.value = rec.language ?? a.language;
-      const convo = rec.convo ?? { messages: [], history: [] };
+      const convo = rec.convo ?? { messages: [], history: null };
       messages.value = deserializeMsgs(convo.messages);
-      history.value = Array.isArray(convo.history) ? convo.history : [];
+      history.value = convo.history ?? null;
     }
   } catch {
     // leave it empty; the chat still works
@@ -557,7 +559,7 @@ async function send(text?: string) {
           if (prev !== null) codeView.value = "diff";
           upsertApp({ id: ev.id, language: ev.language, title: ev.title, createdAt: Date.now() });
         } else if (ev.t === "done") {
-          if (Array.isArray(ev.messages)) history.value = ev.messages;
+          if (ev.history) history.value = ev.history;
           saveConvo(); // persist the updated conversation (fire-and-forget)
         } else if (ev.t === "error") {
           error.value = ev.error;

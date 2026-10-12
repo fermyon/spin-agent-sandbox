@@ -107,7 +107,7 @@
         </p>
 
         <div class="diagram">
-          <svg viewBox="0 0 720 250" role="img" aria-label="A loop: you ask, Claude writes code, a private Wasm sandbox runs it, the output feeds back to Claude, which answers.">
+          <svg viewBox="0 0 720 250" role="img" :aria-label="`A loop: you ask, ${llmName} writes code, a private Wasm sandbox runs it, the output feeds back to ${llmName}, which answers.`">
             <defs>
               <marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
                 <path d="M0 0 L10 5 L0 10 z" fill="#9aa0a8" />
@@ -117,7 +117,7 @@
               </marker>
             </defs>
 
-            <!-- loop: sandbox output feeds back to Claude -->
+            <!-- loop: sandbox output feeds back to the model -->
             <path d="M475 118 C 475 52, 251 52, 251 118" fill="none" stroke="#1d4ed8" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#ahb)" />
             <text x="363" y="44" text-anchor="middle" font-size="12.5" fill="#1d4ed8" font-weight="600">stdout / stderr fed back</text>
 
@@ -134,7 +134,7 @@
             <text x="64" y="155" text-anchor="middle" font-size="14" fill="#1f2328" font-weight="600">You</text>
 
             <rect x="176" y="120" width="150" height="60" rx="12" fill="#eef4ff" stroke="#c7d7fe" />
-            <text x="251" y="146" text-anchor="middle" font-size="13.5" fill="#1d4ed8" font-weight="700">Claude</text>
+            <text x="251" y="146" text-anchor="middle" font-size="13.5" fill="#1d4ed8" font-weight="700">{{ llmName }}</text>
             <text x="251" y="165" text-anchor="middle" font-size="12" fill="#3b5bdb">writes code</text>
 
             <rect x="390" y="120" width="170" height="60" rx="12" fill="#ecfdf5" stroke="#a7f3d0" />
@@ -153,13 +153,13 @@
             <div><strong>You ask.</strong> A question goes into the chat.</div>
           </li>
           <li><span class="n">2</span>
-            <div><strong>Claude writes code.</strong> It picks Python or JavaScript and produces a small program.</div>
+            <div><strong>{{ llmName }} writes code.</strong> It picks Python or JavaScript and produces a small program.</div>
           </li>
           <li><span class="n">3</span>
             <div><strong>A private Wasm sandbox runs it.</strong> The code executes in an isolated WebAssembly interpreter: no filesystem, no shell, default-deny network.</div>
           </li>
           <li><span class="n">4</span>
-            <div><strong>The output loops back.</strong> stdout, stderr and errors return to Claude, which fixes-and-reruns or, once satisfied, writes the final answer.</div>
+            <div><strong>The output loops back.</strong> stdout, stderr and errors return to {{ llmName }}, which fixes-and-reruns or, once satisfied, writes the final answer.</div>
           </li>
         </ol>
 
@@ -354,7 +354,8 @@ const SUGGESTIONS = [
 ];
 
 const messages = ref<Msg[]>([]); // display transcript
-const history = ref<any[]>([]); // Anthropic message history, round-tripped to continue the conversation
+const history = ref<unknown>(null); // provider-tagged model history, round-tripped to continue the conversation
+const llmName = ref("The model"); // set from /api/health
 const draft = ref("");
 const loading = ref(false);
 const error = ref("");
@@ -370,6 +371,7 @@ const gateError = ref("");
 async function checkAuth() {
   try {
     const d = await (await fetch("/api/health")).json();
+    llmName.value = d.provider === "anthropic" ? "Claude" : "The model";
     gate.value = !d.authRequired || d.authed ? "open" : "locked";
   } catch {
     gate.value = "open"; // health unreachable, don't hard-lock local dev
@@ -415,7 +417,7 @@ function reset() {
   messages.value = [];
   draft.value = "";
   error.value = "";
-  history.value = []; // forget the prior conversation
+  history.value = null; // forget the prior conversation
 }
 
 // Apply one streamed NDJSON event to the live assistant message.
@@ -463,7 +465,7 @@ function apply(a: Assistant, ev: any) {
     error.value = ev.error;
   } else if (ev.t === "done") {
     finalizeText(a); // the turn is over, settle the final text without a caret
-    if (Array.isArray(ev.messages)) history.value = ev.messages; // carry context to the next turn
+    if (ev.history) history.value = ev.history; // carry context to the next turn
   }
 }
 
