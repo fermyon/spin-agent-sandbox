@@ -8,13 +8,11 @@ description = "App Builder: an LLM generates HTTP-handler web apps, stores them 
 
 [variables]
 log_level = { default = "info" }
-# The LLM provider is chosen at build time: Anthropic by default, OpenAI (or any server
-# implementing the Responses API, e.g. Ollama) with `--profile openai`.
-anthropic_api_key = { default = "", secret = true }
-anthropic_base_url = { default = "https://api.anthropic.com" }
-openai_api_key = { default = "", secret = true }
-openai_base_url = { default = "https://api.openai.com" }
-openai_api_path = { default = "/v1" }
+# Where the model runs. Set it on `spin up`: SPIN_VARIABLE_MODEL_BASE_URL=<model-base-url>.
+# Origin only (no path): it is also the api's outbound allow-list entry. The build profile only
+# picks the API format: Anthropic Messages by default, OpenAI Responses with `--profile openai`.
+model_base_url = { required = true }
+model_api_key = { default = "", secret = true }
 # Empty = the provider's default model.
 model = { default = "" }
 ts_interpreter_url = { default = "http://ts-sandbox.spin.internal" }
@@ -51,19 +49,15 @@ source = "api/dist/api-anthropic.wasm"
 # Reach the LLM, the two private interpreter components, and the bundler via service chaining.
 # The api holds no KV of its own; code is stored in the sandbox's KV via the SDK.
 allowed_outbound_hosts = [
-  "{{ anthropic_base_url }}",
-  "{{ openai_base_url }}",
+  "{{ model_base_url }}",
   "http://ts-sandbox.spin.internal",
   "http://py-sandbox.spin.internal",
   "http://bundler.spin.internal",
 ]
 [component.api.variables]
 log_level = "{{ log_level }}"
-anthropic_api_key = "{{ anthropic_api_key }}"
-anthropic_base_url = "{{ anthropic_base_url }}"
-openai_api_key = "{{ openai_api_key }}"
-openai_base_url = "{{ openai_base_url }}"
-openai_api_path = "{{ openai_api_path }}"
+model_base_url = "{{ model_base_url }}"
+model_api_key = "{{ model_api_key }}"
 model = "{{ model }}"
 ts_interpreter_url = "{{ ts_interpreter_url }}"
 py_interpreter_url = "{{ py_interpreter_url }}"

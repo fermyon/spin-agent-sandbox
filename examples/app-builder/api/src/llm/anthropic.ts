@@ -4,10 +4,10 @@ import * as variables from "@spinframework/spin-variables";
 import type { LlmProvider, ToolCall } from "./types";
 
 export function createProvider(): LlmProvider {
-  const baseURL = variables.get("anthropic_base_url") || undefined;
+  const baseURL = variables.get("model_base_url");
   const model = variables.get("model") || "claude-opus-4-8";
   // Local Anthropic-compatible servers (e.g. Ollama) ignore the key, but the SDK requires a value.
-  const client = new Anthropic({ apiKey: variables.get("anthropic_api_key") || "unset", baseURL });
+  const client = new Anthropic({ apiKey: variables.get("model_api_key") || "unset", baseURL });
 
   return {
     name: "anthropic",

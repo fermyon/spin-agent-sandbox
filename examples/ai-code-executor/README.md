@@ -98,18 +98,16 @@ bundled into the `api` component:
 | `--profile openai` | OpenAI, `api/dist/api-openai.wasm` | Responses API (stateless) |
 
 Both builds share one agent loop; the provider code lives in [`api/src/llm/`](api/src/llm).
-The base URLs are variables and also form the `api` component's outbound allow-list, so
-either build can target any compatible server.
+Both builds read the same variables: the profile picks the API format, `model_base_url`
+picks the server. It is also the `api` component's outbound allow-list entry, so either
+build can target any compatible server.
 
 ## Configuration (Spin application variables)
 
 | Variable | Default | Notes |
 |---|---|---|
-| `anthropic_api_key` | empty (secret) | `SPIN_VARIABLE_ANTHROPIC_API_KEY=sk-ant-…`; used by the default build |
-| `anthropic_base_url` | `https://api.anthropic.com` | any Anthropic Messages-compatible server |
-| `openai_api_key` | empty (secret) | `SPIN_VARIABLE_OPENAI_API_KEY=sk-…`; used by `--profile openai` |
-| `openai_base_url` | `https://api.openai.com` | any Responses-compatible server (origin only) |
-| `openai_api_path` | `/v1` | path prefix appended to `openai_base_url` |
+| `model_base_url` | (required) | origin (no path) of the model server, `SPIN_VARIABLE_MODEL_BASE_URL=<model-base-url>`; also the `api` component's outbound allow-list entry |
+| `model_api_key` | empty (secret) | `SPIN_VARIABLE_MODEL_API_KEY=<api-key>`, the key for the model server |
 | `model` | empty | empty = `claude-opus-4-8` (Anthropic) or `gpt-5` (OpenAI) |
 | `ts_interpreter_url` | `http://ts-sandbox.spin.internal` | the private JS/TS interpreter component |
 | `py_interpreter_url` | `http://py-sandbox.spin.internal` | the private Python interpreter component |
@@ -130,10 +128,11 @@ Everything is one app, with no separate interpreter to start.
 2. Build: `spin build` builds all five components: the API (esbuild + `j2w`), the UI
    (`nuxt generate`), the two private interpreters, and the private bundler (this
    repo's components, built in place from `../../`).
-3. Run (the API key comes from the environment):
+3. Run (the model server and key come from the environment):
    ```bash
-   SPIN_VARIABLE_ANTHROPIC_API_KEY=sk-ant-... spin up              # Anthropic
-   SPIN_VARIABLE_OPENAI_API_KEY=sk-... spin up --profile openai    # OpenAI
+   export SPIN_VARIABLE_MODEL_BASE_URL=<model-base-url> SPIN_VARIABLE_MODEL_API_KEY=<api-key>
+   spin up                    # Anthropic Messages API
+   spin up --profile openai   # OpenAI Responses API
    ```
    Build and run a profile together with `spin up --profile openai --build`, so a stale
    build of the other profile is never served.
@@ -150,8 +149,9 @@ ignores the API key, so either build runs without a cloud account:
 
 ```bash
 ollama pull qwen3:4b
-spin up --build --variable anthropic_base_url=http://localhost:11434 --variable model=qwen3:4b
-spin up --profile openai --build --variable openai_base_url=http://localhost:11434 --variable model=qwen3:4b
+export SPIN_VARIABLE_MODEL_BASE_URL=http://localhost:11434 SPIN_VARIABLE_MODEL=qwen3:4b
+spin up --build                    # Anthropic Messages API
+spin up --profile openai --build   # OpenAI Responses API
 ```
 
 Small local models are slower and less reliable at multi-step tool use than hosted

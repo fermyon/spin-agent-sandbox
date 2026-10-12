@@ -72,8 +72,9 @@ profile](https://spinframework.dev/v4/build#building-with-profiles), so only its
 bundled into the `api` component: the default build uses the Anthropic Messages API
 (`api/dist/api-anthropic.wasm`), and `--profile openai` uses the OpenAI Responses API,
 statelessly (`api/dist/api-openai.wasm`). The provider code lives in
-[`api/src/llm/`](api/src/llm). The base URLs are variables and also form the `api`
-component's outbound allow-list.
+[`api/src/llm/`](api/src/llm). Both builds read the same variables: the profile picks the API
+format, `model_base_url` picks the server and is also the `api` component's outbound
+allow-list entry.
 
 Saved conversations are tagged with the provider that produced them. Reopening an app
 under the other build starts a fresh edit session from the app's current code.
@@ -82,11 +83,8 @@ under the other build starts a fresh edit session from the app's current code.
 
 | Variable | Default | Notes |
 |---|---|---|
-| `anthropic_api_key` | empty (secret) | `SPIN_VARIABLE_ANTHROPIC_API_KEY=sk-ant-…`; used by the default build |
-| `anthropic_base_url` | `https://api.anthropic.com` | any Anthropic Messages-compatible server |
-| `openai_api_key` | empty (secret) | `SPIN_VARIABLE_OPENAI_API_KEY=sk-…`; used by `--profile openai` |
-| `openai_base_url` | `https://api.openai.com` | any Responses-compatible server (origin only) |
-| `openai_api_path` | `/v1` | path prefix appended to `openai_base_url` |
+| `model_base_url` | (required) | origin (no path) of the model server, `SPIN_VARIABLE_MODEL_BASE_URL=<model-base-url>`; also the `api` component's outbound allow-list entry |
+| `model_api_key` | empty (secret) | `SPIN_VARIABLE_MODEL_API_KEY=<api-key>`, the key for the model server |
 | `model` | empty | empty = `claude-opus-4-8` (Anthropic) or `gpt-5` (OpenAI) |
 | `ts_interpreter_url` | `http://ts-sandbox.spin.internal` | private JS/TS interpreter component |
 | `py_interpreter_url` | `http://py-sandbox.spin.internal` | private Python interpreter component |
@@ -100,13 +98,13 @@ under the other build starts a fresh edit session from the app's current code.
    ```
 2. Build and run:
    ```bash
-   SPIN_VARIABLE_ANTHROPIC_API_KEY=sk-ant-... spin up --build             # Anthropic
-   SPIN_VARIABLE_OPENAI_API_KEY=sk-... spin up --profile openai --build   # OpenAI
+   export SPIN_VARIABLE_MODEL_BASE_URL=<model-base-url> SPIN_VARIABLE_MODEL_API_KEY=<api-key>
+   spin up --build                    # Anthropic Messages API
+   spin up --profile openai --build   # OpenAI Responses API
    ```
    For a local model, run [Ollama](https://ollama.com) (it serves both APIs and ignores
-   the key), e.g. `spin up --profile openai --build --variable
-   openai_base_url=http://localhost:11434 --variable model=qwen3:4b`, or use
-   `anthropic_base_url` with the default build.
+   the key) and point either build at it, e.g. `spin up --profile openai --build
+   --variable model_base_url=http://localhost:11434 --variable model=qwen3:4b`.
 3. Open the served URL, describe an app (e.g. "a click counter with a /data JSON
    endpoint"), then click "Open live". It opens the generated app in a new tab,
    running in the sandbox.

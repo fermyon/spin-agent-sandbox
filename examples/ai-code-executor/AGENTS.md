@@ -43,8 +43,9 @@ separately.
 
 ```bash
 (cd ../.. && git submodule update --init)                    # py-sandbox's prebuilt deps
-SPIN_VARIABLE_ANTHROPIC_API_KEY=sk-ant-... spin up --build   # builds all 5 components + serves
-SPIN_VARIABLE_OPENAI_API_KEY=sk-... spin up --profile openai --build
+export SPIN_VARIABLE_MODEL_BASE_URL=<model-base-url> SPIN_VARIABLE_MODEL_API_KEY=<api-key>
+spin up --build                    # Anthropic Messages API; builds all 5 components + serves
+spin up --profile openai --build   # OpenAI Responses API
 ```
 
 `ts_interpreter_url` / `py_interpreter_url` default to the components' `spin.internal`

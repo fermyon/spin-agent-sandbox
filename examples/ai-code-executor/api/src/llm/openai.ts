@@ -16,13 +16,14 @@ function parseArguments(args: string): Record<string, unknown> {
 }
 
 export function createProvider(): LlmProvider {
-  const baseUrl = (variables.get("openai_base_url") || "https://api.openai.com").replace(/\/+$/, "");
-  const apiPath = variables.get("openai_api_path") || "/v1";
+  // model_base_url is an origin (it doubles as the outbound allow-list entry, which takes no
+  // path); the Responses API lives under /v1 on OpenAI and compatible servers.
+  const baseUrl = (variables.get("model_base_url") ?? "").replace(/\/+$/, "");
   const model = variables.get("model") || "gpt-5";
   const client = new OpenAI({
     // Local OpenAI-compatible servers ignore the key, but the SDK requires a value.
-    apiKey: variables.get("openai_api_key") || "unset",
-    baseURL: baseUrl + apiPath,
+    apiKey: variables.get("model_api_key") || "unset",
+    baseURL: baseUrl + "/v1",
   });
 
   return {
