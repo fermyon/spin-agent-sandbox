@@ -4,14 +4,14 @@
 #
 #   scripts/update-template-refs.sh <version> [owner/repo]
 #   scripts/update-template-refs.sh v0.1.0
-#   scripts/update-template-refs.sh v0.1.0 myorg/functions-agent-sandbox
+#   scripts/update-template-refs.sh v0.1.0 myorg/spin-sandboxes
 #
 # Downloads each released *.wasm, computes its digest, and updates the templates in place.
 # Review with `git diff templates/` afterwards.
 set -euo pipefail
 
 VERSION="${1:?usage: $0 <version> [owner/repo]}"
-REPO="${2:-fermyon/functions-agent-sandbox}"
+REPO="${2:-fermyon/spin-sandboxes}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 sha256() {
