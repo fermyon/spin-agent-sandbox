@@ -25,7 +25,9 @@ const ALLOWED_HOSTS = {
   type: "array",
   items: { type: "string" },
   description:
-    "Hosts allowed for server-side fetch. Default-deny; internal, loopback, and metadata hosts are always blocked.",
+    'Hosts this run may call over HTTP(S), e.g. ["api.github.com", "*.example.com"]. Required for any outbound request: ' +
+    'absent or empty denies all, and a bare "*" grants nothing. Private, loopback, link-local, and internal hosts are always ' +
+    "blocked, and the host app's own allow-list still applies.",
 };
 const HTTP_INPUT = {
   type: "object",
@@ -47,26 +49,46 @@ export function interpreterTool(options: InterpreterToolOptions = {}): ToolDefin
   const supportsJavaScript = languages.includes("javascript");
   const supportsPython = languages.includes("python");
   const languageLabel = languages.join(" or ");
+  const only = (on: boolean, text: string) => (on ? [text] : []);
+  const httpContext = [
+    ...only(supportsJavaScript, "JavaScript uses the standard `fetch`."),
+    ...only(
+      supportsPython,
+      "Python uses `from spin_sdk.http import send, Request` and `send(Request(method, url, headers, body))`; urllib, http.client, and requests are not available.",
+    ),
+  ].join(" ");
+  const kvContext = [
+    ...only(supportsJavaScript, "JavaScript: `import { openDefault } from \"@spinframework/spin-kv\"`, then get/set or getJson/setJson."),
+    ...only(supportsPython, "Python: `from spin_sdk import key_value`, then `key_value.open_default()` with get/set (values are bytes)."),
+  ].join(" ");
   const libraryContext = [
-    supportsPython && "Python includes numpy, pydantic, regex, beautifulsoup4, jinja2, markdown, tabulate, and tiktoken.",
-    supportsJavaScript && "JavaScript includes lodash, zod, date-fns, dayjs, cheerio, uuid, and nanoid.",
-    supportsJavaScript &&
-      "For additional JavaScript packages, provide dependencies as name -> semver ranges; they are bundled before execution. Use ESM import, never require().",
-  ]
-    .filter(Boolean)
-    .join(" ");
+    ...only(
+      supportsPython,
+      "Python includes numpy, pydantic, pyyaml, regex, beautifulsoup4, jinja2, markdown, tabulate, sqlalchemy, tiktoken, and the standard library except its networking modules.",
+    ),
+    ...only(
+      supportsJavaScript,
+      "JavaScript (TypeScript syntax is accepted) includes lodash, zod, date-fns, dayjs, cheerio, node-html-parser, js-yaml, uuid, ulidx, and nanoid. " +
+        "For other npm packages, list them in dependencies as name -> semver ranges; they are bundled before the run. Use ESM import, never require().",
+    ),
+  ].join(" ");
   const codeDescription = supportsJavaScript
     ? "The complete program to run. Print results to stdout. JavaScript supports top-level await; await asynchronous work directly instead of using a floating async IIFE."
     : "The complete program to run. Print results to stdout.";
   return {
     name: "run_in_wasm_interpreter",
     description:
-      `Execute self-contained ${languageLabel} code in a fast WebAssembly sandbox. ` +
-      "Use it for computations, data transformation, parsing, and string or JSON work. Print results to stdout. " +
+      `Run ${languageLabel} code in an isolated WebAssembly sandbox and get back its stdout, stderr, and error. ` +
+      "Beyond computation, parsing, and data work, code can call external HTTP APIs, keep data across runs, and serve HTTP requests. " +
+      `Outbound HTTP: list every host the code calls in allowedHosts (nothing is reachable otherwise). ${httpContext} ` +
+      "Persistent storage: set kvEnabled and pass the same identity on every run that should share data. Runs with the same identity " +
+      "read what earlier runs wrote (also across languages); different identities are isolated; without an identity each run gets a " +
+      `fresh, empty store. ${kvContext} ` +
+      "HTTP handlers: supply input to run a handler against that request and get its HTTP response. JavaScript exports " +
+      "`default { async fetch(request) {} }`; Python defines `handle_request(request)` and may return an iterable of str or bytes chunks to stream the body. " +
       `${libraryContext} ` +
-      "There is no filesystem or shell. Supply input to run an HTTP handler against a mock request: JavaScript exports `default { async fetch(request) {} }`; Python defines `handle_request(request)` and may return an iterable of string or bytes chunks to stream its body. " +
-      "Set kvEnabled to use the isolated, durable default KV store. JavaScript imports `@spinframework/spin-kv` and calls `openDefault()`; Python imports `spin_sdk.key_value` and calls `open_default()`. " +
-      "Set identity to keep related KV calls in one namespace. Network egress is denied by default; list every external fetch host in allowedHosts.",
+      "Each run is a fresh instance: variables and globals do not carry over, so persist state in the key-value store. " +
+      "There is no filesystem, shell, subprocess, or raw socket, and no runtime pip install. stdout and stderr are each capped at 256 KB.",
     inputSchema: {
       type: "object",
       properties: {
@@ -75,8 +97,16 @@ export function interpreterTool(options: InterpreterToolOptions = {}): ToolDefin
         ...(supportsJavaScript ? { dependencies: DEPENDENCIES } : {}),
         allowedHosts: ALLOWED_HOSTS,
         input: HTTP_INPUT,
-        identity: { type: "string", description: "Stable sandbox/KV namespace for related runs." },
-        kvEnabled: { type: "boolean", description: "Enable the isolated default KV store for this run." },
+        identity: {
+          type: "string",
+          description:
+            "Stable name for this sandbox's key-value namespace. Reuse it on every run that should share stored data; " +
+            "runs with different identities are isolated. Omit it for a fresh, empty namespace each run.",
+        },
+        kvEnabled: {
+          type: "boolean",
+          description: "Enable the key-value store for this run (off by default). Combine with identity to keep data across runs.",
+        },
       },
       required: ["language", "code"],
     },
