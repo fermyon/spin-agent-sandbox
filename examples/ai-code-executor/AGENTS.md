@@ -43,7 +43,6 @@ Self-contained: the interpreters are components of this app, so nothing runs
 separately.
 
 ```bash
-(cd ../.. && git submodule update --init)                    # py-sandbox's prebuilt deps
 export SPIN_VARIABLE_MODEL_BASE_URL=<model-base-url> SPIN_VARIABLE_MODEL_API_KEY=<api-key>
 spin up --build                    # Anthropic Messages API; builds all 5 components + serves
 spin up --profile openai --build   # OpenAI Responses API

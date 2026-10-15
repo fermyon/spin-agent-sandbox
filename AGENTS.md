@@ -36,7 +36,6 @@ fuel, or the platform request timeout).
 ## Build
 
 ```bash
-git submodule update --init   # py-sandbox's prebuilt wasm32-wasi packages
 spin up --build               # builds the three components, then serves on :3000
 ```
 
@@ -48,7 +47,8 @@ Python 3.12.
   into `dist/ts-sandbox.wasm`.
 - py-sandbox: `py-sandbox/build-composed.sh` does the same with the Python guest
   (`build.sh`, componentize-py) into `dist/py-sandbox.wasm`; see
-  [py-sandbox/README.md](py-sandbox/README.md).
+  [py-sandbox/README.md](py-sandbox/README.md). Its prebuilt `wasm32-wasi` packages are
+  committed in `py-sandbox/wasi-deps`.
 - bundler: `npm ci && npm run build` in `packages/typescript/bundler`
   (`dist/bundler.wasm`). It is a plain component, not composed with the guards.
 

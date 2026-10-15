@@ -95,11 +95,7 @@ under the other build starts a fresh edit session from the app's current code.
 
 ## Run it
 
-1. Init the submodule (the Python interpreter's prebuilt deps):
-   ```bash
-   (cd ../.. && git submodule update --init)
-   ```
-2. Build and run:
+1. Build and run:
    ```bash
    export SPIN_VARIABLE_MODEL_BASE_URL=<model-base-url> SPIN_VARIABLE_MODEL_API_KEY=<api-key>
    spin up --build                    # Anthropic Messages API
@@ -108,7 +104,7 @@ under the other build starts a fresh edit session from the app's current code.
    For a local model, run [Ollama](https://ollama.com) (it serves both APIs and ignores
    the key) and point either build at it, e.g. `spin up --profile openai --build
    --variable model_base_url=http://localhost:11434 --variable model=qwen3:4b`.
-3. Open the served URL, describe an app (e.g. "a click counter with a /data JSON
+2. Open the served URL, describe an app (e.g. "a click counter with a /data JSON
    endpoint"), then click "Open live". It opens the generated app in a new tab,
    running in the sandbox.
 

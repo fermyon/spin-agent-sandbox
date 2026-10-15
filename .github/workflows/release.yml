@@ -42,8 +42,6 @@ jobs:
       contents: write # create releases and (for canary) move the tag
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive # py-sandbox's prebuilt wasm32-wasi packages
 
       - name: Determine version
         run: |

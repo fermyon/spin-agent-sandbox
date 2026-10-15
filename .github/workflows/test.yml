@@ -69,8 +69,6 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive # py-sandbox's prebuilt wasm32-wasi packages
       - uses: actions/setup-node@v4
         with:
           node-version: "24"

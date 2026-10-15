@@ -2,7 +2,7 @@
 # setup-vendor.sh installs these into vendor/ (binaries stripped; the prebuilt
 # wasm32-wasi packages always win). Binary deps (numpy, regex, pydantic_core,
 # tiktoken, sqlalchemy cyext, _yaml, charset_normalizer, multidict, frozenlist,
-# wrapt, yarl) come from spin-python-deps, not from here.
+# wrapt, yarl) come from wasi-deps/, not from here.
 tabulate
 markdown
 jinja2

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Populate py-sandbox/vendor/ with every runtime dependency on a single module path:
-#   1. prebuilt wasm32-wasi packages copied from spin-python-deps (the binary deps)
+#   1. prebuilt wasm32-wasi packages copied from wasi-deps/ (the binary deps)
 #   2. pure-python packages from vendor-requirements.txt (binaries stripped so the
 #      prebuilt wasm packages always win and no macOS .so sneaks into the component)
 #
@@ -10,9 +10,9 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# Prebuilt wasm32-wasi packages come from the spin-python-deps git submodule in this
-# directory (run `git submodule update --init` if it is empty). SPIN_PYTHON_DEPS overrides it.
-DEPS="${SPIN_PYTHON_DEPS:-$HERE/spin-python-deps}"
+# Prebuilt wasm32-wasi packages are committed in wasi-deps/ (see its README for
+# provenance and licenses). SPIN_PYTHON_DEPS overrides the location.
+DEPS="${SPIN_PYTHON_DEPS:-$HERE/wasi-deps}"
 VENDOR="$HERE/vendor"
 PY="${PYTHON:-python3.12}"
 
@@ -38,7 +38,7 @@ done
 # component (e.g. numpy/pydantic_core absent) that would otherwise build and publish green.
 if [ "${#missing[@]}" -gt 0 ]; then
   echo "ERROR: ${#missing[@]} required prebuilt package(s) missing from $DEPS: ${missing[*]}" >&2
-  echo "       Point SPIN_PYTHON_DEPS at a complete spin-python-deps checkout." >&2
+  echo "       Restore py-sandbox/wasi-deps, or point SPIN_PYTHON_DEPS at a complete copy." >&2
   exit 1
 fi
 
