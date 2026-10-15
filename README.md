@@ -36,10 +36,9 @@ built on it.
 
 ## Quick start
 
-Initialize the Python dependency submodule, then build and serve all components:
+Build and serve all components:
 
 ```bash
-git submodule update --init
 spin up --build
 ```
 

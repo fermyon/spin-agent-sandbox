@@ -82,9 +82,8 @@ release of `fermyon/spin-sandboxes`. `update-template-refs.sh` fills in the real
 digests after the first release; until then, `spin up` on a generated app fails digest
 verification. Forks pass their own `owner/repo` to the script.
 
-The prebuilt `wasm32-wasi` Python packages come from the `spin-python-deps` git
-submodule under `py-sandbox/`; the CI and release workflows check it out
-(`submodules: recursive`), with no extra repo or secret to configure.
+The prebuilt `wasm32-wasi` Python packages are committed in `py-sandbox/wasi-deps`, so
+the CI and release workflows need no extra repo, submodule, or secret.
 `packages/typescript/sandbox/package-lock.json` is committed so the CI's `npm ci` is reproducible; keep
 it tracked.
 

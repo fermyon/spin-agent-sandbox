@@ -124,14 +124,10 @@ at an external sandbox instead.
 
 Everything is one app, with no separate interpreter to start.
 
-1. Init the submodule (the Python interpreter's prebuilt deps):
-   ```bash
-   (cd ../.. && git submodule update --init)
-   ```
-2. Build: `spin build` (add `--profile openai` for the OpenAI build) builds all five components: the API (esbuild + `j2w`), the UI
+1. Build: `spin build` (add `--profile openai` for the OpenAI build) builds all five components: the API (esbuild + `j2w`), the UI
    (`nuxt generate`), the two private interpreters, and the private bundler (this
    repo's components, built in place from `../../`).
-3. Run (the model server and key come from the environment):
+2. Run (the model server and key come from the environment):
    ```bash
    export SPIN_VARIABLE_MODEL_BASE_URL=<model-base-url> SPIN_VARIABLE_MODEL_API_KEY=<api-key>
    spin up                    # Anthropic Messages API
@@ -139,7 +135,7 @@ Everything is one app, with no separate interpreter to start.
    ```
    Build and run a profile together with `spin up --profile openai --build`, so a stale
    build of the other profile is never served.
-4. Open the served URL and click a prompt, e.g. "What is the factorial of 15?". The
+3. Open the served URL and click a prompt, e.g. "What is the factorial of 15?". The
    model writes Python/JS and runs it in the matching private interpreter, then
    answers.
 
