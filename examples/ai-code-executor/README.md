@@ -1,6 +1,6 @@
 # AI Code Executor: an agent whose tool is a sandbox
 
-A Spin application: an LLM (Claude by default, or an OpenAI-compatible model) writes
+A Spin application: an LLM (via the Anthropic Messages API by default, or the OpenAI Responses API) writes
 code and runs it in the fast Wasm interpreter
 through [`@spinframework/sandbox`](../../sdk), with the transcript streamed
 back to a chat UI.
@@ -111,6 +111,8 @@ build can target any compatible server.
 | `model` | empty | empty = `claude-opus-4-8` (Anthropic) or `gpt-5` (OpenAI) |
 | `ts_interpreter_url` | `http://ts-sandbox.spin.internal` | the private JS/TS interpreter component |
 | `py_interpreter_url` | `http://py-sandbox.spin.internal` | the private Python interpreter component |
+| `bundler_url` | `http://bundler.spin.internal` | the private experimental bundler component |
+| `log_level` | `info` | `error`, `warn`, `info`, `debug`, or `trace` |
 | `access_token` | empty = open | set `SPIN_VARIABLE_ACCESS_TOKEN=…` to gate the UI + API behind an access-token page |
 | `esm_base_url` | `https://esm.sh` | origin of the esm.sh server used by the experimental bundler for the model's npm `dependencies`; point it at a [self-hosted instance](https://github.com/esm-dev/esm.sh/blob/main/HOSTING.md) if you prefer |
 
@@ -126,7 +128,7 @@ Everything is one app, with no separate interpreter to start.
    ```bash
    (cd ../.. && git submodule update --init)
    ```
-2. Build: `spin build` builds all five components: the API (esbuild + `j2w`), the UI
+2. Build: `spin build` (add `--profile openai` for the OpenAI build) builds all five components: the API (esbuild + `j2w`), the UI
    (`nuxt generate`), the two private interpreters, and the private bundler (this
    repo's components, built in place from `../../`).
 3. Run (the model server and key come from the environment):
@@ -169,4 +171,5 @@ ui/                Nuxt SPA chat (near-verbatim from upstream; one filesystem pr
   pages/index.vue  the chat UI
 ../../packages/typescript/sandbox   private JS/TS interpreter, built in place, reached via ts-sandbox.spin.internal
 ../../py-sandbox   private Python interpreter, built in place, reached via py-sandbox.spin.internal
+../../packages/typescript/bundler   experimental private npm bundler, built in place, reached via bundler.spin.internal
 ```

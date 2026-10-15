@@ -32,7 +32,7 @@ if [ ! -d vendor ]; then
   PYTHON="$PWD/.venv/bin/python" bash setup-vendor.sh
 fi
 
-# Generate spin-sdk bindings from its imports-only world.
+# Componentize executor.py; spin_sdk bindings come from its imports-only world.
 echo ">> componentize"
 VIRTUAL_ENV="$PWD/.venv" .venv/bin/componentize-py \
   -d ../wit/py-sandbox -w py-executor \

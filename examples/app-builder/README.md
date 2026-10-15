@@ -1,6 +1,6 @@
 # App Builder: an agent that writes web apps and runs them live
 
-A Spin application: an LLM (Claude by default, or an OpenAI-compatible model) writes a
+A Spin application: an LLM (via the Anthropic Messages API by default, or the OpenAI Responses API) writes a
 self-contained web app (an HTTP handler serving an
 HTML UI plus a JSON API), stores the code with [`@spinframework/sandbox`](../../sdk),
 and serves each stored app live at its own URL, executed on demand in a private Wasm
@@ -37,8 +37,8 @@ at the same URL.
    conversation (with a per-edit diff on each turn) and the current full source.
 
 Everything reuses the repo's primitives: the sandbox's HTTP-handler execution, its
-scoped KV (the code store), and per-language service chaining. Only the sandbox's
-request `input.path` was added so a stored app can route on sub-paths.
+scoped KV (the code store), and per-language service chaining. The sandbox's request
+`input.path` lets a stored app route on sub-paths.
 
 Generated apps can persist state, too. Each runs with its own private, scoped
 [Spin KV](https://spinframework.dev/v4/kv-store-api-guide): the `default` store, which
@@ -88,6 +88,8 @@ under the other build starts a fresh edit session from the app's current code.
 | `model` | empty | empty = `claude-opus-4-8` (Anthropic) or `gpt-5` (OpenAI) |
 | `ts_interpreter_url` | `http://ts-sandbox.spin.internal` | private JS/TS interpreter component |
 | `py_interpreter_url` | `http://py-sandbox.spin.internal` | private Python interpreter component |
+| `bundler_url` | `http://bundler.spin.internal` | private experimental bundler component |
+| `log_level` | `info` | `error`, `warn`, `info`, `debug`, or `trace` |
 | `access_token` | empty = open | set `SPIN_VARIABLE_ACCESS_TOKEN=…` to gate the UI, API and live apps behind an access-token page |
 | `esm_base_url` | `https://esm.sh` | origin of the esm.sh server used by the experimental bundler when an app lists npm `dependencies`; point it at a [self-hosted instance](https://github.com/esm-dev/esm.sh/blob/main/HOSTING.md) if you prefer |
 
@@ -133,4 +135,5 @@ ui/                Nuxt SPA: build gallery + create flow
   pages/index.vue  the gallery + "describe an app" UI
 ../../packages/typescript/sandbox   private JS/TS interpreter, built in place, reached via ts-sandbox.spin.internal
 ../../py-sandbox   private Python interpreter, built in place, reached via py-sandbox.spin.internal
+../../packages/typescript/bundler   experimental private npm bundler, built in place, reached via bundler.spin.internal
 ```

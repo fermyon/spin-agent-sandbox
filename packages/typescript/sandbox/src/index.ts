@@ -11,8 +11,9 @@ function errorText(e: any): string {
   return e?.stack ? `${message}\n${e.stack}` : message;
 }
 
-// Bundler-produced code (out of scope for this rewrite) would be pre-transpiled CommonJS
-// and skip the sucrase pass; kept as a marker for forward compatibility.
+// The bundler prepends this marker to its output, which is already CommonJS, so the sucrase
+// pass is skipped for it. This is not a trust boundary: any code that starts with the marker
+// just runs untranspiled, with the same sandboxing.
 const PREBUNDLED_MARKER = "//__spin_bundled_cjs__";
 
 type Outcome =

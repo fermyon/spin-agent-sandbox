@@ -1,8 +1,10 @@
 name: tests
 
-# Unit tests run on every PR and main push, keeping the required `ci` check present.
-# Live suites run on demand or when requested by the release workflow, which
-# publishes the exact TS artifacts tested here.
+# Unit tests and the live sandbox suites (smoke + examples, both languages) run on every PR
+# and main push; `ci` is the required aggregate check. The bundler's live suites reach
+# esm.sh and take longer, so they run on demand (Run workflow) or when requested by the
+# release workflow. Only the bundler's compatibility reports are uploaded; the release
+# workflow builds the components it publishes.
 on:
   push:
     branches: [main]
@@ -10,7 +12,7 @@ on:
   workflow_dispatch:
   workflow_call:
     inputs:
-      run-integration:
+      run-bundler:
         description: Run the live bundler integration and compatibility gates.
         type: boolean
         required: false
@@ -61,9 +63,81 @@ jobs:
         run: npm ci && npm run check
         working-directory: sdk
 
-  integration:
-    name: integration
-    if: github.event_name == 'workflow_dispatch' || inputs.run-integration == true
+  sandboxes:
+    name: sandboxes
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive # py-sandbox's prebuilt wasm32-wasi packages
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: |
+            packages/typescript/sandbox/package-lock.json
+            packages/typescript/bundler/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Rust toolchain and Wasm targets
+        run: |
+          rustup toolchain install "$RUST_VERSION" --profile minimal --no-self-update --target wasm32-wasip2
+          rustup default "$RUST_VERSION"
+      - uses: Swatinem/rust-cache@v2
+      - name: Install Spin
+        uses: fermyon/actions/spin/setup@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install Bytecode Alliance tools
+        uses: ./.github/actions/setup-wasm-tools
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          wasm-tools-version: "1.246.1"
+          wac-version: "0.12.0"
+      - name: Install hurl
+        env:
+          HURL_VERSION: "8.0.1"
+          HURL_SHA256: e76e6c0957f83f9b761416452871554d0f068384b6cd004bff82dd8795c62225
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/hurl.deb" \
+            "https://github.com/Orange-OpenSource/hurl/releases/download/${HURL_VERSION}/hurl_${HURL_VERSION}_amd64.deb"
+          echo "${HURL_SHA256}  $RUNNER_TEMP/hurl.deb" | sha256sum -c -
+          sudo apt-get install -y "$RUNNER_TEMP/hurl.deb"
+      - name: Build all components
+        # The app manifest wires all three, so the bundler is built too; its suites run in
+        # the `bundler` job.
+        run: spin build
+      - name: Validate components
+        run: |
+          wasm-tools validate dist/ts-sandbox.wasm
+          wasm-tools validate dist/py-sandbox.wasm
+      - name: Check the host capabilities each sandbox imports
+        run: node tests/check-imports.mjs
+      - name: Start the app
+        # A cold runner compiles the Wasm modules on first start, which can take minutes.
+        run: |
+          spin up --listen 127.0.0.1:3007 > "$RUNNER_TEMP/spin.log" 2>&1 &
+          spin_pid=$!
+          for _ in $(seq 300); do
+            curl -s -o /dev/null http://127.0.0.1:3007/ts/run && exit 0
+            kill -0 "$spin_pid" 2>/dev/null || break # spin exited: fail now
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/spin.log"
+          exit 1
+      - name: Smoke tests and security gates (both sandboxes)
+        run: hurl --variable base_url=http://127.0.0.1:3007 --test tests/smoke.hurl
+      - name: Example programs (both sandboxes)
+        run: BASE=http://127.0.0.1:3007 SHOW_RESPONSES=0 tests/run-examples.sh
+      - name: Spin log
+        if: always()
+        run: cat "$RUNNER_TEMP/spin.log" || true
+
+  bundler:
+    name: bundler
+    if: github.event_name == 'workflow_dispatch' || inputs.run-bundler == true
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -130,30 +204,19 @@ jobs:
             ${{ runner.temp }}/bundler-tests.log
           if-no-files-found: warn
           retention-days: 90
-      - name: Collect tested TypeScript components
-        run: |
-          mkdir -p "$RUNNER_TEMP/typescript-components"
-          cp dist/ts-sandbox.wasm "$RUNNER_TEMP/typescript-components/ts-sandbox.wasm"
-          cp packages/typescript/bundler/dist/bundler.wasm "$RUNNER_TEMP/typescript-components/bundler.wasm"
-      - name: Upload tested TypeScript components
-        uses: actions/upload-artifact@v4
-        with:
-          name: typescript-components
-          path: ${{ runner.temp }}/typescript-components/*.wasm
-          if-no-files-found: error
-          retention-days: 7
 
   ci:
     name: ci
     if: always()
-    needs: [unit, integration]
+    needs: [unit, sandboxes, bundler]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Require all scheduled tests to pass
         env:
           UNIT_RESULT: ${{ needs.unit.result }}
-          INTEGRATION_RESULT: ${{ needs.integration.result }}
-          EXPECTED_INTEGRATION_RESULT: ${{ (github.event_name == 'workflow_dispatch' || inputs.run-integration == true) && 'success' || 'skipped' }}
+          SANDBOXES_RESULT: ${{ needs.sandboxes.result }}
+          BUNDLER_RESULT: ${{ needs.bundler.result }}
+          EXPECTED_BUNDLER_RESULT: ${{ (github.event_name == 'workflow_dispatch' || inputs.run-bundler == true) && 'success' || 'skipped' }}
         run: |
-          [[ "$UNIT_RESULT" == success && "$INTEGRATION_RESULT" == "$EXPECTED_INTEGRATION_RESULT" ]]
+          [[ "$UNIT_RESULT" == success && "$SANDBOXES_RESULT" == success && "$BUNDLER_RESULT" == "$EXPECTED_BUNDLER_RESULT" ]]

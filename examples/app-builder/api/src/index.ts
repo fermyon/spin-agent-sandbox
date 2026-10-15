@@ -3,7 +3,7 @@
 // (Anthropic or OpenAI) is chosen at build time; see build.mjs.
 //
 // Two surfaces on one component:
-//   /api/...   control plane: generate (model loop) + list apps
+//   /api/...   control plane: generate (model loop), app records + conversations, health/auth
 //   /a/<id>/   live app: load stored code from KV, run it in the sandbox, forward its Response
 
 import { Hono } from "hono";
@@ -52,7 +52,7 @@ const CREATE_APP_TOOL: ToolDefinition = {
         type: "array",
         items: { type: "string" },
         description:
-          "Outbound hosts the app is allowed to reach with `fetch` (default-deny; omit for no network). " +
+          "Outbound hosts the app's server-side handler may call (default-deny; omit for no network). " +
           'Give hostnames, optionally with a port or a leading "*." wildcard, e.g. ' +
           '["api.openweathermap.org", "*.githubusercontent.com"]. Internal/loopback/metadata hosts are always blocked.',
       },
@@ -80,7 +80,9 @@ function systemPrompt(): string {
     "4. Inline all CSS and JS in the HTML; do not load assets from a CDN. Outbound network is DENIED by default,",
     "   so a browser `fetch` to a third party will fail, but the app's server-side handler MAY call an external",
     "   API if you list its hosts in create_app's `allowedHosts` (e.g. [\"api.openweathermap.org\"]); proxy such",
-    "   calls through your own sub-path (e.g. '/data') rather than from the browser.",
+    "   calls through your own sub-path (e.g. '/data') rather than from the browser. JS calls them with `fetch`;",
+    "   Python with `from spin_sdk.http import send, Request` and `send(Request('GET', url, {}, None))`",
+    "   (urllib.request, http.client, and requests are not available).",
     "   JavaScript only: to use an npm library beyond the pre-bundled set (lodash, zod, date-fns, dayjs, cheerio,",
     "   uuid, nanoid), list it in create_app's `dependencies` (name -> semver) and import it with ESM `import`",
     "   (e.g. `import { marked } from 'marked'`), NOT `require()`. It is bundled into the app at publish time",
@@ -91,8 +93,8 @@ function systemPrompt(): string {
     "   - JS: `import { openDefault } from '@spinframework/spin-kv'; const store = openDefault();` then",
     "     `store.getJson(k)`, `store.setJson(k, v)`, `store.delete(k)`, `store.exists(k)`, `store.getKeys()`.",
     "   - Python (synchronous in this sandbox): `from spin_sdk import key_value; store = key_value.open_default()`",
-    "     then `store.get_json(k)`, `store.set_json(k, v)`, `store.get(k)`/`store.set(k, b'…')` (bytes),",
-    "     `store.delete(k)`, `store.exists(k)`, `store.get_keys()`.",
+    "     then `store.get(k)` (bytes or None), `store.set(k, b'…')`, `store.delete(k)`, `store.exists(k)`,",
+    "     `store.get_keys()`. There are no JSON helpers: use `json.dumps(v).encode()` and `json.loads(store.get(k))`.",
     "   Reference: https://spinframework.dev/v4/kv-store-api-guide",
     "6. Keep it one self-contained file, then call create_app with { language, title, code } (plus `kvEnabled` if it uses KV).",
     "After publishing, reply with a single short sentence naming the app.",

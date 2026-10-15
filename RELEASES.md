@@ -8,8 +8,12 @@ and [`.github/workflows/release.yml`](.github/workflows/release.yml).
 The `tests` workflow runs on pull requests and pushes to `main`.
 
 - `unit` runs Rust, TypeScript sandbox, bundler, Python sandbox, and SDK checks.
-- `integration` runs only from **Run workflow** or when called by a release. It builds
-  the components, validates Wasm artifacts, and runs bundler integration and compatibility
+- `sandboxes` builds all components, checks the host capabilities each sandbox imports
+  (`tests/check-imports.mjs`), starts the app, and runs the smoke tests and security gates
+  (`tests/smoke.hurl`) and every example program (`tests/run-examples.sh`) against both
+  the TypeScript and Python sandboxes.
+- `bundler` runs only from **Run workflow** or when called by a release, because its
+  suites reach esm.sh and take longer. It runs the bundler integration and compatibility
   gates.
 - `ci` is the aggregate status check. Configure it as required in branch protection.
 
@@ -18,16 +22,25 @@ Run the corresponding checks locally:
 ```bash
 cargo test --workspace --locked
 cd packages/typescript/sandbox && npm test
-cd packages/typescript/bundler && npm run test:ci
 cd py-sandbox && python3 -m unittest discover -s tests -t .
 cd sdk && npm run check
+
+# Live sandbox suites (the `sandboxes` job), against a running app:
+spin build && node tests/check-imports.mjs
+spin up --listen 127.0.0.1:3007 &
+hurl --variable base_url=http://127.0.0.1:3007 --test tests/smoke.hurl
+BASE=http://127.0.0.1:3007 tests/run-examples.sh
+
+# Live bundler suites (the `bundler` job; starts its own Spin app and reaches esm.sh):
+cd packages/typescript/bundler && npm run test:ci
 ```
 
 ## Releases
 
 Push a `vX.Y.Z` tag to create a versioned release. Run the **Release** workflow manually
 for a rolling `canary` prerelease. Both paths first invoke the full test workflow,
-including integration gates.
+including the bundler gates. The release job then builds the components from the same
+commit, checks their imports, and publishes them with that run's compatibility reports.
 
 The release publishes:
 

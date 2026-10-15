@@ -13,7 +13,7 @@ import { transform as sucrase } from "sucrase";
 import { resolveShim } from "./shims";
 
 // The ts-sandbox's pre-bundled packages, kept as bare require() (host registry). Must stay in
-// sync with ts-sandbox/src/registry.ts.
+// sync with packages/typescript/sandbox/src/registry.ts.
 const BUILTINS = [
   "cheerio", "node-html-parser", "zod", "js-yaml", "nanoid", "ulidx", "uuid",
   "lodash", "date-fns", "dayjs", "@spinframework/spin-kv",
@@ -25,14 +25,14 @@ const MAX_MODULES = 300;
 // module that OOMs the bundler's own sucrase pass; the total cap bounds the assembled blob.
 //
 // Calibrated by measurement under a 128 MB instance cap (Spin/hosted default): with the sandbox's
-// skip-transpile marker in place, the 128 MB SANDBOX runs ~720 KB blobs (resend, elysia) that used
-// to crash it. The remaining wall is the BUNDLER: bundling that tier needs ~256 MB (the bundler is
+// skip-transpile marker in place, the 128 MB SANDBOX runs ~720 KB blobs (resend, elysia) that crash
+// it without the marker. The remaining wall is the BUNDLER: bundling that tier needs ~256 MB (the bundler is
 // trusted build infra that executes no untrusted code, so it can be provisioned above the 128 MB sandbox).
 // At a uniform 128 MB the bundler is the tighter limit (~600 KB); provision it higher to reach these.
 //
 // The per-module cap stays low: skip-transpile only removes the SANDBOX's re-parse, not the
 // bundler's own per-module sucrase, which still OOMs on a single ~800 KB minified module (pug).
-// The total cap is what skip-transpile lets us raise, since the sandbox can now run larger blobs.
+// The total cap is what skip-transpile lets us raise, since the sandbox can run larger blobs.
 const MAX_MODULE_BYTES = 700 * 1024;
 const MAX_TOTAL_BYTES = 1 * 1024 * 1024;
 const moduleTooLarge = (kb: number, url: string) =>
@@ -156,8 +156,8 @@ export async function bundle(userSource: string, deps: Record<string, string>, e
   // The user code runs in an `await (async function(){...})()`: the sandbox runs the blob as its
   // AsyncFunction body, so (1) top-level `await` in the user source is valid (it sits inside an
   // async function) and (2) awaiting the IIFE makes the sandbox wait for the user's async work to
-  // finish before it captures stdout. Without this, top-level await was a compile error under the
-  // bundler path and floating async work was cut off before its output flushed.
+  // finish before it captures stdout. Without it, top-level await would be a compile error and
+  // floating async work would be cut off before its output flushed.
   const blob =
 `//__spin_bundled_cjs__
 const __B = new Set(${JSON.stringify(BUILTINS)});

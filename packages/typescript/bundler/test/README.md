@@ -1,9 +1,7 @@
 # bundler tests
 
 Two live layers, both run against the real Wasm components (bundler + ts-sandbox) over
-HTTP. The earlier offline unit layer (a Node re-implementation of the sandbox replaying
-recorded esm.sh fixtures) was removed: the live tests below assert the same claims
-against the real engine, so the fixtures duplicated that coverage at lower fidelity.
+HTTP.
 
 ## Layer 1: integration invariants
 
@@ -46,8 +44,8 @@ BUNDLER_BASE_URL=http://127.0.0.1:3000 npm run test:compat
 ```
 
 Pull requests and pushes to `main` run the offline unit suites. To run the live
-integration and compatibility gates in GitHub Actions, select **Run workflow** on
-the `tests` workflow. Releases explicitly request the same live suites and must
+integration and compatibility gates in GitHub Actions (the `bundler` job), select
+**Run workflow** on the `tests` workflow. Releases explicitly request the same live suites and must
 pass them before publishing. Tool-installer checks run alongside these live suites.
 
 `test:ci` builds missing artifacts, including the **composed** sandbox at
@@ -86,7 +84,7 @@ exports must target new files outside tracked paths; `--report=none` skips the
 optional export, while the run directory still preserves its Markdown report.
 
 On-demand and release runs upload reports and logs even on failure, retain them for
-90 days, and show the gate result in the run summary. Releases attach an archive from the same tested run;
+90 days, and show the gate result in the run summary. Releases attach an archive of the reports from their test run;
 unique archive names preserve history across rolling canary releases.
 
 To update expectations deliberately, review a complete run and use its directory:

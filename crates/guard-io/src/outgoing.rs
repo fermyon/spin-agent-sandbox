@@ -1,4 +1,4 @@
-//! Enforces per-request egress policy before forwarding guest `fetch()` calls.
+//! Enforces per-request egress policy before forwarding guest outbound HTTP requests.
 
 use crate::bindings::exports::wasi::http::outgoing_handler as guarded;
 use crate::bindings::wasi::http::outgoing_handler as real;

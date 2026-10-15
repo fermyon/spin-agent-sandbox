@@ -8,7 +8,7 @@
 //   wrong_output  bundle ok, run ok (error null) but marker missing        (behavioral diff / bad snippet)
 //   runtime_error bundle ok, sandbox threw at run time                     (usually a Node-builtin shim gap)
 //   compile_error sandbox engine (StarlingMonkey) rejected the blob        (engine capability gap, e.g. \p{} regex)
-//   transpile_err sandbox's sucrase pass rejected the blob                 (rare, blob is already CJS)
+//   transpile_err sandbox returned "transpile_error"                      (not emitted by the current guard)
 //   bundle_error  /bundle failed (esm.sh fetch, sucrase transpile, graph too large)
 //   net_error     harness could not reach the server (after retries)
 //
@@ -108,7 +108,7 @@ function classify(entry, bundleRes, runRes) {
     rec.detail = firstLine(r.error);
     return rec;
   }
-  // guardBody() turns an uncaught throw into a THREW: marker (with the real message).
+  // wrapBlob() turns an uncaught throw into a THREW: marker (with the real message).
   const threw = rec.stdout.split("\n").find((l) => l.startsWith("THREW:"));
   if (threw) { rec.status = "runtime_error"; rec.detail = threw; return rec; }
   if (matches(entry, rec.stdout)) { rec.status = "pass"; return rec; }

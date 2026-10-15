@@ -1,6 +1,7 @@
 {
   "name": "ui",
   "private": true,
+  "license": "Apache-2.0",
   "type": "module",
   "scripts": {
     "dev": "nuxt dev",
@@ -13,5 +14,8 @@
     "highlight.js": "^11.10.0",
     "nuxt": "^4.0.1",
     "vue": "^3.5.0"
+  },
+  "overrides": {
+    "simple-git": "^4.0.2"
   }
 }

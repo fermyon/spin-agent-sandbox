@@ -28,7 +28,7 @@ POST a strict JSON envelope to `/ts/...` or `/py/...`:
     "query":   { "name": "ada" },
     "body":    { "values": [1, 2, 3] }
   },
-  "allowedHosts": ["api.example.com"],  // optional: per-sandbox outbound allow-list
+  "allowedHosts": ["api.example.com"],  // optional: per-request allow-list, within allowed_outbound_hosts
   "kvEnabled": true                      // optional: enables scoped KV access (default false)
 }
 ```
@@ -48,7 +48,11 @@ The trust boundary is the Wasm component (no filesystem; egress gated by Spin). 
 KV keys are namespaced unambiguously so no sandbox can read another's; outbound HTTP is
 default-deny and refuses loopback, link-local, private, and `.internal` targets even if
 allow-listed. There is no in-component CPU/wall-clock timeout or memory limit, so enforce a
-request deadline and memory cap at the host/deployment layer, and tighten
-`allowed_outbound_hosts` from the broad dev default (`https://*:*`) before deploying.
+request deadline and memory cap at the host/deployment layer.
 
-To modify or rebuild the components, see the source project they are released from.
+Each component's `allowed_outbound_hosts` in `spin.toml` starts empty, so user code cannot
+make outbound requests. Add the hosts it may reach there (for example
+`["https://api.example.com"]`); a request's `allowedHosts` can then only narrow that list.
+
+To modify or rebuild the components, see
+[spin-sandboxes](https://github.com/fermyon/spin-sandboxes).

@@ -1,5 +1,5 @@
 // bundler, a Spin/StarlingMonkey component that turns (source + package.json) into
-// ONE self-contained CJS blob the (unchanged) ts-sandbox can execute.
+// ONE self-contained CJS blob the ts-sandbox can execute.
 //
 // Request (POST, JSON body):
 //   { source: string, packageJson?: object | string }

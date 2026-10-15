@@ -8,9 +8,9 @@ use crate::bindings::wasi::io::streams::{
 };
 use std::cell::RefCell;
 
-/// Matches the reference implementation's `console.ts` cap — once a captured
-/// stream exceeds this many bytes, further writes are dropped and a single
-/// truncation marker is appended.
+/// The documented per-stream capture cap (256 KB of stdout and of stderr) —
+/// once a captured stream exceeds this many bytes, further writes are dropped
+/// and a single truncation marker is appended.
 pub const MAX_CAPTURED_BYTES: usize = 256 * 1024;
 
 thread_local! {
@@ -51,9 +51,8 @@ fn append_zeroes_capped(buf: &RefCell<Vec<u8>>, len: u64) {
     }
 }
 
-/// Drains both captured buffers (as lossy UTF-8, matching the reference
-/// implementation's string-based capture) and resets them for the next
-/// request.
+/// Drains both captured buffers as lossy UTF-8 strings and resets them for
+/// the next request.
 pub fn take_captured() -> (String, String) {
     let out = STDOUT_BUF.with(|b| String::from_utf8_lossy(&std::mem::take(&mut *b.borrow_mut())).into_owned());
     let err = STDERR_BUF.with(|b| String::from_utf8_lossy(&std::mem::take(&mut *b.borrow_mut())).into_owned());
@@ -75,7 +74,7 @@ fn map_stream_error(e: RealStreamError) -> guarded::StreamError {
 pub enum Stream {
     Stdout,
     Stderr,
-    /// ts-sandbox never legitimately reads stdin; always reports EOF.
+    /// Neither guest legitimately reads stdin; reads always report EOF.
     Stdin,
     PassthroughOutput(RealOutputStream),
     PassthroughInput(RealInputStream),
@@ -135,10 +134,10 @@ impl guarded::GuestOutputStream for Stream {
         match self {
             Stream::PassthroughOutput(real) => real.subscribe(),
             Stream::PassthroughInput(real) => real.subscribe(),
-            // StarlingMonkey's console writes synchronously via
-            // blocking-write-and-flush; it never subscribes on stdout/stderr.
-            // Nor does it ever subscribe on stdin as an *output* stream (it
-            // isn't one).
+            // Both guests write stdout/stderr synchronously via
+            // blocking-write-and-flush and do not subscribe on them (stdin
+            // isn't an output stream). Known gap: user code that polls these
+            // streams itself (e.g. Python `select`) reaches this and traps.
             Stream::Stdout | Stream::Stderr | Stream::Stdin => {
                 unreachable!("buffering stdout/stderr streams are never polled")
             }
@@ -166,8 +165,8 @@ impl guarded::GuestOutputStream for Stream {
 
     fn splice(&self, src: guarded::InputStreamBorrow<'_>, len: u64) -> Result<u64, guarded::StreamError> {
         // Only ever meaningful for the HTTP passthrough case (copying a real
-        // incoming-body stream into a real outgoing-body stream); stdout/stderr
-        // splicing isn't exercised by ts-sandbox.
+        // incoming-body stream into a real outgoing-body stream); neither guest
+        // splices into stdout/stderr.
         match self {
             Stream::PassthroughOutput(real) => {
                 let src: &Stream = src.get();

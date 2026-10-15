@@ -1,4 +1,4 @@
-// Envelope parsing lives in the Rust guard component now. This keeps only the JS side
+// Envelope parsing lives in the Rust guard component. This file is only the JS side
 // of the `executor.run(code, input)` boundary: building a synthetic Request from the
 // guard's parsed `run-input`, and converting a handler's Response to the wire record.
 

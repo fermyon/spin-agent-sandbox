@@ -1,8 +1,8 @@
 # Adds TWO private components: the JS/TS code sandbox and its dependency bundler. Both are
 # PRIVATE (service-chained), so neither is publicly routable: the sandbox runs untrusted
-# code, and the bundler (experimental) fetches arbitrary npm from esm.sh. Keeping them separate
-# isolates the "fetch npm" capability from the "run untrusted code" capability. Reach them from your own
-# component through @spinframework/sandbox:
+# code, and the bundler (experimental) fetches arbitrary npm from esm.sh. Keeping them
+# separate isolates the "fetch npm" capability from the "run untrusted code" capability.
+# Reach them from your own component through @spinframework/sandbox:
 #
 #   import { Interpreter } from "@spinframework/sandbox/interpreter";
 #   const js = new Interpreter({
@@ -21,22 +21,23 @@ route = { private = true }
 component = "{{project-name | kebab_case}}"
 
 [component.{{project-name | kebab_case}}]
-source = { url = "https://github.com/lepton/wasm-sandbox/releases/download/v0.1.0/ts-sandbox.wasm", digest = "sha256:0000000000000000000000000000000000000000000000000000000000000000" }
+source = { url = "https://github.com/fermyon/spin-sandboxes/releases/download/v0.1.0/ts-sandbox.wasm", digest = "sha256:0000000000000000000000000000000000000000000000000000000000000000" }
 key_value_stores = ["default"]
-allowed_outbound_hosts = ["https://*:*", "http://*:*"]
+# Outbound HTTP is denied until you list hosts here, e.g. ["https://api.example.com"]. Each
+# request's `allowedHosts` can only narrow this list, and guard-io always refuses private and
+# internal addresses.
+allowed_outbound_hosts = []
 [component.{{project-name | kebab_case}}.variables]
 log_level = "info"
 
 # --- Bundler (EXPERIMENTAL): fetches npm deps from esm.sh, runs no user code ---
-# Requires an application variable (add it to your [variables] table):
-#   esm_base_url = { default = "https://esm.sh" }   # or your self-hosted esm.sh, see
-#   https://github.com/esm-dev/esm.sh/blob/main/HOSTING.md
+# Uses the public https://esm.sh. To use a self-hosted mirror
+# (https://github.com/esm-dev/esm.sh/blob/main/HOSTING.md), replace the host below and add
+# `[component.<name>-bundler.variables] esm_base_url = "https://esm.example.com"`.
 [[trigger.http]]
 route = { private = true }
 component = "{{project-name | kebab_case}}-bundler"
 
 [component.{{project-name | kebab_case}}-bundler]
-source = { url = "https://github.com/lepton/wasm-sandbox/releases/download/v0.1.0/bundler.wasm", digest = "sha256:0000000000000000000000000000000000000000000000000000000000000000" }
-allowed_outbound_hosts = ["{% raw %}{{ esm_base_url }}{% endraw %}"]
-[component.{{project-name | kebab_case}}-bundler.variables]
-esm_base_url = "{% raw %}{{ esm_base_url }}{% endraw %}"
+source = { url = "https://github.com/fermyon/spin-sandboxes/releases/download/v0.1.0/bundler.wasm", digest = "sha256:0000000000000000000000000000000000000000000000000000000000000000" }
+allowed_outbound_hosts = ["https://esm.sh"]

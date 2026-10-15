@@ -42,7 +42,7 @@ const tools = [toAnthropicTool(interpreterTool({ languages: ["javascript"] }))];
 
 ## Backends
 
-- **`interpreter`**: a thin client over a wasm-sandbox component's `POST /ts/run`
+- **`interpreter`**: a thin client over a sandbox component's `POST /ts/run`
   (JS/TS) and `/py/run` (Python) routes. Single-shot, buffered, default-deny egress,
   plus a scoped KV store (`Interpreter.kv(namespace)`).
 

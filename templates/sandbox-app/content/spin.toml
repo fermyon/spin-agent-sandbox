@@ -8,9 +8,8 @@ version = "0.1.0"
 authors = ["{{authors}}"]
 description = "{{project-description}}"
 
-# Both components are prebuilt and pulled from this project's GitHub releases (built +
-# published by .github/workflows/release.yml). Update the versions + digests with a new
-# release (see scripts/update-template-refs.sh). PLACEHOLDER url/digest until first release.
+# Both components are prebuilt and pulled from the spin-sandboxes GitHub releases.
+# To move to a newer release, update each source URL and digest.
 
 # ---------------------------------------------------------------------------
 # TypeScript / JavaScript sandbox
@@ -24,12 +23,13 @@ route = "/ts/..."
 component = "ts-sandbox"
 
 [component.ts-sandbox]
-source = { url = "https://github.com/lepton/wasm-sandbox/releases/download/v0.1.0/ts-sandbox.wasm", digest = "sha256:0000000000000000000000000000000000000000000000000000000000000000" }
-# Single shared KV store; the component scopes keys per sandbox id. The fetch shim
-# enforces the per-request allow-list on top of this broad dev bound; tighten it
-# per-deployment in production.
+source = { url = "https://github.com/fermyon/spin-sandboxes/releases/download/v0.1.0/ts-sandbox.wasm", digest = "sha256:0000000000000000000000000000000000000000000000000000000000000000" }
+# Single shared KV store; the component scopes keys per sandbox id.
 key_value_stores = ["default"]
-allowed_outbound_hosts = ["https://*:*", "http://*:*"]
+# Outbound HTTP is denied until you list hosts here, e.g. ["https://api.example.com"]. Each
+# request's `allowedHosts` can only narrow this list, and guard-io always refuses private and
+# internal addresses.
+allowed_outbound_hosts = []
 [component.ts-sandbox.variables]
 log_level = "info"
 
@@ -41,6 +41,11 @@ route = "/py/..."
 component = "py-sandbox"
 
 [component.py-sandbox]
-source = { url = "https://github.com/lepton/wasm-sandbox/releases/download/v0.1.0/py-sandbox.wasm", digest = "sha256:0000000000000000000000000000000000000000000000000000000000000000" }
+source = { url = "https://github.com/fermyon/spin-sandboxes/releases/download/v0.1.0/py-sandbox.wasm", digest = "sha256:0000000000000000000000000000000000000000000000000000000000000000" }
 key_value_stores = ["default"]
-allowed_outbound_hosts = ["https://*:*", "http://*:*"]
+# Outbound HTTP is denied until you list hosts here, e.g. ["https://api.example.com"]. Each
+# request's `allowedHosts` can only narrow this list, and it always refuses private and
+# internal addresses.
+allowed_outbound_hosts = []
+[component.py-sandbox.variables]
+log_level = "info"

@@ -26,9 +26,8 @@ for f in $(ls "$EXAMPLES" | sort -t. -k1 -n); do
 
     body="$(jq -n --rawfile c "$src" --argjson in "$input" --argjson kv "$kv_enabled" \
       '{code:$c, sandboxId:("harness-"+($c|@base64|.[0:8])), input:$in, kvEnabled:$kv}')"
-  # Capture the response body AND status in one shot (no temp file). The old
-  # `-o /tmp/sbx_body` approach silently yielded an empty body when the write failed,
-  # which made every check pass vacuously. The status is appended on its own trailing line.
+  # Capture the response body AND status in one shot (no temp file), so a failed body
+  # write can't yield an empty body that passes vacuously. The status is the trailing line.
   resp="$(curl -s -w $'\n%{http_code}' --max-time 120 \
           -X POST "$BASE$route" -H 'content-type: application/json' --data "$body")"
   status="${resp##*$'\n'}"   # last line: HTTP status ("000" if the server is unreachable)
