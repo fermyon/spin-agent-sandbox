@@ -106,9 +106,10 @@ TypeScript includes `cheerio`, `node-html-parser`, `zod`, `js-yaml`, `nanoid`,
 `ulidx`, `uuid`, `lodash`, `date-fns`, `dayjs`, and `@spinframework/spin-kv`.
 
 Python includes `numpy`, `tabulate`, `markdown`, `jinja2`, `regex`, `beautifulsoup4`,
-`sqlalchemy`, `tiktoken`, `pydantic`, `pyyaml`, and the standard library. The
-[bundler](packages/typescript/bundler) (experimental) packages additional npm dependencies; the
-component READMEs list the complete language-specific sets.
+`sqlalchemy`, `tiktoken` (without its downloadable encodings, so `get_encoding()` fails;
+supply your own ranks to `tiktoken.Encoding`), `pydantic`, `pyyaml`, and the standard
+library. The [bundler](packages/typescript/bundler) (experimental) packages additional
+npm dependencies; the component READMEs list the complete language-specific sets.
 
 ### Bundler (experimental)
 

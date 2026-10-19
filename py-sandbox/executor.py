@@ -8,8 +8,9 @@ from typing import Optional
 import spin_sdk.http  # noqa: F401
 import spin_sdk.key_value  # noqa: F401
 
-# Same reasoning as above, for the vendored packages examples/ai-code-executor
-# expects user code to be able to import — these must import cleanly.
+# Same reasoning as above, for the vendored packages user code is told it can import
+# (README, sdk/src/tools.ts). These are required: a failed import here would silently
+# leave the package out of the component, so it must fail the build instead.
 import numpy  # noqa: F401
 import tabulate  # noqa: F401
 import markdown  # noqa: F401
@@ -19,26 +20,30 @@ import regex  # noqa: F401
 import bs4  # noqa: F401
 import soupsieve  # noqa: F401
 import urllib.parse  # noqa: F401
+import yaml  # noqa: F401
+import sqlalchemy  # noqa: F401
+import sqlalchemy.dialects.sqlite  # noqa: F401
+import tiktoken  # noqa: F401
+# tiktoken_ext.openai_public is deliberately not bundled: it imports `requests` (not
+# vendored) and downloads the BPE rank files at runtime, which the sandbox cannot do.
+# So tiktoken.get_encoding("cl100k_base") and friends fail, but the core tokenizer
+# works with ranks the caller supplies (tiktoken.Encoding(..., mergeable_ranks=...)).
+import charset_normalizer  # noqa: F401
+import yarl  # noqa: F401
+import multidict  # noqa: F401
+import frozenlist  # noqa: F401
+import wrapt  # noqa: F401
+import pydantic
 
-# Best-effort extras: a missing/flaky one must not break the component's own load.
-for _mod in (
-    "yaml",
-    "sqlalchemy",
-    "sqlalchemy.dialects.sqlite",
-    "pydantic",
-    "pydantic_core",
-    "tiktoken",
-    "tiktoken_ext.openai_public",
-    "charset_normalizer",
-    "yarl",
-    "multidict",
-    "frozenlist",
-    "wrapt",
-):
-    try:
-        __import__(_mod)
-    except Exception:  # noqa: BLE001
-        pass
+# pydantic resolves its public names lazily (`pydantic.BaseModel` imports pydantic.main
+# on first use), so `import pydantic` alone bundles almost none of it. Resolve them all.
+# This also fails the build if pydantic and the prebuilt pydantic_core disagree.
+import warnings
+
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore", DeprecationWarning)
+    for _name in pydantic.__all__:
+        getattr(pydantic, _name)
 
 from wit_world.exports.executor import (
     BodyChunk,

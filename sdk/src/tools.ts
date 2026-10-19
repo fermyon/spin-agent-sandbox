@@ -51,11 +51,16 @@ export function interpreterTool(options: InterpreterToolOptions = {}): ToolDefin
   const languageLabel = languages.join(" or ");
   const only = (on: boolean, text: string) => (on ? [text] : []);
   const httpContext = [
-    ...only(supportsJavaScript, "JavaScript uses the standard `fetch`."),
+    ...only(
+      supportsJavaScript,
+      "JavaScript uses the standard `fetch`; a host missing from allowedHosts makes it throw a generic \"An error occurred while using the host API\".",
+    ),
     ...only(
       supportsPython,
-      "Python uses `from spin_sdk.http import send, Request` and `send(Request(method, url, headers, body))`; urllib, http.client, and requests are not available.",
+      "Python uses `from spin_sdk.http import send, Request` and `send(Request(method, url, headers, body))`; urllib, http.client, and requests are not available. " +
+        "A host missing from allowedHosts raises `Err(ErrorCode_HttpRequestDenied())`.",
     ),
+    "If a call is denied, add its host to allowedHosts and run again.",
   ].join(" ");
   const kvContext = [
     ...only(supportsJavaScript, "JavaScript: `import { openDefault } from \"@spinframework/spin-kv\"`, then get/set or getJson/setJson."),
@@ -64,7 +69,7 @@ export function interpreterTool(options: InterpreterToolOptions = {}): ToolDefin
   const libraryContext = [
     ...only(
       supportsPython,
-      "Python includes numpy, pydantic, pyyaml, regex, beautifulsoup4, jinja2, markdown, tabulate, sqlalchemy, tiktoken, and the standard library except its networking modules.",
+      "Python includes numpy, pydantic, pyyaml, regex, beautifulsoup4, jinja2, markdown, tabulate, sqlalchemy, tiktoken (no built-in encodings: get_encoding() fails, so pass your own mergeable_ranks to tiktoken.Encoding), and the standard library except its networking modules.",
     ),
     ...only(
       supportsJavaScript,

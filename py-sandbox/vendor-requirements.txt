@@ -9,7 +9,10 @@ jinja2
 markupsafe
 beautifulsoup4
 soupsieve
-pydantic
+# pydantic requires an exact pydantic_core, which comes prebuilt from wasi-deps/
+# (2.14.5). Keep this pin in step with it: an unpinned pydantic needs a newer core and
+# then fails to import in the sandbox.
+pydantic==2.5.2
 idna
 typing_extensions
 annotated-types
