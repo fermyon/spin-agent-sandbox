@@ -25,11 +25,15 @@ if [ ! -x .venv/bin/componentize-py ]; then
   .venv/bin/pip install -q -r requirements.txt
 fi
 
-# vendor/ is (re)built only when absent. After changing vendor-requirements.txt or the
-# prebuilt set in setup-vendor.sh, `rm -rf vendor` so it is regenerated.
-if [ ! -d vendor ]; then
+# vendor/ is (re)built when absent or when its inputs (vendor-requirements.txt and the
+# prebuilt set in setup-vendor.sh) change, so a pin bump reaches existing checkouts.
+# After changing wasi-deps/ itself, `rm -rf vendor`.
+VENDOR_STAMP="vendor/.inputs-sha256"
+vendor_inputs="$(.venv/bin/python -c 'import hashlib, sys; print(hashlib.sha256(b"".join(open(f, "rb").read() for f in sys.argv[1:])).hexdigest())' vendor-requirements.txt setup-vendor.sh)"
+if [ ! -d vendor ] || [ "$(cat "$VENDOR_STAMP" 2>/dev/null)" != "$vendor_inputs" ]; then
   echo ">> populating vendor/ (prebuilt wasm packages + pure-python deps)"
   PYTHON="$PWD/.venv/bin/python" bash setup-vendor.sh
+  echo "$vendor_inputs" > "$VENDOR_STAMP"
 fi
 
 # Componentize executor.py; spin_sdk bindings come from its imports-only world.
