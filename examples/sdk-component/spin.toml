@@ -26,7 +26,9 @@ component = "ts-sandbox"
 [component.ts-sandbox]
 source = "../../dist/ts-sandbox.wasm"
 key_value_stores = ["default"]
-allowed_outbound_hosts = ["https://*:*", "http://*:*"]
+# This example never passes allowedHosts, so its sandboxes need no outbound access. Widen this
+# only together with the per-request allow-list, the guard's narrower check.
+allowed_outbound_hosts = []
 
 [[trigger.http]]
 route = { private = true }
@@ -35,4 +37,6 @@ component = "py-sandbox"
 [component.py-sandbox]
 source = "../../dist/py-sandbox.wasm"
 key_value_stores = ["default"]
-allowed_outbound_hosts = ["https://*:*", "http://*:*"]
+# This example never passes allowedHosts, so its sandboxes need no outbound access. Widen this
+# only together with the per-request allow-list, the guard's narrower check.
+allowed_outbound_hosts = []

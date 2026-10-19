@@ -190,7 +190,8 @@ app.use(async (c: Context, next) => {
 
 // ---- access-token gate ----
 // If the `access_token` variable is set, every route except health/auth requires a matching
-// `app_token` cookie (set by POST /api/auth). An empty token disables the gate (local dev).
+// `app_token` cookie (set by POST /api/auth). An empty token disables the gate: fine for local
+// dev, but then anyone who can reach the app can spend the model key.
 const AUTH_COOKIE = "app_token";
 const accessToken = () => (variables.get("access_token") ?? "").trim();
 
@@ -201,6 +202,27 @@ app.use(async (c: Context, next) => {
   if (token && getCookie(c, AUTH_COOKIE) !== token) return c.text("Unauthorized", 401);
   return next();
 });
+
+// Only this origin's own pages may call the API. Browsers send `Origin` on every cross-origin
+// request and on same-origin writes, so this stops other sites driving the model, gate or not.
+app.use("/api/*", async (c: Context, next) => {
+  const origin = c.req.header("origin");
+  if (origin !== undefined && !isSameHost(origin, c.req.url)) return c.json({ error: "forbidden" }, 403);
+  return next();
+});
+
+function isSameHost(origin: string, requestUrl: string): boolean {
+  try {
+    // Compare hosts, not schemes: behind a TLS-terminating proxy the request URL is http.
+    return new URL(origin).host === new URL(requestUrl).host;
+  } catch {
+    return false; // "null" (sandboxed page) or garbage
+  }
+}
+
+function isHttps(c: Context): boolean {
+  return new URL(c.req.url).protocol === "https:" || c.req.header("x-forwarded-proto") === "https";
+}
 
 app.get("/api/health", (c: Context) => {
   const token = accessToken();
@@ -225,13 +247,23 @@ app.post("/api/auth", async (c: Context) => {
     /* fall through to 401 */
   }
   if (given && given === token) {
-    setCookie(c, AUTH_COOKIE, token, { path: "/", sameSite: "Lax", maxAge: 60 * 60 * 24 * 30 });
+    // HttpOnly: page scripts cannot read it. Secure over HTTPS only, so http://localhost works.
+    setCookie(c, AUTH_COOKIE, token, {
+      path: "/",
+      httpOnly: true,
+      secure: isHttps(c),
+      sameSite: "Lax",
+      maxAge: 60 * 60 * 24 * 30,
+    });
     return c.json({ ok: true });
   }
   return c.json({ ok: false, error: "invalid access token" }, 401);
 });
 
 app.post("/api/chat", async (c: Context) => {
+  if (!accessToken()) {
+    log.warn("access_token is empty: anyone who can reach this app can use the model key");
+  }
   let prompt = "";
   let history: unknown = null;
   try {
