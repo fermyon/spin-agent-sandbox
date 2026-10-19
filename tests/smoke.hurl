@@ -2,6 +2,7 @@
 # via hurl's `file,<path>;` keyword rather than inlined here. Run with:
 #   spin up --listen 127.0.0.1:3007 &
 #   hurl --variable base_url=http://127.0.0.1:3007 --test tests/smoke.hurl
+# Then check the log-injection gate against the app's log: node tests/check-log-escaping.mjs <spin log>
 # For full example coverage use tests/run-examples.sh (it wraps examples/* on the fly).
 
 # --- TS: main-program shape (stdout/stderr capture) ---
@@ -57,6 +58,14 @@ file,bodies/py-handler-stream.json;
 HTTP 200
 [Asserts]
 body == "first-second"
+
+# --- Python: handler request query values are URL-encoded (no param/fragment injection) ---
+POST {{base_url}}/py/run
+content-type: application/json
+file,bodies/py-query-encoding.json;
+HTTP 200
+[Asserts]
+body == "/p?admin%26x=%C3%A9%2F%3F&q=a%20b%26c%3Dd%23e"
 
 # --- Python: handler shape + scoped KV via the documented spin_sdk.key_value API ---
 POST {{base_url}}/py/run
@@ -196,6 +205,39 @@ HTTP 200
 [Asserts]
 jsonpath "$.stdout" contains "ALLOWED"
 jsonpath "$.stdout" not contains "DENIED"
+
+# --- Egress: an empty wildcard ("*.") must not match a trailing-dot host ---
+POST {{base_url}}/ts/run
+content-type: application/json
+file,bodies/ts-egress-empty-wildcard.json;
+HTTP 200
+[Asserts]
+jsonpath "$.stdout" contains "DENIED"
+jsonpath "$.stdout" not contains "ALLOWED"
+
+POST {{base_url}}/py/run
+content-type: application/json
+file,bodies/py-egress-empty-wildcard.json;
+HTTP 200
+[Asserts]
+jsonpath "$.stdout" contains "HttpRequestDenied"
+jsonpath "$.stdout" not contains "ALLOWED"
+
+# --- Log injection: error text with a newline is returned intact in the response. The Spin
+# log must hold it on one escaped line; tests/check-log-escaping.mjs asserts that afterwards. ---
+POST {{base_url}}/ts/run
+content-type: application/json
+file,bodies/ts-log-injection.json;
+HTTP 200
+[Asserts]
+jsonpath "$.error" contains "FORGED-LOG-LINE-TS"
+
+POST {{base_url}}/py/run
+content-type: application/json
+file,bodies/py-log-injection.json;
+HTTP 200
+[Asserts]
+jsonpath "$.error" contains "FORGED-LOG-LINE-PY"
 
 # --- Both components reject a non-POST request with 405 (the manual method check) ---
 GET {{base_url}}/ts/run

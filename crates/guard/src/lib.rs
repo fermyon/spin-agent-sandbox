@@ -9,10 +9,12 @@ wit_bindgen::generate!({
 mod envelope;
 mod logging;
 
+use envelope::{EnvelopeError, RawInput};
 use futures::{SinkExt, TryStreamExt};
 use sandbox::guard::{context, executor};
-use envelope::{EnvelopeError, RawInput};
-use spin_sdk::http::{Fields, IncomingRequest, Method, OutgoingResponse, Response, ResponseOutparam};
+use spin_sdk::http::{
+    Fields, IncomingRequest, Method, OutgoingResponse, Response, ResponseOutparam,
+};
 use spin_sdk::http_component;
 
 enum BodyReadError {
@@ -36,8 +38,18 @@ fn build_run_input(input: &RawInput) -> executor::RunInput {
     executor::RunInput {
         method: input.method.clone().unwrap_or_else(|| "GET".to_string()),
         path: input.path.clone().unwrap_or_else(|| "/".to_string()),
-        headers: input.headers.clone().unwrap_or_default().into_iter().collect(),
-        query: input.query.clone().unwrap_or_default().into_iter().collect(),
+        headers: input
+            .headers
+            .clone()
+            .unwrap_or_default()
+            .into_iter()
+            .collect(),
+        query: input
+            .query
+            .clone()
+            .unwrap_or_default()
+            .into_iter()
+            .collect(),
         body: input.body.as_ref().map(|b| match b {
             serde_json::Value::String(s) => s.clone().into_bytes(),
             other => other.to_string().into_bytes(),
@@ -72,7 +84,14 @@ async fn respond(response_out: ResponseOutparam, mut response: Response) {
     }
 }
 
-fn log_response(sandbox_id: &str, kind: &str, status: u16, stdout: &str, stderr: &str, duration_ms: u128) {
+fn log_response(
+    sandbox_id: &str,
+    kind: &str,
+    status: u16,
+    stdout: &str,
+    stderr: &str,
+    duration_ms: u128,
+) {
     logging::info(&format!(
         "response sandbox={sandbox_id} outcome={kind} status={status} stdout_bytes={} stderr_bytes={} duration_ms={duration_ms}",
         stdout.len(),
@@ -84,7 +103,15 @@ fn log_response(sandbox_id: &str, kind: &str, status: u16, stdout: &str, stderr:
 async fn handle(req: IncomingRequest, response_out: ResponseOutparam) {
     if req.method() != Method::Post {
         logging::warn(&format!("rejected method={:?}", req.method()));
-        respond(response_out, json_error(405, "method_not_allowed", "send the code envelope as a POST body")).await;
+        respond(
+            response_out,
+            json_error(
+                405,
+                "method_not_allowed",
+                "send the code envelope as a POST body",
+            ),
+        )
+        .await;
         return;
     }
 
@@ -92,14 +119,22 @@ async fn handle(req: IncomingRequest, response_out: ResponseOutparam) {
         Ok(body) => body,
         Err(BodyReadError::Read) => {
             logging::warn("failed to read request body");
-            respond(response_out, json_error(400, "invalid_request", "failed to read request body")).await;
+            respond(
+                response_out,
+                json_error(400, "invalid_request", "failed to read request body"),
+            )
+            .await;
             return;
         }
         Err(BodyReadError::TooLarge) => {
             logging::warn("rejected body_too_large");
             respond(
                 response_out,
-                json_error(413, "body_too_large", &format!("request body exceeds {} bytes", envelope::MAX_BODY)),
+                json_error(
+                    413,
+                    "body_too_large",
+                    &format!("request body exceeds {} bytes", envelope::MAX_BODY),
+                ),
             )
             .await;
             return;
@@ -116,14 +151,26 @@ async fn handle(req: IncomingRequest, response_out: ResponseOutparam) {
         }
         Err(EnvelopeError::CodeTooLarge) => {
             logging::warn(&format!("rejected code_too_large body_bytes={body_bytes}"));
-            respond(response_out, json_error(413, "code_too_large", &format!("code exceeds {} bytes", envelope::MAX_CODE))).await;
+            respond(
+                response_out,
+                json_error(
+                    413,
+                    "code_too_large",
+                    &format!("code exceeds {} bytes", envelope::MAX_CODE),
+                ),
+            )
+            .await;
             return;
         }
         Err(EnvelopeError::BodyTooLarge) => {
             logging::warn(&format!("rejected body_too_large body_bytes={body_bytes}"));
             respond(
                 response_out,
-                json_error(413, "body_too_large", &format!("request body exceeds {} bytes", envelope::MAX_BODY)),
+                json_error(
+                    413,
+                    "body_too_large",
+                    &format!("request body exceeds {} bytes", envelope::MAX_BODY),
+                ),
             )
             .await;
             return;
@@ -152,20 +199,41 @@ async fn handle(req: IncomingRequest, response_out: ResponseOutparam) {
     match outcome {
         executor::Outcome::HandlerResponse(hr) => {
             let status = hr.status;
-            let header_list: Vec<(String, Vec<u8>)> =
-                hr.headers.iter().map(|(k, v)| (k.clone(), v.clone().into_bytes())).collect();
+            let header_list: Vec<(String, Vec<u8>)> = hr
+                .headers
+                .iter()
+                .map(|(k, v)| (k.clone(), v.clone().into_bytes()))
+                .collect();
             let fields = match Fields::from_list(&header_list) {
                 Ok(f) => f,
                 Err(e) => {
-                    logging::warn(&format!("sandbox={} handler produced invalid headers: {e:?}", envelope.sandbox_id));
-                    respond(response_out, json_error(500, "handler_error", "handler produced invalid headers")).await;
+                    logging::warn(&format!(
+                        "sandbox={} handler produced invalid headers: {e:?}",
+                        envelope.sandbox_id
+                    ));
+                    respond(
+                        response_out,
+                        json_error(500, "handler_error", "handler produced invalid headers"),
+                    )
+                    .await;
                     return;
                 }
             };
             let outgoing = OutgoingResponse::new(fields);
             if outgoing.set_status_code(status).is_err() {
-                logging::warn(&format!("sandbox={} handler produced invalid status code {status}", envelope.sandbox_id));
-                respond(response_out, json_error(500, "handler_error", "handler produced an invalid status code")).await;
+                logging::warn(&format!(
+                    "sandbox={} handler produced invalid status code {status}",
+                    envelope.sandbox_id
+                ));
+                respond(
+                    response_out,
+                    json_error(
+                        500,
+                        "handler_error",
+                        "handler produced an invalid status code",
+                    ),
+                )
+                .await;
                 return;
             }
 
@@ -178,7 +246,10 @@ async fn handle(req: IncomingRequest, response_out: ResponseOutparam) {
                 match hr.body.read() {
                     executor::BodyChunk::Chunk(chunk) => {
                         if let Err(e) = body_sink.send(chunk).await {
-                            logging::warn(&format!("sandbox={} response stream write failed: {e:?}", envelope.sandbox_id));
+                            logging::warn(&format!(
+                                "sandbox={} response stream write failed: {e:?}",
+                                envelope.sandbox_id
+                            ));
                             break;
                         }
                     }
@@ -187,7 +258,10 @@ async fn handle(req: IncomingRequest, response_out: ResponseOutparam) {
                         // Status/headers are already committed at this point,
                         // so an error here can only truncate the body, not
                         // change the response's status.
-                        logging::warn(&format!("sandbox={} response body stream error: {msg}", envelope.sandbox_id));
+                        logging::warn(&format!(
+                            "sandbox={} response body stream error: {msg}",
+                            envelope.sandbox_id
+                        ));
                         break;
                     }
                 }
@@ -200,31 +274,73 @@ async fn handle(req: IncomingRequest, response_out: ResponseOutparam) {
             // streamed body can still call `console.log` while chunks are
             // being pulled above, after `run()` has already returned.
             let (stdout, stderr) = context::take_captured_output();
-            log_response(&envelope.sandbox_id, "handler_response", status, &stdout, &stderr, started.elapsed().as_millis());
+            log_response(
+                &envelope.sandbox_id,
+                "handler_response",
+                status,
+                &stdout,
+                &stderr,
+                started.elapsed().as_millis(),
+            );
         }
         executor::Outcome::Main(error) => {
             if let Some(msg) = &error {
-                logging::warn(&format!("sandbox={} uncaught error: {msg}", envelope.sandbox_id));
+                logging::warn(&format!(
+                    "sandbox={} uncaught error: {msg}",
+                    envelope.sandbox_id
+                ));
             }
             let (stdout, stderr) = context::take_captured_output();
-            log_response(&envelope.sandbox_id, "main", 200, &stdout, &stderr, started.elapsed().as_millis());
-            let body = serde_json::json!({ "stdout": stdout, "stderr": stderr, "error": error }).to_string();
+            log_response(
+                &envelope.sandbox_id,
+                "main",
+                200,
+                &stdout,
+                &stderr,
+                started.elapsed().as_millis(),
+            );
+            let body = serde_json::json!({ "stdout": stdout, "stderr": stderr, "error": error })
+                .to_string();
             respond(
                 response_out,
-                Response::builder().status(200).header("content-type", "application/json").body(body).build(),
+                Response::builder()
+                    .status(200)
+                    .header("content-type", "application/json")
+                    .body(body)
+                    .build(),
             )
             .await;
         }
         executor::Outcome::CompileError(msg) => {
-            logging::warn(&format!("sandbox={} compile_error: {msg}", envelope.sandbox_id));
+            logging::warn(&format!(
+                "sandbox={} compile_error: {msg}",
+                envelope.sandbox_id
+            ));
             let (stdout, stderr) = context::take_captured_output();
-            log_response(&envelope.sandbox_id, "compile_error", 400, &stdout, &stderr, started.elapsed().as_millis());
+            log_response(
+                &envelope.sandbox_id,
+                "compile_error",
+                400,
+                &stdout,
+                &stderr,
+                started.elapsed().as_millis(),
+            );
             respond(response_out, json_error(400, "compile_error", &msg)).await;
         }
         executor::Outcome::HandlerError(msg) => {
-            logging::warn(&format!("sandbox={} handler_error: {msg}", envelope.sandbox_id));
+            logging::warn(&format!(
+                "sandbox={} handler_error: {msg}",
+                envelope.sandbox_id
+            ));
             let (stdout, stderr) = context::take_captured_output();
-            log_response(&envelope.sandbox_id, "handler_error", 500, &stdout, &stderr, started.elapsed().as_millis());
+            log_response(
+                &envelope.sandbox_id,
+                "handler_error",
+                500,
+                &stdout,
+                &stderr,
+                started.elapsed().as_millis(),
+            );
             respond(response_out, json_error(500, "handler_error", &msg)).await;
         }
     }

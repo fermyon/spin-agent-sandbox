@@ -22,7 +22,12 @@ impl guarded::GuestDescriptor for Descriptor {
         unreachable!("{UNREACHABLE}")
     }
 
-    fn advise(&self, _offset: u64, _length: u64, _advice: guarded::Advice) -> Result<(), guarded::ErrorCode> {
+    fn advise(
+        &self,
+        _offset: u64,
+        _length: u64,
+        _advice: guarded::Advice,
+    ) -> Result<(), guarded::ErrorCode> {
         unreachable!("{UNREACHABLE}")
     }
 
@@ -42,7 +47,11 @@ impl guarded::GuestDescriptor for Descriptor {
         unreachable!("{UNREACHABLE}")
     }
 
-    fn set_times(&self, _data_access_timestamp: guarded::NewTimestamp, _data_modification_timestamp: guarded::NewTimestamp) -> Result<(), guarded::ErrorCode> {
+    fn set_times(
+        &self,
+        _data_access_timestamp: guarded::NewTimestamp,
+        _data_modification_timestamp: guarded::NewTimestamp,
+    ) -> Result<(), guarded::ErrorCode> {
         unreachable!("{UNREACHABLE}")
     }
 
@@ -70,7 +79,11 @@ impl guarded::GuestDescriptor for Descriptor {
         unreachable!("{UNREACHABLE}")
     }
 
-    fn stat_at(&self, _path_flags: guarded::PathFlags, _path: String) -> Result<guarded::DescriptorStat, guarded::ErrorCode> {
+    fn stat_at(
+        &self,
+        _path_flags: guarded::PathFlags,
+        _path: String,
+    ) -> Result<guarded::DescriptorStat, guarded::ErrorCode> {
         unreachable!("{UNREACHABLE}")
     }
 
@@ -84,7 +97,13 @@ impl guarded::GuestDescriptor for Descriptor {
         unreachable!("{UNREACHABLE}")
     }
 
-    fn link_at(&self, _old_path_flags: guarded::PathFlags, _old_path: String, _new_descriptor: guarded::DescriptorBorrow<'_>, _new_path: String) -> Result<(), guarded::ErrorCode> {
+    fn link_at(
+        &self,
+        _old_path_flags: guarded::PathFlags,
+        _old_path: String,
+        _new_descriptor: guarded::DescriptorBorrow<'_>,
+        _new_path: String,
+    ) -> Result<(), guarded::ErrorCode> {
         unreachable!("{UNREACHABLE}")
     }
 
@@ -106,7 +125,12 @@ impl guarded::GuestDescriptor for Descriptor {
         unreachable!("{UNREACHABLE}")
     }
 
-    fn rename_at(&self, _old_path: String, _new_descriptor: guarded::DescriptorBorrow<'_>, _new_path: String) -> Result<(), guarded::ErrorCode> {
+    fn rename_at(
+        &self,
+        _old_path: String,
+        _new_descriptor: guarded::DescriptorBorrow<'_>,
+        _new_path: String,
+    ) -> Result<(), guarded::ErrorCode> {
         unreachable!("{UNREACHABLE}")
     }
 
@@ -126,7 +150,11 @@ impl guarded::GuestDescriptor for Descriptor {
         unreachable!("{UNREACHABLE}")
     }
 
-    fn metadata_hash_at(&self, _path_flags: guarded::PathFlags, _path: String) -> Result<guarded::MetadataHashValue, guarded::ErrorCode> {
+    fn metadata_hash_at(
+        &self,
+        _path_flags: guarded::PathFlags,
+        _path: String,
+    ) -> Result<guarded::MetadataHashValue, guarded::ErrorCode> {
         unreachable!("{UNREACHABLE}")
     }
 }
@@ -139,7 +167,9 @@ impl guarded::GuestDirectoryEntryStream for DirectoryEntryStream {
     }
 }
 
-pub fn filesystem_error_code(_err: &crate::bindings::wasi::io::error::Error) -> Option<guarded::ErrorCode> {
+pub fn filesystem_error_code(
+    _err: &crate::bindings::wasi::io::error::Error,
+) -> Option<guarded::ErrorCode> {
     None
 }
 

@@ -21,9 +21,7 @@ impl guarded::GuestFields for Fields {
         Fields(real::Fields::new())
     }
 
-    fn from_list(
-        entries: Vec<(String, Vec<u8>)>,
-    ) -> Result<guarded::Fields, guarded::HeaderError> {
+    fn from_list(entries: Vec<(String, Vec<u8>)>) -> Result<guarded::Fields, guarded::HeaderError> {
         real::Fields::from_list(&entries)
             .map(|f| guarded::Fields::new(Fields(f)))
             .map_err(map_header_error)
@@ -116,11 +114,14 @@ pub fn map_error_code(e: real::ErrorCode) -> guarded::ErrorCode {
     // error-code is a large, purely-structural enum (payload types don't
     // reference streams or anything else self-referential) — bytes/strings
     // round-trip untouched, so this is a mechanical variant-to-variant copy.
-    use real::ErrorCode as R;
     use guarded::ErrorCode as G;
+    use real::ErrorCode as R;
     match e {
         R::DnsTimeout => G::DnsTimeout,
-        R::DnsError(p) => G::DnsError(guarded::DnsErrorPayload { rcode: p.rcode, info_code: p.info_code }),
+        R::DnsError(p) => G::DnsError(guarded::DnsErrorPayload {
+            rcode: p.rcode,
+            info_code: p.info_code,
+        }),
         R::DestinationNotFound => G::DestinationNotFound,
         R::DestinationUnavailable => G::DestinationUnavailable,
         R::DestinationIpProhibited => G::DestinationIpProhibited,
@@ -133,9 +134,10 @@ pub fn map_error_code(e: real::ErrorCode) -> guarded::ErrorCode {
         R::ConnectionLimitReached => G::ConnectionLimitReached,
         R::TlsProtocolError => G::TlsProtocolError,
         R::TlsCertificateError => G::TlsCertificateError,
-        R::TlsAlertReceived(p) => {
-            G::TlsAlertReceived(guarded::TlsAlertReceivedPayload { alert_id: p.alert_id, alert_message: p.alert_message })
-        }
+        R::TlsAlertReceived(p) => G::TlsAlertReceived(guarded::TlsAlertReceivedPayload {
+            alert_id: p.alert_id,
+            alert_message: p.alert_message,
+        }),
         R::HttpRequestDenied => G::HttpRequestDenied,
         R::HttpRequestLengthRequired => G::HttpRequestLengthRequired,
         R::HttpRequestBodySize(v) => G::HttpRequestBodySize(v),
@@ -164,11 +166,17 @@ pub fn map_error_code(e: real::ErrorCode) -> guarded::ErrorCode {
 }
 
 fn map_field_size_payload(p: real::FieldSizePayload) -> guarded::FieldSizePayload {
-    guarded::FieldSizePayload { field_name: p.field_name, field_size: p.field_size }
+    guarded::FieldSizePayload {
+        field_name: p.field_name,
+        field_size: p.field_size,
+    }
 }
 
 fn unmap_field_size_payload(p: guarded::FieldSizePayload) -> real::FieldSizePayload {
-    real::FieldSizePayload { field_name: p.field_name, field_size: p.field_size }
+    real::FieldSizePayload {
+        field_name: p.field_name,
+        field_size: p.field_size,
+    }
 }
 
 /// The reverse of `map_error_code` — needed only by `response-outparam.set`,
@@ -180,7 +188,10 @@ pub fn unmap_error_code(e: guarded::ErrorCode) -> real::ErrorCode {
     use real::ErrorCode as R;
     match e {
         G::DnsTimeout => R::DnsTimeout,
-        G::DnsError(p) => R::DnsError(real::DnsErrorPayload { rcode: p.rcode, info_code: p.info_code }),
+        G::DnsError(p) => R::DnsError(real::DnsErrorPayload {
+            rcode: p.rcode,
+            info_code: p.info_code,
+        }),
         G::DestinationNotFound => R::DestinationNotFound,
         G::DestinationUnavailable => R::DestinationUnavailable,
         G::DestinationIpProhibited => R::DestinationIpProhibited,
@@ -193,9 +204,10 @@ pub fn unmap_error_code(e: guarded::ErrorCode) -> real::ErrorCode {
         G::ConnectionLimitReached => R::ConnectionLimitReached,
         G::TlsProtocolError => R::TlsProtocolError,
         G::TlsCertificateError => R::TlsCertificateError,
-        G::TlsAlertReceived(p) => {
-            R::TlsAlertReceived(real::TlsAlertReceivedPayload { alert_id: p.alert_id, alert_message: p.alert_message })
-        }
+        G::TlsAlertReceived(p) => R::TlsAlertReceived(real::TlsAlertReceivedPayload {
+            alert_id: p.alert_id,
+            alert_message: p.alert_message,
+        }),
         G::HttpRequestDenied => R::HttpRequestDenied,
         G::HttpRequestLengthRequired => R::HttpRequestLengthRequired,
         G::HttpRequestBodySize(v) => R::HttpRequestBodySize(v),
@@ -240,7 +252,9 @@ impl guarded::GuestIncomingRequest for IncomingRequest {
         guarded::Fields::new(Fields(self.0.headers()))
     }
     fn consume(&self) -> Result<guarded::IncomingBody, ()> {
-        self.0.consume().map(|b| guarded::IncomingBody::new(IncomingBody(b)))
+        self.0
+            .consume()
+            .map(|b| guarded::IncomingBody::new(IncomingBody(b)))
     }
 }
 
@@ -262,7 +276,9 @@ impl guarded::GuestOutgoingRequest for OutgoingRequest {
     }
 
     fn body(&self) -> Result<guarded::OutgoingBody, ()> {
-        self.0.body().map(|b| guarded::OutgoingBody::new(OutgoingBody(b)))
+        self.0
+            .body()
+            .map(|b| guarded::OutgoingBody::new(OutgoingBody(b)))
     }
     fn method(&self) -> guarded::Method {
         map_method(self.0.method())
@@ -298,7 +314,10 @@ impl guarded::GuestOutgoingBody for OutgoingBody {
         self.0.write().map(Stream::wrap_real_output)
     }
 
-    fn finish(this: guarded::OutgoingBody, trailers: Option<guarded::Fields>) -> Result<(), guarded::ErrorCode> {
+    fn finish(
+        this: guarded::OutgoingBody,
+        trailers: Option<guarded::Fields>,
+    ) -> Result<(), guarded::ErrorCode> {
         let inner: OutgoingBody = this.into_inner();
         let trailers = trailers.map(|t| {
             let t: Fields = t.into_inner();
@@ -309,7 +328,10 @@ impl guarded::GuestOutgoingBody for OutgoingBody {
 }
 
 impl guarded::GuestResponseOutparam for ResponseOutparam {
-    fn set(param: guarded::ResponseOutparam, response: Result<guarded::OutgoingResponse, guarded::ErrorCode>) {
+    fn set(
+        param: guarded::ResponseOutparam,
+        response: Result<guarded::OutgoingResponse, guarded::ErrorCode>,
+    ) {
         let param: ResponseOutparam = param.into_inner();
         let response = response.map(|r| {
             let r: OutgoingResponse = r.into_inner();
@@ -334,7 +356,9 @@ impl guarded::GuestOutgoingResponse for OutgoingResponse {
         guarded::Fields::new(Fields(self.0.headers()))
     }
     fn body(&self) -> Result<guarded::OutgoingBody, ()> {
-        self.0.body().map(|b| guarded::OutgoingBody::new(OutgoingBody(b)))
+        self.0
+            .body()
+            .map(|b| guarded::OutgoingBody::new(OutgoingBody(b)))
     }
 }
 
@@ -346,7 +370,9 @@ impl guarded::GuestIncomingResponse for IncomingResponse {
         guarded::Fields::new(Fields(self.0.headers()))
     }
     fn consume(&self) -> Result<guarded::IncomingBody, ()> {
-        self.0.consume().map(|b| guarded::IncomingBody::new(IncomingBody(b)))
+        self.0
+            .consume()
+            .map(|b| guarded::IncomingBody::new(IncomingBody(b)))
     }
 }
 
@@ -406,6 +432,8 @@ impl guarded::GuestFutureTrailers for FutureTrailers {
     }
 }
 
-pub fn http_error_code(err: &crate::bindings::wasi::io::error::Error) -> Option<guarded::ErrorCode> {
+pub fn http_error_code(
+    err: &crate::bindings::wasi::io::error::Error,
+) -> Option<guarded::ErrorCode> {
     real::http_error_code(err).map(map_error_code)
 }

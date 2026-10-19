@@ -10,10 +10,18 @@ use url::Url;
 /// that resolve to private addresses.
 pub fn is_internal_host(host: &str) -> bool {
     let h = host.trim().trim_end_matches('.').to_ascii_lowercase();
-    if h.is_empty() || h == "localhost" || h.ends_with(".localhost") || h.ends_with(".internal") || h.ends_with(".local") {
+    if h.is_empty()
+        || h == "localhost"
+        || h.ends_with(".localhost")
+        || h.ends_with(".internal")
+        || h.ends_with(".local")
+    {
         return true;
     }
-    let literal = h.strip_prefix('[').and_then(|s| s.strip_suffix(']')).unwrap_or(h.as_str());
+    let literal = h
+        .strip_prefix('[')
+        .and_then(|s| s.strip_suffix(']'))
+        .unwrap_or(h.as_str());
     let Ok(mut ip) = literal.parse::<IpAddr>() else {
         return false; // not an IP literal -> treat as a DNS name
     };
@@ -69,7 +77,9 @@ fn well_known_port(scheme: &str) -> Option<u16> {
 fn port_matches(pat_port: Option<&str>, scheme: &str, port: Option<u16>) -> bool {
     match pat_port {
         Some("*") => true,
-        Some(spec) => spec.parse::<u16>().is_ok_and(|p| port.or_else(|| well_known_port(scheme)) == Some(p)),
+        Some(spec) => spec
+            .parse::<u16>()
+            .is_ok_and(|p| port.or_else(|| well_known_port(scheme)) == Some(p)),
         None => port.or_else(|| well_known_port(scheme)) == well_known_port(scheme),
     }
 }
@@ -109,10 +119,11 @@ pub fn host_allowed(scheme: &str, authority: &str, allowed: &[String]) -> bool {
         let rest = rest.split('/').next().unwrap_or(rest);
         let (pat_host, pat_port) = split_pattern(rest);
         let pat_host = pat_host.to_ascii_lowercase();
-        let host_matches = if let Some(base) = pat_host.strip_prefix("*.") {
-            host_lower == base || host_lower.ends_with(&format!(".{base}"))
-        } else {
-            host_lower == pat_host
+        let host_matches = match pat_host.strip_prefix("*.") {
+            // "*." has no domain to anchor on; it would otherwise match any host ending in a dot.
+            Some("") => false,
+            Some(base) => host_lower == base || host_lower.ends_with(&format!(".{base}")),
+            None => !pat_host.is_empty() && host_lower == pat_host,
         };
         host_matches && port_matches(pat_port, &scheme_lower, port)
     })
@@ -197,6 +208,18 @@ mod tests {
     }
 
     #[test]
+    fn an_empty_wildcard_base_matches_nothing() {
+        for pattern in ["*.", "*.:443", "https://*.", ""] {
+            let allowed = vec![pattern.to_string()];
+            assert!(
+                !host_allowed("https", "example.com.", &allowed),
+                "{pattern}"
+            );
+            assert!(!host_allowed("https", "example.com", &allowed), "{pattern}");
+        }
+    }
+
+    #[test]
     fn a_bare_star_does_not_allow_all() {
         assert!(!host_allowed("https", "example.com", &["*".to_string()]));
     }
@@ -209,14 +232,24 @@ mod tests {
             "169.254.169.254", // cloud metadata
             "10.0.0.1",
             "192.168.1.1",
-            "100.64.0.1",  // RFC 6598 CGNAT
+            "100.64.0.1", // RFC 6598 CGNAT
             "foo.internal",
             "foo.local",
             "[::1]",
             "[fc00::1]",
             "[::ffff:169.254.169.254]", // IPv4-mapped IPv6
         ] {
-            assert!(!host_allowed("https", host, &[host.trim_start_matches('[').trim_end_matches(']').to_string()]), "{host}");
+            assert!(
+                !host_allowed(
+                    "https",
+                    host,
+                    &[host
+                        .trim_start_matches('[')
+                        .trim_end_matches(']')
+                        .to_string()]
+                ),
+                "{host}"
+            );
         }
     }
 
@@ -228,7 +261,20 @@ mod tests {
 
     #[test]
     fn is_internal_host_matches_expected_ranges() {
-        for host in ["", "localhost", "a.localhost", "a.internal", "a.local", "127.0.0.1", "169.254.1.1", "10.1.2.3", "192.168.1.1", "100.64.1.1", "::1", "fc00::1"] {
+        for host in [
+            "",
+            "localhost",
+            "a.localhost",
+            "a.internal",
+            "a.local",
+            "127.0.0.1",
+            "169.254.1.1",
+            "10.1.2.3",
+            "192.168.1.1",
+            "100.64.1.1",
+            "::1",
+            "fc00::1",
+        ] {
             assert!(is_internal_host(host), "{host}");
         }
         for host in ["example.com", "93.184.216.34", "2600::1"] {

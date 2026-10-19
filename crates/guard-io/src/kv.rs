@@ -38,7 +38,9 @@ impl guarded::GuestStore for PrefixingStore {
     }
 
     fn get(&self, key: String) -> Result<Option<Vec<u8>>, guarded::Error> {
-        self.real.get(format!("{}{key}", self.prefix).as_str()).map_err(map_err)
+        self.real
+            .get(format!("{}{key}", self.prefix).as_str())
+            .map_err(map_err)
     }
 
     fn set(&self, key: String, value: Vec<u8>) -> Result<(), guarded::Error> {

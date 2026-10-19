@@ -19,6 +19,22 @@ class TestBuildRequest(unittest.TestCase):
         r = build_request(path="/search?existing=1", query=[("q", "hello")])
         self.assertEqual(r["uri"], "/search?existing=1&q=hello")
 
+    def test_query_params_are_url_encoded(self):
+        r = build_request(path="/search", query=[("q", "a b&c=d#e"), ("n&m", "é/?")])
+        self.assertEqual(r["uri"], "/search?q=a%20b%26c%3Dd%23e&n%26m=%C3%A9%2F%3F")
+
+    def test_encoded_query_round_trips_through_parse_qsl(self):
+        from urllib.parse import parse_qsl, urlsplit
+
+        pairs = [("q", "a b&c=d#e?f"), ("k=1&x", "é/+%"), ("empty", "")]
+        uri = build_request(path="/p", query=pairs)["uri"]
+        self.assertEqual(parse_qsl(urlsplit(uri).query, keep_blank_values=True), pairs)
+        self.assertEqual(urlsplit(uri).fragment, "")
+
+    def test_query_values_cannot_inject_extra_params_or_a_fragment(self):
+        uri = build_request(path="/p", query=[("a", "1&admin=true#frag")])["uri"]
+        self.assertEqual(uri, "/p?a=1%26admin%3Dtrue%23frag")
+
 
 class TestNormalizeResponse(unittest.TestCase):
     def test_object_with_status_headers_body(self):

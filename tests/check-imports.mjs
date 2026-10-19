@@ -69,13 +69,39 @@ const SANDBOXES = [
   },
 ];
 
-// The `import`/`export` interface names of a component's world, without versions.
+// Inline `export <name>: interface {` blocks that are known not to reach the host. componentize-py
+// emits `exports` as a types-only record of its own bindings; it has no functions or imports.
+const INLINE_EXPORTS = new Set(["exports"]);
+
+// The `import`/`export` interface names of a component's world, without versions. Every
+// import/export line must parse: one that does not could hide a capability, so it fails the run.
+const WORLD_LINE = /^\s*(import|export)\s+([\w.-]+:[\w./-]+?)(?:@[^;\s]+)?;\s*$/;
+const INLINE_LINE = /^\s*(import|export)\s+([\w-]+):\s*interface\s*\{\s*$/;
+
 function world(file, kind) {
   const wit = execFileSync("wasm-tools", ["component", "wit", path.join(ROOT, file)], { encoding: "utf8" });
+  const fail = (line) => {
+    console.error(`FAIL ${file}: cannot parse world line: ${line.trim()}`);
+    process.exit(1);
+  };
   const names = new Set();
-  for (const m of wit.matchAll(new RegExp(`^\\s*${kind}\\s+([\\w.-]+:[\\w./-]+?)(?:@[^;\\s]+)?;`, "gm"))) {
-    names.add(m[1]);
+  let inInline = false;
+  for (const line of wit.split("\n")) {
+    if (inInline) {
+      inInline = !/^  \}\s*$/.test(line); // the block closes at the world's own indentation
+      continue;
+    }
+    if (!/^\s*(import|export)\b/.test(line)) continue;
+    const m = WORLD_LINE.exec(line);
+    if (m) {
+      if (m[1] === kind) names.add(m[2]);
+      continue;
+    }
+    const inline = INLINE_LINE.exec(line);
+    if (!inline || inline[1] !== "export" || !INLINE_EXPORTS.has(inline[2])) fail(line);
+    inInline = true;
   }
+  if (inInline) fail("unterminated inline interface");
   return names;
 }
 

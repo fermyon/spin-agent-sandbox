@@ -1,0 +1,5 @@
+{
+  "code": "def handle_request(request):\n    return (200, {'content-type': 'text/plain'}, request.uri)",
+  "sandboxId": "py-query-encoding",
+  "input": {"method": "GET", "path": "/p", "query": {"q": "a b&c=d#e", "admin&x": "é/?"}}
+}

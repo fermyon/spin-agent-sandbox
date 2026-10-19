@@ -4,7 +4,8 @@
 use crate::bindings::exports::wasi::io::streams as guarded;
 use crate::bindings::wasi::io::poll::Pollable as RealPollable;
 use crate::bindings::wasi::io::streams::{
-    InputStream as RealInputStream, OutputStream as RealOutputStream, StreamError as RealStreamError,
+    InputStream as RealInputStream, OutputStream as RealOutputStream,
+    StreamError as RealStreamError,
 };
 use std::cell::RefCell;
 
@@ -54,8 +55,10 @@ fn append_zeroes_capped(buf: &RefCell<Vec<u8>>, len: u64) {
 /// Drains both captured buffers as lossy UTF-8 strings and resets them for
 /// the next request.
 pub fn take_captured() -> (String, String) {
-    let out = STDOUT_BUF.with(|b| String::from_utf8_lossy(&std::mem::take(&mut *b.borrow_mut())).into_owned());
-    let err = STDERR_BUF.with(|b| String::from_utf8_lossy(&std::mem::take(&mut *b.borrow_mut())).into_owned());
+    let out = STDOUT_BUF
+        .with(|b| String::from_utf8_lossy(&std::mem::take(&mut *b.borrow_mut())).into_owned());
+    let err = STDERR_BUF
+        .with(|b| String::from_utf8_lossy(&std::mem::take(&mut *b.borrow_mut())).into_owned());
     (out, err)
 }
 
@@ -95,7 +98,9 @@ impl guarded::GuestOutputStream for Stream {
         match self {
             Stream::Stdout | Stream::Stderr => Ok(MAX_CAPTURED_BYTES as u64),
             Stream::PassthroughOutput(real) => real.check_write().map_err(map_stream_error),
-            Stream::Stdin | Stream::PassthroughInput(_) => unreachable!("input-stream never backs an output-stream"),
+            Stream::Stdin | Stream::PassthroughInput(_) => {
+                unreachable!("input-stream never backs an output-stream")
+            }
         }
     }
 
@@ -163,7 +168,11 @@ impl guarded::GuestOutputStream for Stream {
         self.write_zeroes(len)
     }
 
-    fn splice(&self, src: guarded::InputStreamBorrow<'_>, len: u64) -> Result<u64, guarded::StreamError> {
+    fn splice(
+        &self,
+        src: guarded::InputStreamBorrow<'_>,
+        len: u64,
+    ) -> Result<u64, guarded::StreamError> {
         // Only ever meaningful for the HTTP passthrough case (copying a real
         // incoming-body stream into a real outgoing-body stream); neither guest
         // splices into stdout/stderr.
@@ -171,7 +180,9 @@ impl guarded::GuestOutputStream for Stream {
             Stream::PassthroughOutput(real) => {
                 let src: &Stream = src.get();
                 match src {
-                    Stream::PassthroughInput(real_src) => real.splice(real_src, len).map_err(map_stream_error),
+                    Stream::PassthroughInput(real_src) => {
+                        real.splice(real_src, len).map_err(map_stream_error)
+                    }
                     _ => Err(guarded::StreamError::Closed),
                 }
             }
@@ -179,7 +190,11 @@ impl guarded::GuestOutputStream for Stream {
         }
     }
 
-    fn blocking_splice(&self, src: guarded::InputStreamBorrow<'_>, len: u64) -> Result<u64, guarded::StreamError> {
+    fn blocking_splice(
+        &self,
+        src: guarded::InputStreamBorrow<'_>,
+        len: u64,
+    ) -> Result<u64, guarded::StreamError> {
         self.splice(src, len)
     }
 }

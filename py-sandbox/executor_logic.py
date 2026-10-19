@@ -3,6 +3,7 @@
 import traceback
 from collections.abc import Iterable, Iterator, Mapping, Set as AbstractSet
 from typing import Any, Dict, List, Optional, Tuple, Union
+from urllib.parse import quote, urlencode
 
 
 ResponseBody = Union[bytes, Iterator[Union[bytes, str]]]
@@ -24,7 +25,7 @@ def build_request(method: str = "GET", path: str = "/", headers: Optional[dict] 
     """Build a synthetic request dict for a run-input (or lack thereof)."""
     uri = path
     if query:
-        qs = "&".join(f"{k}={v}" for k, v in query)
+        qs = urlencode(query, quote_via=quote)
         sep = "&" if "?" in uri else "?"
         uri = f"{uri}{sep}{qs}"
     return {"method": method, "uri": uri, "headers": dict(headers) if headers else {}, "body": body}

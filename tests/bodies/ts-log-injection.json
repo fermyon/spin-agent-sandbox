@@ -1,0 +1,4 @@
+{
+  "code": "throw new Error('boom\\nguard: ERROR FORGED-LOG-LINE-TS');",
+  "sandboxId": "log-injection-ts"
+}

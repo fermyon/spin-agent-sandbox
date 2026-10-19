@@ -58,13 +58,16 @@ pub fn validate(body: &[u8]) -> Result<Envelope, EnvelopeError> {
     if body.len() > MAX_BODY {
         return Err(EnvelopeError::BodyTooLarge);
     }
-    let raw: RawEnvelope = serde_json::from_slice(body)
-        .map_err(|e| EnvelopeError::Invalid(format!("request body must be a JSON envelope: {e}")))?;
+    let raw: RawEnvelope = serde_json::from_slice(body).map_err(|e| {
+        EnvelopeError::Invalid(format!("request body must be a JSON envelope: {e}"))
+    })?;
     if raw.code.len() > MAX_CODE {
         return Err(EnvelopeError::CodeTooLarge);
     }
     if raw.sandbox_id.trim().is_empty() {
-        return Err(EnvelopeError::Invalid("sandboxId must not be empty".to_string()));
+        return Err(EnvelopeError::Invalid(
+            "sandboxId must not be empty".to_string(),
+        ));
     }
     Ok(Envelope {
         code: raw.code,

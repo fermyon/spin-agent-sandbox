@@ -1,0 +1,4 @@
+{
+  "code": "raise Exception('boom\\nguard: ERROR FORGED-LOG-LINE-PY')",
+  "sandboxId": "log-injection-py"
+}

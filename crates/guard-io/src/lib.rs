@@ -30,7 +30,11 @@ impl bindings::exports::wasi::http::outgoing_handler::Guest for Component {
 }
 
 impl bindings::exports::sandbox::guard::context::Guest for Component {
-    fn set_request_context(sandbox_id: String, allowed_hosts: Option<Vec<String>>, kv_enabled: bool) {
+    fn set_request_context(
+        sandbox_id: String,
+        allowed_hosts: Option<Vec<String>>,
+        kv_enabled: bool,
+    ) {
         context::set_request_context(sandbox_id, allowed_hosts, kv_enabled)
     }
 
@@ -74,7 +78,10 @@ impl bindings::exports::wasi::filesystem::types::Guest for Component {
 }
 
 impl bindings::exports::wasi::filesystem::preopens::Guest for Component {
-    fn get_directories() -> Vec<(bindings::exports::wasi::filesystem::preopens::Descriptor, String)> {
+    fn get_directories() -> Vec<(
+        bindings::exports::wasi::filesystem::preopens::Descriptor,
+        String,
+    )> {
         filesystem::Preopens::get_directories()
     }
 }
