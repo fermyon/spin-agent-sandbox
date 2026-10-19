@@ -1,0 +1,1 @@
+{ "code": "import select, sys\nr, w, x = select.select([sys.stdin], [sys.stdout, sys.stderr], [], 0)\nprint('POLLED', len(r), len(w))", "sandboxId": "smoke-py" }

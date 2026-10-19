@@ -81,6 +81,14 @@ content-type: application/json
 file,bodies/bad-envelope.json;
 HTTP 400
 
+# --- sandboxId longer than 256 bytes is rejected (it prefixes every KV key and log line) ---
+POST {{base_url}}/py/run
+content-type: application/json
+file,bodies/sandbox-id-too-long.json;
+HTTP 400
+[Asserts]
+jsonpath "$.message" contains "sandboxId"
+
 # ===========================================================================
 # Security regression gates. The KV-isolation gates fail under an unprefixed
 # "{id}-{key}" scheme.
@@ -196,6 +204,82 @@ HTTP 200
 [Asserts]
 jsonpath "$.stdout" contains "ALLOWED"
 jsonpath "$.stdout" not contains "DENIED"
+
+# --- Structured errors: user code cannot crash the guest instead of getting JSON back ---
+# Python BaseException subclasses (KeyboardInterrupt, SystemExit) are caught like Exception.
+POST {{base_url}}/py/run
+content-type: application/json
+file,bodies/py-base-exception.json;
+HTTP 200
+[Asserts]
+jsonpath "$.stdout" contains "before"
+jsonpath "$.error" contains "KeyboardInterrupt"
+
+# A non-integer status is a handler error, not a failed u16 conversion.
+POST {{base_url}}/py/run
+content-type: application/json
+file,bodies/py-bad-status.json;
+HTTP 500
+[Asserts]
+jsonpath "$.error" == "handler_error"
+jsonpath "$.message" contains "status"
+
+# A lone surrogate in the error text is escaped so it can cross the WIT boundary.
+POST {{base_url}}/py/run
+content-type: application/json
+file,bodies/py-surrogate-error.json;
+HTTP 200
+[Asserts]
+jsonpath "$.error" contains "\\ud800"
+
+# A thrown value whose string conversion throws is still reported.
+POST {{base_url}}/ts/run
+content-type: application/json
+file,bodies/ts-unstringifiable-throw.json;
+HTTP 200
+[Asserts]
+jsonpath "$.stdout" contains "before"
+jsonpath "$.error" isString
+
+# A non-byte stream chunk ends the body (status is already sent) instead of trapping.
+POST {{base_url}}/ts/run
+content-type: application/json
+file,bodies/ts-bad-stream-chunk.json;
+HTTP 200
+[Asserts]
+body == ""
+
+# Capabilities the sandbox does not expose are refused with an error the code can catch.
+POST {{base_url}}/py/run
+content-type: application/json
+file,bodies/py-socket-denied.json;
+HTTP 200
+[Asserts]
+jsonpath "$.stdout" contains "DENIED"
+jsonpath "$.stdout" not contains "ALLOWED"
+jsonpath "$.error" == null
+
+# Every Spin/WASI capability the Python guest imports but the sandbox does not grant is
+# refused with a catchable error; the last probe printing means none of them trapped.
+POST {{base_url}}/py/run
+content-type: application/json
+file,bodies/py-capabilities-denied.json;
+HTTP 200
+[Asserts]
+jsonpath "$.stdout" not contains "ALLOWED"
+jsonpath "$.stdout" contains "variables.get DENIED"
+jsonpath "$.stdout" contains "sqlite3.open DENIED"
+jsonpath "$.stdout" contains "config.get_all DENIED"
+jsonpath "$.error" == null
+
+# Polling the captured stdio streams reports them ready instead of trapping.
+POST {{base_url}}/py/run
+content-type: application/json
+file,bodies/py-select-stdio.json;
+HTTP 200
+[Asserts]
+jsonpath "$.stdout" contains "POLLED 1 2"
+jsonpath "$.error" == null
 
 # --- Both components reject a non-POST request with 405 (the manual method check) ---
 GET {{base_url}}/ts/run

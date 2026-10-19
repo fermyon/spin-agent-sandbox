@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { buildRequest, toWireResponse } from "../src/requestResponse";
+import { BodyStream, buildRequest, toWireResponse } from "../src/requestResponse";
 
 test("buildRequest defaults to GET / with no body", async () => {
   const req = buildRequest(undefined);
@@ -63,4 +63,26 @@ test("toWireResponse round-trips status, headers, and body", async () => {
 
   }
   assert.equal(body, "hi");
+});
+
+test("BodyStream reports non-byte chunks as an error instead of passing them on", async () => {
+  const stream = new ReadableStream({
+    start(controller) {
+      controller.enqueue("not bytes");
+      controller.close();
+    },
+  });
+  const body = new BodyStream(stream as ReadableStream<Uint8Array>);
+  assert.deepEqual(await body.read(), { tag: "error", val: "response body stream chunks must be Uint8Array" });
+  assert.deepEqual(await body.read(), { tag: "done" });
+});
+
+test("BodyStream reports an unstringifiable stream error as an error chunk", async () => {
+  const stream = new ReadableStream({
+    pull() {
+      throw Object.create(null);
+    },
+  });
+  const chunk = await new BodyStream(stream).read();
+  assert.equal(chunk.tag, "error");
 });

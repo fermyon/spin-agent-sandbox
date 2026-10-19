@@ -2,6 +2,8 @@
 // of the `executor.run(code, input)` boundary: building a synthetic Request from the
 // guard's parsed `run-input`, and converting a handler's Response to the wire record.
 
+import { errorMessage } from "./errors";
+
 export interface RunInput {
   method: string;
   path: string;
@@ -47,10 +49,16 @@ export class BodyStream {
         this.#reader = null;
         return { tag: "done" };
       }
+      // A user-constructed ReadableStream can enqueue anything; only bytes can be
+      // lowered to the WIT `list<u8>`.
+      if (!(value instanceof Uint8Array)) {
+        this.#reader = null;
+        return { tag: "error", val: "response body stream chunks must be Uint8Array" };
+      }
       return { tag: "chunk", val: value };
-    } catch (e: any) {
+    } catch (e) {
       this.#reader = null;
-      return { tag: "error", val: String(e?.message ?? e) };
+      return { tag: "error", val: errorMessage(e) };
     }
   }
 }

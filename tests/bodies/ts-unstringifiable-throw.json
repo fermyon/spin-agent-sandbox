@@ -1,0 +1,1 @@
+{ "code": "console.log('before');\nthrow Object.create(null);", "sandboxId": "smoke-ts" }

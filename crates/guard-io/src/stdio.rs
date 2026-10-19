@@ -2,6 +2,7 @@
 //! HTTP body streams pass through; only stdout and stderr buffer.
 
 use crate::bindings::exports::wasi::io::streams as guarded;
+use crate::bindings::wasi::clocks::monotonic_clock;
 use crate::bindings::wasi::io::poll::Pollable as RealPollable;
 use crate::bindings::wasi::io::streams::{
     InputStream as RealInputStream, OutputStream as RealOutputStream, StreamError as RealStreamError,
@@ -49,6 +50,13 @@ fn append_zeroes_capped(buf: &RefCell<Vec<u8>>, len: u64) {
     if len > remaining as u64 {
         b.extend_from_slice(b"...[truncated]");
     }
+}
+
+/// The captured stdio streams never block: writes are buffered in memory and stdin
+/// reads return `closed` at once. So when user code polls one (e.g. Python `select`),
+/// it gets a pollable that is already ready.
+fn ready_pollable() -> RealPollable {
+    monotonic_clock::subscribe_duration(0)
 }
 
 /// Drains both captured buffers as lossy UTF-8 strings and resets them for
@@ -134,13 +142,7 @@ impl guarded::GuestOutputStream for Stream {
         match self {
             Stream::PassthroughOutput(real) => real.subscribe(),
             Stream::PassthroughInput(real) => real.subscribe(),
-            // Both guests write stdout/stderr synchronously via
-            // blocking-write-and-flush and do not subscribe on them (stdin
-            // isn't an output stream). Known gap: user code that polls these
-            // streams itself (e.g. Python `select`) reaches this and traps.
-            Stream::Stdout | Stream::Stderr | Stream::Stdin => {
-                unreachable!("buffering stdout/stderr streams are never polled")
-            }
+            Stream::Stdout | Stream::Stderr | Stream::Stdin => ready_pollable(),
         }
     }
 
@@ -216,7 +218,7 @@ impl guarded::GuestInputStream for Stream {
     fn subscribe(&self) -> RealPollable {
         match self {
             Stream::PassthroughInput(real) => real.subscribe(),
-            _ => unreachable!("only the HTTP passthrough case subscribes on an input-stream"),
+            _ => ready_pollable(),
         }
     }
 }

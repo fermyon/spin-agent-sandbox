@@ -60,9 +60,10 @@ and `compose-py.wac`):
 - `crates/guard` (front): the HTTP entry point. Validates and size-limits the envelope,
   sets the request context, calls the guest, and shapes the JSON response.
 - `crates/guard-io`: sits between the guest and the host. Scopes KV keys, enforces the
-  egress policy, and captures stdout/stderr. The Python composition also plugs stub
-  components (`wit/guard-io` worlds `dummy-sockets` and `dummy-capabilities`) into the
-  host capabilities the sandbox does not expose.
+  egress policy, and captures stdout/stderr. It also provides the host capabilities the
+  Python guest always imports but the sandbox does not expose (`wasi:sockets` and the
+  Spin interfaces other than KV): every entry point returns a denied error rather than
+  trapping, so invariant 4 holds.
 - The language guest (`packages/typescript/sandbox` or `py-sandbox`): runs the user code.
 
 ## Test

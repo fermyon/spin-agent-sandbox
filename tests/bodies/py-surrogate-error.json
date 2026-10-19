@@ -1,0 +1,1 @@
+{ "code": "raise Exception('\\ud800')", "sandboxId": "smoke-py" }

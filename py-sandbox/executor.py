@@ -59,7 +59,7 @@ from wit_world.exports.executor import (
     RunInput,
 )
 
-from executor_logic import build_request, iter_chunks, run_code
+from executor_logic import build_request, iter_chunks, run_code, wit_text
 
 
 class _ResponseStream:
@@ -76,9 +76,9 @@ class _ResponseStream:
         except StopIteration:
             self._chunks = None
             return BodyChunk_Done()
-        except Exception as error:  # A user generator can fail after headers are sent.
+        except BaseException as error:  # noqa: BLE001 - a user generator can fail after headers are sent.
             self._chunks = None
-            return BodyChunk_Error(str(error))
+            return BodyChunk_Error(wit_text(error))
         return BodyChunk_Chunk(chunk)
 
 

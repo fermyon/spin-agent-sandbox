@@ -1,7 +1,8 @@
 //! Scoped `fermyon:spin/key-value` export with collision-safe length-prefixed keys.
 
 use crate::bindings::exports::fermyon::spin::key_value as guarded;
-use spin_sdk::key_value::Store as RealStore;
+use crate::bindings::fermyon::spin::key_value as real;
+use real::Store as RealStore;
 
 /// `"{sandbox_id.len()}:{sandbox_id}:"` — namespaces every key so no sandboxId
 /// can collide as a prefix of another.
@@ -14,13 +15,12 @@ pub struct PrefixingStore {
     prefix: String,
 }
 
-fn map_err(e: spin_sdk::key_value::Error) -> guarded::Error {
-    use spin_sdk::key_value::Error as RealError;
+fn map_err(e: real::Error) -> guarded::Error {
     match e {
-        RealError::StoreTableFull => guarded::Error::StoreTableFull,
-        RealError::NoSuchStore => guarded::Error::NoSuchStore,
-        RealError::AccessDenied => guarded::Error::AccessDenied,
-        RealError::Other(msg) => guarded::Error::Other(msg),
+        real::Error::StoreTableFull => guarded::Error::StoreTableFull,
+        real::Error::NoSuchStore => guarded::Error::NoSuchStore,
+        real::Error::AccessDenied => guarded::Error::AccessDenied,
+        real::Error::Other(msg) => guarded::Error::Other(msg),
     }
 }
 

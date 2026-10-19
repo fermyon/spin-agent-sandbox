@@ -1,6 +1,6 @@
 import unittest
 
-from executor_logic import build_request, iter_chunks, normalize_response, run_code
+from executor_logic import build_request, iter_chunks, normalize_response, run_code, wit_text
 
 
 class TestBuildRequest(unittest.TestCase):
@@ -157,6 +157,69 @@ class TestRunCode(unittest.TestCase):
         kind, traceback_str = run_code(code, self.REQ)
         self.assertEqual(kind, "handler_error")
         self.assertIn("nope", traceback_str)
+
+    def test_base_exceptions_in_main_are_main_error(self):
+        for code in ("raise KeyboardInterrupt", "raise BaseException('base')", "import sys; sys.exit(3)"):
+            with self.subTest(code=code):
+                kind, traceback_str = run_code(code, self.REQ)
+                self.assertEqual(kind, "main_error")
+                self.assertTrue(traceback_str)
+
+    def test_clean_sys_exit_ends_main_normally(self):
+        for code in ("import sys; sys.exit()", "import sys; sys.exit(0)"):
+            with self.subTest(code=code):
+                self.assertEqual(run_code(code, self.REQ), ("main", None))
+
+    def test_base_exceptions_in_handler_are_handler_error(self):
+        for raise_stmt in ("raise KeyboardInterrupt", "raise SystemExit(0)", "raise BaseException('base')"):
+            with self.subTest(raise_stmt=raise_stmt):
+                code = f"def handle_request(req):\n    {raise_stmt}"
+                kind, traceback_str = run_code(code, self.REQ)
+                self.assertEqual(kind, "handler_error")
+                self.assertTrue(traceback_str)
+
+    def test_invalid_status_is_handler_error(self):
+        for status in ("'ok'", "70000", "99", "True", "None", "200.0"):
+            with self.subTest(status=status):
+                code = f"def handle_request(req):\n    return ({status}, {{}}, b'')"
+                kind, traceback_str = run_code(code, self.REQ)
+                self.assertEqual(kind, "handler_error")
+                self.assertIn("status", traceback_str)
+
+    def test_unencodable_header_is_handler_error(self):
+        code = "def handle_request(req):\n    return (200, {'x': '\\ud800'}, b'')"
+        kind, _ = run_code(code, self.REQ)
+        self.assertEqual(kind, "handler_error")
+
+    def test_error_text_is_always_utf8_encodable(self):
+        kind, traceback_str = run_code("raise Exception('\\ud800')", self.REQ)
+        self.assertEqual(kind, "main_error")
+        traceback_str.encode("utf-8")
+        self.assertIn("\\ud800", traceback_str)
+
+    def test_handler_error_with_unprintable_exception_is_reported(self):
+        code = (
+            "class Bad(Exception):\n"
+            "    def __str__(self):\n"
+            "        raise RuntimeError('no str')\n"
+            "def handle_request(req):\n"
+            "    raise Bad()"
+        )
+        kind, traceback_str = run_code(code, self.REQ)
+        self.assertEqual(kind, "handler_error")
+        self.assertIn("Bad", traceback_str)
+
+
+class TestWitText(unittest.TestCase):
+    def test_lone_surrogate_is_escaped(self):
+        self.assertEqual(wit_text("a\ud800b"), "a\\ud800b")
+
+    def test_unprintable_value_falls_back_to_type_name(self):
+        class Bad:
+            def __str__(self):
+                raise KeyboardInterrupt
+
+        self.assertEqual(wit_text(Bad()), "<unprintable Bad>")
 
 
 if __name__ == "__main__":

@@ -7,7 +7,7 @@
 // For each sandbox it asserts that:
 //   1. the language guest never imports `sandbox:guard/context` (guard-io exports it, so a
 //      guest import would let user code change its own sandboxId, allow-list, or KV flag);
-//   2. every guest import NOT satisfied by guard-io or a stub component (and so wired straight
+//   2. every guest import NOT satisfied by guard-io (and so wired straight
 //      to the host by the `...` in crates/guard/compose*.wac) is in GUEST_TO_HOST;
 //   3. every import of the composed component is in COMPOSED.
 // A new capability therefore fails here until it is reviewed and added to a list below.
@@ -65,7 +65,7 @@ const SANDBOXES = [
     name: "py-sandbox",
     composed: "dist/py-sandbox.wasm",
     guest: "py-sandbox/py-sandbox.wasm",
-    providers: [`${RELEASE}/guard_io.wasm`, "target/dummy_sockets.wasm", "target/dummy_capabilities.wasm"],
+    providers: [`${RELEASE}/guard_io.wasm`],
   },
 ];
 

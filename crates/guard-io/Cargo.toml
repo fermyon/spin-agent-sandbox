@@ -9,7 +9,6 @@ publish = false
 crate-type = ["cdylib"]
 
 [dependencies]
-spin-sdk = "4.0.0"
 wit-bindgen = "0.61.1"
 anyhow = "1"
 serde = { version = "1", features = ["derive"] }

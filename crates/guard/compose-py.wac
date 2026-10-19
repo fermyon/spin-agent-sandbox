@@ -4,14 +4,9 @@
 package local:composed;
 
 let io = new guard:io { ... };
-// Dummy components deny raw sockets and unsupported Spin capabilities.
-let sockets-dummy = new guard:dummy-sockets { ...io, ... };
-let caps-dummy = new guard:dummy-capabilities { ... };
-
+// guard-io also answers raw sockets and the unsupported Spin capabilities with denied errors.
 let sandbox = new py-sandbox:sandbox {
     ...io,
-    ...sockets-dummy,
-    ...caps-dummy,
     ...
 };
 // Leave guard-front's WASI resources for Spin; semver-wiring io here breaks resource identity.
