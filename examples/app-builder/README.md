@@ -90,7 +90,7 @@ under the other build starts a fresh edit session from the app's current code.
 | `py_interpreter_url` | `http://py-sandbox.spin.internal` | private Python interpreter component |
 | `bundler_url` | `http://bundler.spin.internal` | private experimental bundler component |
 | `log_level` | `info` | `error`, `warn`, `info`, `debug`, or `trace` |
-| `access_token` | empty = open | set `SPIN_VARIABLE_ACCESS_TOKEN=…` to gate the UI, API and live apps behind an access-token page |
+| `access_token` | empty = **open** | set `SPIN_VARIABLE_ACCESS_TOKEN=…` to gate the UI, API and live apps behind an access-token page. Leave it empty only on a machine nobody else can reach: an open instance lets anyone spend your model key and read or overwrite every app |
 | `esm_base_url` | `https://esm.sh` | origin of the esm.sh server used by the experimental bundler when an app lists npm `dependencies`; point it at a [self-hosted instance](https://github.com/esm-dev/esm.sh/blob/main/HOSTING.md) if you prefer |
 
 ## Run it
@@ -110,15 +110,42 @@ under the other build starts a fresh edit session from the app's current code.
 
 ## Security: read before deploying
 
-Generated code is untrusted, and a stored app is served same-origin at `/a/<id>`. For a
-local demo this is fine and hardened lightly: served responses get
-`X-Content-Type-Options: nosniff`, and `/api/*` rejects requests whose referer is
-inside a live app (so an app's JS can't drive the control plane). The sandbox denies
-the app all network egress unless the app declared `allowedHosts` at publish time.
+Generated code is untrusted. The app keeps it away from the control plane and your
+credentials:
 
-In production, serve apps from a separate origin or subdomain (e.g.
-`*.apps.example.com`) so the browser's same-origin policy isolates them from the
-control-plane API. Do not rely on the referer guard alone.
+- **Live apps run in an isolated origin.** Every `/a/*` response carries
+  `Content-Security-Policy: sandbox` (scripts, forms and popups allowed, same-origin
+  not), so an app page cannot use the access cookie, cannot read `/api/*` responses, and
+  has no cookies, `localStorage` or `sessionStorage` of its own. `/api/*` also rejects
+  requests from any other origin, including the `Origin: null` sandboxed pages send.
+- **Credentials never reach app code.** The access cookie is `HttpOnly` (and `Secure`
+  over HTTPS), and `Cookie` and `Authorization` are stripped from requests before they
+  are passed to an app's handler.
+- **Per-app keys when gated.** With `access_token` set, an app is served at
+  `/a/<id>/<key>/`, where the key is an HMAC of the app id keyed by the access token.
+  "Open live" redirects there; the app's relative `fetch` calls carry the key instead of
+  the cookie, and a key opens only its own app. Anyone holding an app's URL can use that
+  app.
+- **Egress is per app.** The sandbox denies an app all network access unless it
+  declared `allowedHosts` at publish time.
+
+Before deploying:
+
+1. Set `access_token`. With it empty the instance is open (the api logs a warning on
+   every generation).
+2. Block private networks at the host. The guard refuses private IP literals and
+   internal names, but an allowed hostname that resolves to a private or loopback
+   address (for example `127.0.0.1.nip.io`) still connects. With Spin, pass a runtime
+   config:
+   ```toml
+   # runtime-config.toml: spin up --runtime-config-file runtime-config.toml
+   [outbound_networking]
+   block_networks = ["private"]
+   ```
+   This applies to the whole app, so it also blocks a model server on `localhost` or a
+   private address; use it with a remote model.
+3. For stronger isolation than a sandboxed origin, serve apps from a separate origin
+   or subdomain (for example `*.apps.example.com`).
 
 ## Layout
 

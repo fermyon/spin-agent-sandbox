@@ -113,7 +113,7 @@ build can target any compatible server.
 | `py_interpreter_url` | `http://py-sandbox.spin.internal` | the private Python interpreter component |
 | `bundler_url` | `http://bundler.spin.internal` | the private experimental bundler component |
 | `log_level` | `info` | `error`, `warn`, `info`, `debug`, or `trace` |
-| `access_token` | empty = open | set `SPIN_VARIABLE_ACCESS_TOKEN=…` to gate the UI + API behind an access-token page |
+| `access_token` | empty = **open** | set `SPIN_VARIABLE_ACCESS_TOKEN=…` to gate the UI + API behind an access-token page. Leave it empty only on a machine nobody else can reach: an open instance lets anyone spend your model key |
 | `esm_base_url` | `https://esm.sh` | origin of the esm.sh server used by the experimental bundler for the model's npm `dependencies`; point it at a [self-hosted instance](https://github.com/esm-dev/esm.sh/blob/main/HOSTING.md) if you prefer |
 
 The interpreter URLs default to service chaining, so nothing needs to run separately;
@@ -155,6 +155,30 @@ spin up --profile openai --build   # OpenAI Responses API
 
 Small local models are slower and less reliable at multi-step tool use than hosted
 ones.
+
+## Security: read before deploying
+
+The model's code runs in the private interpreters with no network access unless the
+model lists hosts in `allowedHosts`, and no storage unless it sets `kvEnabled`. The api
+sets the access cookie `HttpOnly` (and `Secure` over HTTPS) and rejects `/api/*`
+requests from other origins. Before deploying:
+
+1. Set `access_token`. With it empty the instance is open (the api logs a warning on
+   every chat).
+2. Block private networks at the host. The guard refuses private IP literals and
+   internal names, but an allowed hostname that resolves to a private or loopback
+   address (for example `127.0.0.1.nip.io`) still connects. With Spin, pass a runtime
+   config:
+   ```toml
+   # runtime-config.toml: spin up --runtime-config-file runtime-config.toml
+   [outbound_networking]
+   block_networks = ["private"]
+   ```
+   This applies to the whole app, so it also blocks a model server on `localhost` or a
+   private address; use it with a remote model.
+3. The model chooses `identity`, so runs that name the same identity share key-value
+   data. For more than one user, have the api prefix it with a length-prefixed user
+   scope (`${userId.length}:${userId}:${identity}`) before running the code.
 
 ## Layout
 

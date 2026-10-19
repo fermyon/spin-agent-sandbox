@@ -322,6 +322,12 @@ function upsertApp(m: AppMeta) {
   else apps.value.unshift(m);
 }
 
+// Live-app link, always derived from the id: never trust a URL from a stored conversation
+// (a `javascript:` URL there would run in this page when clicked).
+function appUrl(id: string): string {
+  return `/a/${encodeURIComponent(id)}/`;
+}
+
 // Conversation persistence: store the display transcript minus derived fields (diffLines/view
 // are recomputed from prevCode on load), plus the model history.
 function serializeMsgs(msgs: Msg[]): any[] {
@@ -340,7 +346,7 @@ function deserializeMsgs(raw: any[]): Msg[] {
         block: "",
         phase: "done",
         id: m.id,
-        url: m.url,
+        url: appUrl(String(m.id ?? "")),
         title: m.title,
         language: m.language,
         code: m.code,
@@ -438,7 +444,7 @@ function newApp() {
 // Code view are restored (they survive navigating away and reloads).
 async function openEdit(a: AppMeta) {
   activeId.value = a.id;
-  activeMeta.value = { title: a.title || a.id, language: a.language, url: `/a/${a.id}/` };
+  activeMeta.value = { title: a.title || a.id, language: a.language, url: appUrl(a.id) };
   messages.value = [];
   history.value = null;
   draft.value = "";
@@ -544,7 +550,7 @@ async function send(text?: string) {
           }
           m.phase = "done";
           m.id = ev.id;
-          m.url = ev.url;
+          m.url = appUrl(ev.id);
           m.title = ev.title;
           m.language = ev.language;
           m.code = ev.code; // the full final source
@@ -552,7 +558,7 @@ async function send(text?: string) {
           m.diffLines = dl;
           m.view = prev !== null ? "diff" : "code"; // an edit defaults to the change view
           activeId.value = ev.id; // a new app becomes the active edit target
-          activeMeta.value = { title: ev.title, language: ev.language, url: ev.url };
+          activeMeta.value = { title: ev.title, language: ev.language, url: appUrl(ev.id) };
           activeCode.value = ev.code; // keep the persistent source view current
           activeLang.value = ev.language;
           lastDiff.value = prev !== null ? dl : null;
