@@ -233,7 +233,6 @@ dependencies = [
  "ip_network",
  "serde",
  "serde_json",
- "spin-sdk",
  "url",
  "wit-bindgen 0.61.1",
 ]
