@@ -35,7 +35,7 @@ source = { url = "https://github.com/fermyon/spin-fileserver/releases/download/v
 files = [{ source = "ui/.output/public", destination = "/" }]
 environment = { FALLBACK_PATH = "index.html" }
 [component.ui.build]
-command = "npm install && npx nuxt generate"
+command = "npm ci && npx nuxt generate"
 workdir = "ui"
 
 # The api component is reached from TWO routes: the control plane (/api/...) and the
@@ -68,12 +68,12 @@ py_interpreter_url = "{{ py_interpreter_url }}"
 bundler_url = "{{ bundler_url }}"
 access_token = "{{ access_token }}"
 [component.api.build]
-command = "npm install && LLM_PROVIDER=anthropic npm run build"
+command = "npm run build:sdk && npm ci && LLM_PROVIDER=anthropic npm run build"
 workdir = "api"
 [component.api.profile.openai]
 source = "api/dist/api-openai.wasm"
 [component.api.profile.openai.build]
-command = "npm install && LLM_PROVIDER=openai npm run build"
+command = "npm run build:sdk && npm ci && LLM_PROVIDER=openai npm run build"
 
 [[trigger.http]]
 route = { private = true }

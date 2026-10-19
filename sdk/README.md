@@ -97,14 +97,21 @@ and export it from `src/index.ts`. Nothing in `core` or `interpreter` has to cha
 ## Develop
 
 ```bash
-npm install
+npm ci
 npm run typecheck    # tsc, incl. the compile-time contract assertions in test/types.assert.ts
-npm test             # node --test (runs the .ts tests directly)
-npm run check        # both
+npm test             # node --test, straight from src/ (Node 24+)
+npm run build        # tsc: ESM + .d.ts into dist/
+npm run check        # typecheck, test, and build
 ```
 
-`npm test` runs the TypeScript tests through Node's built-in runner with no build step, so
-it needs Node 24+ (native type stripping, plus `--test` glob support).
+Sources import each other with `.ts` extensions. `tsconfig.json` (typecheck and editors) allows
+them, and `tsconfig.build.json` emits `dist/` with plain `tsc` and `rewriteRelativeImportExtensions`,
+so the published JavaScript imports `.js`. The result loads in Node's native ESM and
+resolves under both `NodeNext` and `Bundler` TypeScript settings.
+
+The package exports `dist/`, so build the SDK before consuming it from a sibling project.
+The examples do this in their Spin build (`npm run build:sdk`). `npm pack` and `npm publish`
+rebuild it through `prepack`.
 
 To test the SDK against real sandbox components, first start the root application, then run:
 

@@ -4,21 +4,56 @@
   "description": "An extensible client for sandboxed code execution from a Spin application. Ships a Wasm code-interpreter backend; extensible to other backends.",
   "type": "module",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fermyon/functions-agent-sandbox.git",
+    "directory": "sdk"
+  },
+  "homepage": "https://github.com/fermyon/functions-agent-sandbox/tree/main/sdk#readme",
+  "bugs": {
+    "url": "https://github.com/fermyon/functions-agent-sandbox/issues"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./src/index.ts",
-    "./core": "./src/core/index.ts",
-    "./interpreter": "./src/interpreter/index.ts",
-    "./store": "./src/store/index.ts",
-    "./tools": "./src/tools.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./core": {
+      "types": "./dist/core/index.d.ts",
+      "import": "./dist/core/index.js"
+    },
+    "./interpreter": {
+      "types": "./dist/interpreter/index.d.ts",
+      "import": "./dist/interpreter/index.js"
+    },
+    "./store": {
+      "types": "./dist/store/index.d.ts",
+      "import": "./dist/store/index.js"
+    },
+    "./tools": {
+      "types": "./dist/tools.d.ts",
+      "import": "./dist/tools.js"
+    },
+    "./package.json": "./package.json"
   },
   "files": [
-    "src"
+    "dist"
   ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit",
     "test": "node --test \"test/*.test.ts\"",
     "test:components": "node --test test/components.test.ts",
-    "check": "npm run typecheck && npm run test"
+    "check": "npm run typecheck && npm run test && npm run build",
+    "prepack": "npm run build",
+    "prebuild": "npm run clean"
   },
   "keywords": [
     "spin",

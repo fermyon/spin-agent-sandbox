@@ -4,6 +4,7 @@
   "license": "Apache-2.0",
   "type": "module",
   "scripts": {
+    "build:sdk": "npm --prefix ../../../sdk ci && npm --prefix ../../../sdk run build",
     "build": "node build.mjs && mkdirp dist && j2w -i build/bundle.js --initLocation http://api.localhost -o dist/api.wasm"
   },
   "dependencies": {

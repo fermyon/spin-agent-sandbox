@@ -16,7 +16,7 @@ allowed_outbound_hosts = [
   "http://py-sandbox.spin.internal",
 ]
 [component.api.build]
-command = "npm ci && npm run build"
+command = "npm run build:sdk && npm ci && npm run build"
 workdir = "api"
 
 [[trigger.http]]

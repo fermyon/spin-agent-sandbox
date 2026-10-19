@@ -82,12 +82,6 @@ export interface RunOpts {
   /** HTTP-style input made available to the code. */
   input?: HttpInput;
   /**
-   * Requested wall-clock bound, for backends that honor it. The interpreter does not
-   * enforce it (it sends no timeout to the sandbox), which `Caps.realTimeout: false`
-   * reports; a request deadline there is the host/deployment layer's job.
-   */
-  timeoutMs?: number;
-  /**
    * JS/TS ONLY. npm dependencies to bundle into `code` before it runs, given as a
    * package.json object or its raw JSON string (its `dependencies` are used). The
    * runner must be configured with a bundler (the Interpreter's `bundlerUrl`); it
@@ -120,7 +114,7 @@ export interface Caps {
   lifecycle: boolean;
   /** Arbitrary dependency set beyond the frozen libs. Interpreter: true for JavaScript with a bundlerUrl. */
   arbitraryImage: boolean;
-  /** `timeoutMs` actually kills the process. Interpreter: false (`timeoutMs` is ignored). */
+  /** The backend enforces a wall-clock limit on a run. Interpreter: false; set a request deadline at the host/deployment layer. */
   realTimeout: boolean;
   /** Live incremental `Result` output. Interpreter: false; `run()` is buffered. */
   streaming: boolean;
