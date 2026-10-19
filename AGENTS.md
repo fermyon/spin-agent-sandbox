@@ -28,6 +28,11 @@ and keep the tests in [tests/smoke.hurl](tests/smoke.hurl) green:
 4. **Bounded input, structured errors.** Oversized bodies/code return 413; syntax and
    runtime errors and malformed envelopes return well-formed JSON, never a crash.
 
+JavaScript code must not leave floating promises. The JS sandbox returns when the top-level
+code finishes (or, for a handler, when its `Response` is ready); un-awaited promises, timers,
+and fetches are discarded without any output or error. Keep this instruction in the SDK
+tool description and in agent system prompts, and write sandbox code that `await`s its work.
+
 Known gap: there is no in-component CPU/wall-clock timeout or memory limit, so a
 non-terminating or memory-hungry program hangs or OOMs its instance. Enforce a request
 deadline and memory cap at the host/deployment layer (Wasmtime epoch-interruption or
