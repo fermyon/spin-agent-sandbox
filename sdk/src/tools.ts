@@ -1,3 +1,4 @@
+import { z, type ZodRawShape, type ZodTypeAny } from "zod";
 import type { Language } from "./core/index.ts";
 
 export interface ToolDefinition {
@@ -113,6 +114,19 @@ export function interpreterTool(options: InterpreterToolOptions = {}): ToolDefin
   };
 }
 
+/**
+ * Adapts provider-neutral metadata to the `{ name, description, parameters }` shape that
+ * many TypeScript agent SDKs expect. `parameters` is always a Zod object schema
+ * (`z.object(...)`) rather than raw JSON Schema. Requires `zod` to be installed.
+ */
+export function toZodTool(tool: ToolDefinition) {
+  return {
+    name: tool.name,
+    description: tool.description,
+    parameters: z.object(zodShape(tool.inputSchema)),
+  };
+}
+
 /** Adapts provider-neutral metadata to Anthropic's tool shape. */
 export function toAnthropicTool(tool: ToolDefinition) {
   return { name: tool.name, description: tool.description, input_schema: tool.inputSchema };
@@ -124,4 +138,51 @@ export function toOpenAITool(tool: ToolDefinition) {
     type: "function" as const,
     function: { name: tool.name, description: tool.description, parameters: tool.inputSchema },
   };
+}
+
+interface JsonSchema {
+  type?: string;
+  description?: string;
+  enum?: readonly unknown[];
+  properties?: Record<string, unknown>;
+  required?: readonly string[];
+  items?: unknown;
+  additionalProperties?: unknown;
+}
+
+/** Builds a Zod shape from an object schema, marking non-`required` properties optional. */
+function zodShape({ properties = {}, required = [] }: JsonSchema): ZodRawShape {
+  return Object.fromEntries(
+    Object.entries(properties).map(([key, value]) => {
+      const field = jsonSchemaToZod(value);
+      return [key, required.includes(key) ? field : field.optional()];
+    }),
+  );
+}
+
+/** Converts the JSON Schema subset emitted by these tools into an equivalent Zod schema. */
+function jsonSchemaToZod(node: unknown): ZodTypeAny {
+  if (!node || typeof node !== "object") return z.any();
+  const schema = node as JsonSchema;
+  const described = (type: ZodTypeAny) =>
+    schema.description ? type.describe(schema.description) : type;
+  switch (schema.type) {
+    case "object":
+      return described(
+        schema.properties
+          ? z.object(zodShape(schema))
+          : z.record(z.string(), jsonSchemaToZod(schema.additionalProperties)),
+      );
+    case "array":
+      return described(z.array(jsonSchemaToZod(schema.items)));
+    case "string":
+      return described(schema.enum ? z.enum(schema.enum as [string, ...string[]]) : z.string());
+    case "boolean":
+      return described(z.boolean());
+    case "number":
+    case "integer":
+      return described(z.number());
+    default:
+      return described(z.any());
+  }
 }
