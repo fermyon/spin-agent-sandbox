@@ -4,6 +4,9 @@ use serde::Deserialize;
 
 pub const MAX_BODY: usize = 8 * 1024 * 1024;
 pub const MAX_CODE: usize = 5 * 1024 * 1024;
+/// `sandboxId` becomes the prefix of every KV key and appears in every log line, so it
+/// is kept short.
+pub const MAX_SANDBOX_ID: usize = 256;
 
 #[derive(Debug, Deserialize)]
 pub struct RawInput {
@@ -65,6 +68,9 @@ pub fn validate(body: &[u8]) -> Result<Envelope, EnvelopeError> {
     }
     if raw.sandbox_id.trim().is_empty() {
         return Err(EnvelopeError::Invalid("sandboxId must not be empty".to_string()));
+    }
+    if raw.sandbox_id.len() > MAX_SANDBOX_ID {
+        return Err(EnvelopeError::Invalid(format!("sandboxId must be at most {MAX_SANDBOX_ID} bytes")));
     }
     Ok(Envelope {
         code: raw.code,
@@ -138,6 +144,24 @@ mod tests {
         match validate(br#"{"code": "1", "sandboxId": "   "}"#) {
             Err(EnvelopeError::Invalid(_)) => {}
             other => panic!("expected Invalid, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn accepts_sandbox_id_at_the_byte_limit() {
+        let body = serde_json::json!({"code": "1", "sandboxId": "a".repeat(MAX_SANDBOX_ID)}).to_string();
+        assert!(validate(body.as_bytes()).is_ok());
+    }
+
+    #[test]
+    fn rejects_sandbox_id_over_the_byte_limit() {
+        // Counted in bytes: 86 three-byte characters is 258 bytes but only 86 chars.
+        for id in ["a".repeat(MAX_SANDBOX_ID + 1), "€".repeat(86)] {
+            let body = serde_json::json!({"code": "1", "sandboxId": id}).to_string();
+            match validate(body.as_bytes()) {
+                Err(EnvelopeError::Invalid(msg)) => assert!(msg.contains("sandboxId")),
+                other => panic!("expected Invalid, got {other:?}"),
+            }
         }
     }
 

@@ -28,10 +28,19 @@ and keep the tests in [tests/smoke.hurl](tests/smoke.hurl) green:
 4. **Bounded input, structured errors.** Oversized bodies/code return 413; syntax and
    runtime errors and malformed envelopes return well-formed JSON, never a crash.
 
-Known gap: there is no in-component CPU/wall-clock timeout or memory limit, so a
-non-terminating or memory-hungry program hangs or OOMs its instance. Enforce a request
-deadline and memory cap at the host/deployment layer (Wasmtime epoch-interruption or
-fuel, or the platform request timeout).
+Known gaps:
+
+- There is no in-component CPU/wall-clock timeout or memory limit, so a
+  non-terminating or memory-hungry program hangs or OOMs its instance. Enforce a
+  request deadline and memory cap at the host/deployment layer (Wasmtime
+  epoch-interruption or fuel, or the platform request timeout).
+- Calling a capability the sandbox does not expose traps the instance instead of
+  returning an error. This covers the py-sandbox stub components (`wasi:sockets`, e.g.
+  `socket.socket()`, and the Spin interfaces other than KV, e.g. `spin_sdk.sqlite` or
+  `spin_sdk.variables`) and polling the captured stdio streams (e.g. Python `select` on
+  stdout, `crates/guard-io/src/stdio.rs`). The capability is still refused, but the
+  caller gets the host's generic 500 instead of JSON, and captured output is lost. This
+  is the one exception to invariant 4; don't add new trapping stubs.
 
 ## Build
 

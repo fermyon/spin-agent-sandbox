@@ -138,6 +138,14 @@ async function runAgent(prompt: string, history: unknown, emit: Emit): Promise<v
       let execMs = 0;
       try {
         const t = Date.now();
+        // The model picks `identity`, and it becomes the sandbox id as-is, so every
+        // conversation (or prompt-injected content) naming the same identity shares the
+        // same KV data. That is fine for this single-user demo. A multi-user app should
+        // prefix it with a scope it controls, length-prefixed so no two (scope, identity)
+        // pairs produce the same id, e.g.
+        // `input.identity ? `${userId.length}:${userId}:${input.identity}` : undefined`
+        // (runs without an identity already get a fresh random id). KV keys are
+        // namespaced per sandbox id, so distinct scopes never see each other's data.
         const runOpts = {
           allowedHosts: Array.isArray(input.allowedHosts) ? input.allowedHosts : [],
           identity: input.identity,

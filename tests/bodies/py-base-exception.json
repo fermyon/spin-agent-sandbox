@@ -1,0 +1,1 @@
+{ "code": "print('before')\nraise KeyboardInterrupt", "sandboxId": "smoke-py" }

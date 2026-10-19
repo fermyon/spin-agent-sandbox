@@ -83,6 +83,46 @@ test("TypeScript syntax is transpiled before execution", async () => {
   assert.deepEqual(outcome, { tag: "main", val: undefined });
 });
 
+test("thrown values that cannot be stringified are still reported", async () => {
+  const cases = [
+    "throw Object.create(null);",
+    "throw { get message() { throw new Error('getter'); } };",
+    "throw new Proxy({}, { get() { throw new Error('trap'); } });",
+    "throw { message: { toString() { throw new Error('toString'); } } };",
+  ];
+  for (const code of cases) {
+    const outcome = await executor.run(code, undefined);
+    assert.equal(outcome.tag, "main", code);
+    assert.equal(typeof outcome.val, "string", code);
+  }
+});
+
+test("a handler that throws an unstringifiable value is a handler-error", async () => {
+  const code = `export default { fetch() { throw Object.create(null); } };`;
+  const outcome = await executor.run(code, undefined);
+  assert.equal(outcome.tag, "handler-error");
+  assert.equal(typeof outcome.val, "string");
+});
+
+test("a throwing getter on the default export is reported, not thrown", async () => {
+  const code = `module.exports = { get default() { throw new Error("export getter"); } };`;
+  const outcome = await executor.run(code, undefined);
+  assert.equal(outcome.tag, "main");
+  assert.match(String(outcome.val), /export getter/);
+});
+
+test("a Response whose headers getter throws is a handler-error", async () => {
+  const code = `
+    class Bad extends Response {
+      get headers() { throw new Error("headers getter"); }
+    }
+    export default { fetch() { return new Bad("x"); } };
+  `;
+  const outcome = await executor.run(code, undefined);
+  assert.equal(outcome.tag, "handler-error");
+  assert.match(String(outcome.val), /headers getter/);
+});
+
 async function readBodyToString(body: BodyStream) {
   let result = "";
   while (true) {

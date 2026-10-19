@@ -76,7 +76,8 @@ export interface RunOpts {
   kvEnabled?: boolean;
   /**
    * A stable identity for the run. On the interpreter it is the scoped-KV
-   * namespace (`sandboxId`); a future backend may use it as a create/reuse key.
+   * namespace (`sandboxId`, non-empty and at most 256 UTF-8 bytes); a future
+   * backend may use it as a create/reuse key.
    */
   identity?: string;
   /** HTTP-style input made available to the code. */

@@ -1,0 +1,1 @@
+{ "code": "export default {\n  fetch() {\n    const body = new ReadableStream({ start(c) { c.enqueue('not bytes'); c.close(); } });\n    return new Response(body);\n  },\n};", "sandboxId": "smoke-ts" }

@@ -1,0 +1,1 @@
+{ "code": "def handle_request(req):\n    return ('ok', {}, b'')", "sandboxId": "smoke-py" }

@@ -8,6 +8,26 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 ResponseBody = Union[bytes, Iterator[Union[bytes, str]]]
 
 
+def wit_text(value: Any) -> str:
+    """Render `value` as a string that can cross the WIT boundary.
+
+    User code controls exception messages and header values, and a lone surrogate
+    (e.g. "\\ud800") cannot be lowered to a WIT string, which would trap the component.
+    """
+    try:
+        text = str(value)
+    except BaseException:  # noqa: BLE001 - a user __str__ can raise anything.
+        text = f"<unprintable {type(value).__name__}>"
+    return text.encode("utf-8", "backslashreplace").decode("utf-8")
+
+
+def _format_exc() -> str:
+    try:
+        return wit_text(traceback.format_exc())
+    except BaseException:  # noqa: BLE001
+        return "error: could not format the exception"
+
+
 class Request:
     """Duck-typed stand-in for spin_sdk.http.Request — user `handle_request`
     code only ever accesses .method/.uri/.headers/.body, never isinstance-checks
@@ -49,6 +69,11 @@ def normalize_response(handler_result: Any) -> Tuple[int, List[Tuple[str, str]],
         raw_headers = {"content-type": "text/plain"}
         body = str(handler_result)
 
+    # A non-int or out-of-range status cannot be lowered to the WIT u16 and would
+    # trap the component, so reject it here as a handler error.
+    if isinstance(status, bool) or not isinstance(status, int) or not 100 <= status <= 999:
+        raise ValueError(f"response status must be an integer from 100 to 999, got {status!r}")
+
     if isinstance(body, str):
         body = body.encode("utf-8")
     elif isinstance(body, (bytearray, memoryview)):
@@ -67,11 +92,20 @@ def normalize_response(handler_result: Any) -> Tuple[int, List[Tuple[str, str]],
     for k, v in (raw_headers or {}).items():
         if isinstance(v, list):
             for item in v:
-                headers.append((str(k), str(item)))
+                headers.append((_header_text(k), _header_text(item)))
         else:
-            headers.append((str(k), str(v)))
+            headers.append((_header_text(k), _header_text(v)))
 
     return status, headers, body
+
+
+def _header_text(value: Any) -> str:
+    text = str(value)
+    try:
+        text.encode("utf-8")
+    except UnicodeEncodeError:
+        raise ValueError(f"response header {text!r} is not valid UTF-8") from None
+    return text
 
 
 def iter_chunks(body: ResponseBody, chunk_size: int = 65536) -> Iterator[bytes]:
@@ -102,16 +136,24 @@ def run_code(code: str, request: Dict[str, Any]) -> tuple:
       ("handler_response", status, headers, body)
       ("handler_error", traceback_str)
     """
+    # User code can raise BaseException subclasses (SystemExit, KeyboardInterrupt, or
+    # BaseException itself). Letting one escape would trap the component instead of
+    # returning a structured error, so every stage below catches BaseException.
     try:
         compiled = compile(code, "<user_code>", "exec")
-    except Exception as e:
-        return ("compile_error", str(e))
+    except BaseException as e:  # noqa: BLE001
+        return ("compile_error", wit_text(e))
 
     ns = {"__name__": "__main__"}
     try:
         exec(compiled, ns)
-    except Exception:
-        return ("main_error", traceback.format_exc())
+    except SystemExit as e:
+        # `sys.exit()` / `sys.exit(0)` ends a script normally; any other code is an error.
+        if e.code is None or e.code == 0:
+            return ("main", None)
+        return ("main_error", _format_exc())
+    except BaseException:  # noqa: BLE001
+        return ("main_error", _format_exc())
 
     handler = ns.get("handle_request")
     if callable(handler):
@@ -120,7 +162,7 @@ def run_code(code: str, request: Dict[str, Any]) -> tuple:
             resp = handler(req)
             status, headers, body = normalize_response(resp)
             return ("handler_response", status, headers, body)
-        except Exception:
-            return ("handler_error", traceback.format_exc())
+        except BaseException:  # noqa: BLE001
+            return ("handler_error", _format_exc())
 
     return ("main", None)
