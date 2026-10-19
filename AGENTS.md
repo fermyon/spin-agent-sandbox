@@ -51,6 +51,8 @@ Python 3.12.
   committed in `py-sandbox/wasi-deps`.
 - bundler: `npm ci && npm run build` in `packages/typescript/bundler`
   (`dist/bundler.wasm`). It is a plain component, not composed with the guards.
+- sdk: `npm ci && npm run build` in `sdk` (plain `tsc`, into the git-ignored `sdk/dist`). The
+  example APIs import its built output, so their Spin build runs `npm run build:sdk` first.
 
 ## Module layout
 
@@ -76,12 +78,13 @@ cd py-sandbox && python3 -m unittest discover -s tests -t .   # stdlib unittest
 
 Integration tests exercise the built components end-to-end and require a running
 server; the security gates in `tests/smoke.hurl` (KV isolation and egress deny, for both
-sandboxes) only assert there. CI runs them on every pull request:
+sandboxes) and the log-escaping gate in `tests/check-log-escaping.mjs` only assert there. CI runs them on every pull request:
 
 ```bash
-spin up --build --listen 127.0.0.1:3007 &
+spin up --build --listen 127.0.0.1:3007 > spin.log 2>&1 &
 node tests/check-imports.mjs                                                 # host imports of the built components
 hurl --variable base_url=http://127.0.0.1:3007 --test tests/smoke.hurl      # fixtures + security gates
+node tests/check-log-escaping.mjs spin.log                                  # error text is escaped in the app log
 BASE=http://127.0.0.1:3007 tests/run-examples.sh                            # every tests/examples/* file
 ```
 

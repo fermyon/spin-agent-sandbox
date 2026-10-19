@@ -213,7 +213,7 @@ for (const [name, lang] of Object.entries({
 // are not re-highlighted on every token; only the in-progress block changes.
 const hlCache = new Map<string, string>();
 function highlightCode(code: string, lang?: string): string {
-  const key = (lang || "") + " " + code;
+  const key = (lang || "") + "\u0000" + code;
   const cached = hlCache.get(key);
   if (cached !== undefined) return cached;
   let out: string;

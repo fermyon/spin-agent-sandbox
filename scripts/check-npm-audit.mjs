@@ -91,8 +91,11 @@ function normalizeVulnerabilities(vulnerabilities) {
 // The example UIs are served as static `nuxt generate` output, so these
 // packages run only in the Nuxt dev server and build. node-forge reaches the
 // dev server through listhen's self-signed HTTPS; braces reaches the build
-// through nitropack's globbing. Neither advisory has a patched release, and
-// npm's suggested fix downgrades nuxt to 4.1.3 without clearing them.
+// through nitropack's globbing. Both advisories cover every published version
+// (range `*`), so there is no patched release to upgrade to. The
+// `fixAvailable: true` below only means `npm audit fix` can re-resolve the tree
+// (a broad downgrade of nuxt and its dependencies, not a patched braces or
+// node-forge); it is not a fix for these advisories.
 function expectedNuxtFindings() {
   const findings = [
     {

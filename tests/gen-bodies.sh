@@ -27,7 +27,7 @@ rm -f "$BODIES"/*.py.json "$BODIES"/*.ts.json   # clear stale generated bodies (
 } > "$HURL"
 
 count=0
-for f in $(ls "$EXAMPLES" | sort -t. -k1 -n); do
+while IFS= read -r -u 3 f; do
   src="$EXAMPLES/$f"
   [ -f "$src" ] || continue
   lang="$(detect_lang "$src")"
@@ -57,6 +57,6 @@ for f in $(ls "$EXAMPLES" | sort -t. -k1 -n); do
     # main-program scripts return {stdout,stderr,error}; assert the run didn't raise.
     is_main_shape "$src" && echo 'jsonpath "$.error" == null'
   } >> "$HURL"
-done
+done 3< <(list_examples "$EXAMPLES")
 
 echo "generated $count bodies in $BODIES and $HURL"

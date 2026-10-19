@@ -6,6 +6,11 @@ detect_lang() {
   if grep -qE 'export default|console\.log\(|=>' "$1"; then echo ts; else echo py; fi
 }
 
+# Example file names (not paths) in numeric order, one per line; no word-splitting of `ls`.
+list_examples() {
+  find "$1" -maxdepth 1 -type f -exec basename {} \; | sort -t. -k1 -n
+}
+
 # Per-example request input for handler-shape examples that read the request.
 # Anything not listed defaults to a plain GET.
 input_for() {

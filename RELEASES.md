@@ -7,11 +7,15 @@ and [`.github/workflows/release.yml`](.github/workflows/release.yml).
 
 The `tests` workflow runs on pull requests and pushes to `main`.
 
-- `unit` runs Rust, TypeScript sandbox, bundler, Python sandbox, and SDK checks.
+- `audit` runs `node scripts/check-npm-audit.mjs`, which runs `npm audit` on every tracked npm
+  project and fails unless each result is clean or exactly matches a reviewed exception in that
+  script.
+- `unit` runs Rust formatting and clippy, Rust tests, TypeScript sandbox, bundler, Python sandbox, and SDK checks.
 - `sandboxes` builds all components, checks the host capabilities each sandbox imports
   (`tests/check-imports.mjs`), starts the app, and runs the smoke tests and security gates
-  (`tests/smoke.hurl`) and every example program (`tests/run-examples.sh`) against both
-  the TypeScript and Python sandboxes.
+  (`tests/smoke.hurl`), checks that user error text is escaped in the app's log
+  (`tests/check-log-escaping.mjs`), and runs every example program (`tests/run-examples.sh`)
+  against both the TypeScript and Python sandboxes.
 - `bundler` runs only from **Run workflow** or when called by a release, because its
   suites reach esm.sh and take longer. It runs the bundler integration and compatibility
   gates.
@@ -20,6 +24,9 @@ The `tests` workflow runs on pull requests and pushes to `main`.
 Run the corresponding checks locally:
 
 ```bash
+node scripts/check-npm-audit.mjs
+cargo fmt --check
+cargo clippy --workspace --locked --all-targets -- -D warnings
 cargo test --workspace --locked
 cd packages/typescript/sandbox && npm test
 cd py-sandbox && python3 -m unittest discover -s tests -t .
@@ -27,8 +34,9 @@ cd sdk && npm run check
 
 # Live sandbox suites (the `sandboxes` job), against a running app:
 spin build && node tests/check-imports.mjs
-spin up --listen 127.0.0.1:3007 &
+spin up --listen 127.0.0.1:3007 > spin.log 2>&1 &
 hurl --variable base_url=http://127.0.0.1:3007 --test tests/smoke.hurl
+node tests/check-log-escaping.mjs spin.log
 BASE=http://127.0.0.1:3007 tests/run-examples.sh
 
 # Live bundler suites (the `bundler` job; starts its own Spin app and reaches esm.sh):

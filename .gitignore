@@ -34,3 +34,6 @@ tests/examples.hurl
 
 .dash_manifest.toml
 .claude
+
+# Local Spin output from the integration test commands.
+spin.log

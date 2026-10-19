@@ -16,7 +16,7 @@ source "$HERE/lib.sh"
 
 pass=0; fail=0; known=0
 
-for f in $(ls "$EXAMPLES" | sort -t. -k1 -n); do
+while IFS= read -r -u 3 f; do
   src="$EXAMPLES/$f"
   [ -f "$src" ] || continue
   lang="$(detect_lang "$src")"
@@ -63,7 +63,7 @@ for f in $(ls "$EXAMPLES" | sort -t. -k1 -n); do
     [ "$n" -gt "${SHOW_LINES:-15}" ] && printf '      …(%s lines total)\n' "$n"
     echo
   fi
-done
+done 3< <(list_examples "$EXAMPLES")
 
 echo ""
 echo "summary: $pass passed, $fail failed, $known known-fail (pinned)"
