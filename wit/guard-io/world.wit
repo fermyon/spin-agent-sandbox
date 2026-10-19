@@ -7,6 +7,8 @@ world guard-io {
     import wasi:io/poll@0.2.10;
     import wasi:io/error@0.2.10;
     import wasi:clocks/wall-clock@0.2.10;
+    // subscribe-duration(0) is the always-ready pollable for the captured stdio streams.
+    import wasi:clocks/monotonic-clock@0.2.10;
     import wasi:http/types@0.2.10;
     import wasi:http/outgoing-handler@0.2.10;
 
@@ -15,7 +17,8 @@ world guard-io {
     // (stdin, stdout, stderr, http/types, filesystem/*) or the composed
     // component ends up with two definitions of "the same" type and fails
     // validation — see src/stdio.rs. stdin/filesystem are stubs (the sandbox
-    // exposes neither to user code).
+    // exposes neither to user code); so is wasi:sockets/tcp, which shares the
+    // stream types too.
 
     export wasi:io/streams@0.2.10;
     export wasi:cli/stdin@0.2.10;
@@ -26,6 +29,33 @@ world guard-io {
     export wasi:filesystem/preopens@0.2.10;
     export fermyon:spin/key-value@2.0.0;
     export wasi:http/outgoing-handler@0.2.10;
+
+    // Capabilities the Python guest always imports (spin-py-sdk forces
+    // wasi:sockets, spin_sdk pulls in every Spin interface) but the sandbox does
+    // not grant. Every entry point returns a denied error — see src/sockets.rs
+    // and src/capabilities.rs. The TS guest imports none of these.
+    export wasi:sockets/network@0.2.10;
+    export wasi:sockets/instance-network@0.2.10;
+    export wasi:sockets/tcp@0.2.10;
+    export wasi:sockets/tcp-create-socket@0.2.10;
+    export wasi:sockets/udp@0.2.10;
+    export wasi:sockets/udp-create-socket@0.2.10;
+    export wasi:sockets/ip-name-lookup@0.2.10;
+    export fermyon:spin/rdbms-types@2.0.0;
+    export fermyon:spin/llm@2.0.0;
+    export fermyon:spin/redis@2.0.0;
+    export fermyon:spin/postgres@2.0.0;
+    export fermyon:spin/mysql@2.0.0;
+    export fermyon:spin/sqlite@2.0.0;
+    export fermyon:spin/mqtt@2.0.0;
+    export fermyon:spin/variables@2.0.0;
+    export spin:postgres/postgres@3.0.0;
+    export spin:postgres/postgres@4.0.0;
+    export spin:sqlite/sqlite@3.0.0;
+    export wasi:keyvalue/store@0.2.0-draft2;
+    export wasi:keyvalue/atomics@0.2.0-draft2;
+    export wasi:keyvalue/batch@0.2.0-draft2;
+    export wasi:config/store@0.2.0-draft-2024-09-27;
 
     // Exported to guard-front, which sets the sandboxId (KV prefix), allowed
     // hosts and KV flag before calling into the guest, then drains the

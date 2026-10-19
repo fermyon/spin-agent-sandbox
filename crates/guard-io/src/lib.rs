@@ -2,6 +2,7 @@
 //! This stays separate from `guard` to avoid a component-instantiation cycle.
 
 mod bindings;
+mod capabilities;
 mod context;
 mod egress;
 mod filesystem;
@@ -9,6 +10,7 @@ mod http_types;
 mod kv;
 mod outgoing;
 mod request_context;
+mod sockets;
 mod stdio;
 
 pub struct Component;

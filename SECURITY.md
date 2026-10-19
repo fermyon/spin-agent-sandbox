@@ -49,11 +49,6 @@ Out of scope, because they are documented limits that the deployment must handle
 - **CPU, wall-clock, and memory exhaustion.** The components have no per-request
   timeout or memory cap. Enforce them in the host (for example Wasmtime epoch
   interruption or fuel, or the platform request timeout).
-- **Unexposed capabilities fail with a crash, not an error.** User code that calls a
-  capability the sandbox does not expose (Python sockets, Spin interfaces other than
-  KV, or polling the captured stdio streams) traps the instance, so the caller gets the
-  host's generic 500 instead of a JSON error. The capability is still refused; reaching
-  it is in scope (see **Host capabilities** above).
 - **DNS names that resolve to private addresses.** The components refuse private IP
   literals and internal names, but the host network must block hostnames that resolve
   to private ranges.

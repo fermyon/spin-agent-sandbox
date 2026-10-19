@@ -1,0 +1,1 @@
+{ "code": "import socket\ntry:\n    socket.socket(socket.AF_INET, socket.SOCK_STREAM)\n    print('ALLOWED')\nexcept OSError as e:\n    print('DENIED', type(e).__name__)", "sandboxId": "smoke-py" }

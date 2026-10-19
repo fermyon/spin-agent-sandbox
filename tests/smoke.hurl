@@ -249,6 +249,38 @@ HTTP 200
 [Asserts]
 body == ""
 
+# Capabilities the sandbox does not expose are refused with an error the code can catch.
+POST {{base_url}}/py/run
+content-type: application/json
+file,bodies/py-socket-denied.json;
+HTTP 200
+[Asserts]
+jsonpath "$.stdout" contains "DENIED"
+jsonpath "$.stdout" not contains "ALLOWED"
+jsonpath "$.error" == null
+
+# Every Spin/WASI capability the Python guest imports but the sandbox does not grant is
+# refused with a catchable error; the last probe printing means none of them trapped.
+POST {{base_url}}/py/run
+content-type: application/json
+file,bodies/py-capabilities-denied.json;
+HTTP 200
+[Asserts]
+jsonpath "$.stdout" not contains "ALLOWED"
+jsonpath "$.stdout" contains "variables.get DENIED"
+jsonpath "$.stdout" contains "sqlite3.open DENIED"
+jsonpath "$.stdout" contains "config.get_all DENIED"
+jsonpath "$.error" == null
+
+# Polling the captured stdio streams reports them ready instead of trapping.
+POST {{base_url}}/py/run
+content-type: application/json
+file,bodies/py-select-stdio.json;
+HTTP 200
+[Asserts]
+jsonpath "$.stdout" contains "POLLED 1 2"
+jsonpath "$.error" == null
+
 # --- Both components reject a non-POST request with 405 (the manual method check) ---
 GET {{base_url}}/ts/run
 HTTP 405
