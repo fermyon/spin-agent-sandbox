@@ -26,6 +26,18 @@ env:
   RUST_VERSION: "1.95"
 
 jobs:
+  audit:
+    name: npm audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Audit all npm projects
+        run: node scripts/check-npm-audit.mjs
+
   unit:
     name: unit
     runs-on: ubuntu-latest
@@ -206,15 +218,19 @@ jobs:
   ci:
     name: ci
     if: always()
-    needs: [unit, sandboxes, bundler]
+    needs: [audit, unit, sandboxes, bundler]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Require all scheduled tests to pass
         env:
+          AUDIT_RESULT: ${{ needs.audit.result }}
           UNIT_RESULT: ${{ needs.unit.result }}
           SANDBOXES_RESULT: ${{ needs.sandboxes.result }}
           BUNDLER_RESULT: ${{ needs.bundler.result }}
           EXPECTED_BUNDLER_RESULT: ${{ (github.event_name == 'workflow_dispatch' || inputs.run-bundler == true) && 'success' || 'skipped' }}
         run: |
-          [[ "$UNIT_RESULT" == success && "$SANDBOXES_RESULT" == success && "$BUNDLER_RESULT" == "$EXPECTED_BUNDLER_RESULT" ]]
+          [[ "$AUDIT_RESULT" == success ]]
+          [[ "$UNIT_RESULT" == success ]]
+          [[ "$SANDBOXES_RESULT" == success ]]
+          [[ "$BUNDLER_RESULT" == "$EXPECTED_BUNDLER_RESULT" ]]

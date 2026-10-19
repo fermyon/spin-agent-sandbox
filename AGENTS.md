@@ -85,6 +85,10 @@ hurl --variable base_url=http://127.0.0.1:3007 --test tests/smoke.hurl      # fi
 BASE=http://127.0.0.1:3007 tests/run-examples.sh                            # every tests/examples/* file
 ```
 
+`node scripts/check-npm-audit.mjs` runs `npm audit` on every tracked npm project and
+fails unless each result is clean or exactly matches a reviewed exception in that script;
+CI runs it on every pull request.
+
 The bundler's live suites reach esm.sh and are slower, so CI runs them only on demand;
 run them locally with `cd packages/typescript/bundler && npm run test:ci`.
 
