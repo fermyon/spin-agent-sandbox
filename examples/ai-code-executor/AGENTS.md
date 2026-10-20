@@ -45,7 +45,7 @@ separately.
 ```bash
 export SPIN_VARIABLE_MODEL_BASE_URL=<model-base-url> SPIN_VARIABLE_MODEL_API_KEY=<api-key>
 spin up --build                    # Anthropic Messages API; builds all 5 components + serves
-spin up --profile openai --build   # OpenAI Responses API
+spin up --profile openai --build   # OpenAI Chat Completions API
 ```
 
 `ts_interpreter_url` / `py_interpreter_url` default to the components' `spin.internal`

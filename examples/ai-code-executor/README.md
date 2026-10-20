@@ -1,6 +1,6 @@
 # AI Code Executor: an agent whose tool is a sandbox
 
-A Spin application: an LLM (via the Anthropic Messages API by default, or the OpenAI Responses API) writes
+A Spin application: an LLM (via the Anthropic Messages API by default, or the OpenAI Chat Completions API) writes
 code and runs it in the fast Wasm interpreter
 through [`@spinframework/sandbox`](../../sdk), with the transcript streamed
 back to a chat UI.
@@ -95,7 +95,7 @@ bundled into the `api` component:
 | Build | Provider | API |
 |---|---|---|
 | default (no profile) | Anthropic, `api/dist/api-anthropic.wasm` | Messages API |
-| `--profile openai` | OpenAI, `api/dist/api-openai.wasm` | Responses API (stateless) |
+| `--profile openai` | OpenAI, `api/dist/api-openai.wasm` | Chat Completions API (stateless) |
 
 Both builds share one agent loop; the provider code lives in [`api/src/llm/`](api/src/llm).
 Both builds read the same variables: the profile picks the API format, `model_base_url`
@@ -131,7 +131,7 @@ Everything is one app, with no separate interpreter to start.
    ```bash
    export SPIN_VARIABLE_MODEL_BASE_URL=<model-base-url> SPIN_VARIABLE_MODEL_API_KEY=<api-key>
    spin up                    # Anthropic Messages API
-   spin up --profile openai   # OpenAI Responses API
+   spin up --profile openai   # OpenAI Chat Completions API
    ```
    Build and run a profile together with `spin up --profile openai --build`, so a stale
    build of the other profile is never served.
@@ -143,14 +143,14 @@ Everything is one app, with no separate interpreter to start.
 
 [Ollama](https://ollama.com) serves both the
 [Anthropic](https://docs.ollama.com/api/anthropic-compatibility) and
-[OpenAI Responses](https://docs.ollama.com/api/openai-compatibility) APIs locally and
+[OpenAI Chat Completions](https://docs.ollama.com/api/openai-compatibility) APIs locally and
 ignores the API key, so either build runs without a cloud account:
 
 ```bash
 ollama pull qwen3:4b
 export SPIN_VARIABLE_MODEL_BASE_URL=http://localhost:11434 SPIN_VARIABLE_MODEL=qwen3:4b
 spin up --build                    # Anthropic Messages API
-spin up --profile openai --build   # OpenAI Responses API
+spin up --profile openai --build   # OpenAI Chat Completions API
 ```
 
 Small local models are slower and less reliable at multi-step tool use than hosted

@@ -1,6 +1,6 @@
 # App Builder: an agent that writes web apps and runs them live
 
-A Spin application: an LLM (via the Anthropic Messages API by default, or the OpenAI Responses API) writes a
+A Spin application: an LLM (via the Anthropic Messages API by default, or the OpenAI Chat Completions API) writes a
 self-contained web app (an HTTP handler serving an
 HTML UI plus a JSON API), stores the code with [`@spinframework/sandbox`](../../sdk),
 and serves each stored app live at its own URL, executed on demand in a private Wasm
@@ -70,7 +70,7 @@ the api also injects `<base href="/a/<id>/">` into served HTML as a backstop.
 The provider is fixed at build time with a [Spin build
 profile](https://spinframework.dev/v4/build#building-with-profiles), so only its SDK is
 bundled into the `api` component: the default build uses the Anthropic Messages API
-(`api/dist/api-anthropic.wasm`), and `--profile openai` uses the OpenAI Responses API,
+(`api/dist/api-anthropic.wasm`), and `--profile openai` uses the OpenAI Chat Completions API,
 statelessly (`api/dist/api-openai.wasm`). The provider code lives in
 [`api/src/llm/`](api/src/llm). Both builds read the same variables: the profile picks the API
 format, `model_base_url` picks the server and is also the `api` component's outbound
@@ -99,7 +99,7 @@ under the other build starts a fresh edit session from the app's current code.
    ```bash
    export SPIN_VARIABLE_MODEL_BASE_URL=<model-base-url> SPIN_VARIABLE_MODEL_API_KEY=<api-key>
    spin up --build                    # Anthropic Messages API
-   spin up --profile openai --build   # OpenAI Responses API
+   spin up --profile openai --build   # OpenAI Chat Completions API
    ```
    For a local model, run [Ollama](https://ollama.com) (it serves both APIs and ignores
    the key) and point either build at it, e.g. `spin up --profile openai --build
