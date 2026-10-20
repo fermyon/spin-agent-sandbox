@@ -32,12 +32,22 @@ or validation failures.
 ## Agent tools
 
 `interpreterTool()` returns context for the languages served by one interpreter endpoint.
-Adapt it to Anthropic or OpenAI tool shapes with `toAnthropicTool()` or `toOpenAITool()`.
+Adapt it to Anthropic or OpenAI tool shapes with `toAnthropicTool()` or `toOpenAITool()`,
+or to the `{ name, description, parameters }` shape used by many TypeScript agent SDKs
+(with `parameters` as a Zod schema) via `toZodTool()`.
 
 ```ts
 import { interpreterTool, toAnthropicTool } from "@spinframework/sandbox/tools";
 
 const tools = [toAnthropicTool(interpreterTool({ languages: ["javascript"] }))];
+```
+
+`toZodTool()` needs `zod` installed (declared as an optional peer dependency):
+
+```ts
+import { interpreterTool, toZodTool } from "@spinframework/sandbox/tools";
+
+const { name, description, parameters } = toZodTool(interpreterTool());
 ```
 
 ## Backends
