@@ -83,9 +83,10 @@ component = "ts-sandbox"
 source = "../../dist/ts-sandbox.wasm"
 exclude_files = ["**/node_modules"]
 key_value_stores = ["default"]
-# Broad dev outer bound for user code; the component's guard-io layer enforces the
-# per-request allow-list on top. Tighten per deployment.
-allowed_outbound_hosts = ["https://*:*", "http://*:*"]
+# Outbound HTTP is denied until you list hosts here, e.g. ["https://api.example.com"]. Each
+# request's `allowedHosts` can only narrow this list, and it always refuses private and
+# internal addresses.
+allowed_outbound_hosts = []
 [component.ts-sandbox.variables]
 log_level = "{{ log_level }}"
 [component.ts-sandbox.build]
@@ -99,7 +100,10 @@ component = "py-sandbox"
 [component.py-sandbox]
 source = "../../dist/py-sandbox.wasm"
 key_value_stores = ["default"]
-allowed_outbound_hosts = ["https://*:*", "http://*:*"]
+# Outbound HTTP is denied until you list hosts here, e.g. ["https://api.example.com"]. Each
+# request's `allowedHosts` can only narrow this list, and it always refuses private and
+# internal addresses.
+allowed_outbound_hosts = []
 [component.py-sandbox.build]
 command = "bash build-composed.sh"
 workdir = "../../py-sandbox"
