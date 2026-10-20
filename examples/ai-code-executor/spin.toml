@@ -20,7 +20,6 @@ model = { default = "" }
 # SPIN_VARIABLE_ESM_BASE_URL=https://esm.example.com
 esm_base_url = { default = "https://esm.sh" }
 ts_interpreter_url = { default = "http://ts-sandbox.spin.internal" }
-py_interpreter_url = { default = "http://py-sandbox.spin.internal" }
 bundler_url = { default = "http://bundler.spin.internal" }
 # Shared access token gating the UI + API. Empty = no gate (local dev); set to enable:
 # SPIN_VARIABLE_ACCESS_TOKEN=some-secret
@@ -43,12 +42,11 @@ route = "/api/..."
 component = "api"
 
 [component.api]
-source = "api/dist/api-anthropic.wasm"
+source = "api/dist/api-openai.wasm"
 # Reach the LLM, the two private interpreter components, and the bundler via service chaining
 allowed_outbound_hosts = [
   "{{ model_base_url }}",
   "http://ts-sandbox.spin.internal",
-  "http://py-sandbox.spin.internal",
   "http://bundler.spin.internal",
 ]
 [component.api.variables]
@@ -57,16 +55,11 @@ model_base_url = "{{ model_base_url }}"
 model_api_key = "{{ model_api_key }}"
 model = "{{ model }}"
 ts_interpreter_url = "{{ ts_interpreter_url }}"
-py_interpreter_url = "{{ py_interpreter_url }}"
 bundler_url = "{{ bundler_url }}"
 access_token = "{{ access_token }}"
 [component.api.build]
-command = "npm install && LLM_PROVIDER=anthropic npm run build"
-workdir = "api"
-[component.api.profile.openai]
-source = "api/dist/api-openai.wasm"
-[component.api.profile.openai.build]
 command = "npm install && LLM_PROVIDER=openai npm run build"
+workdir = "api"
 
 [[trigger.http]]
 route = { private = true }
@@ -85,22 +78,6 @@ log_level = "{{ log_level }}"
 [component.ts-sandbox.build]
 command = "bash build-composed.sh"
 workdir = "../../packages/typescript/sandbox"
-
-[[trigger.http]]
-route = { private = true }
-component = "py-sandbox"
-
-[component.py-sandbox]
-source = "../../dist/py-sandbox.wasm"
-key_value_stores = ["default"]
-# Outbound HTTP is denied until you list hosts here, e.g. ["https://api.example.com"]. Each
-# request's `allowedHosts` can only narrow this list, and it always refuses private and
-# internal addresses.
-allowed_outbound_hosts = []
-[component.py-sandbox.build]
-command = "bash build-composed.sh"
-workdir = "../../py-sandbox"
-watch = ["*.py", "requirements.txt"]
 
 # EXPERIMENTAL private bundler for JavaScript npm dependencies: the SDK POSTs (source + package.json)
 # here and runs the returned self-contained bundle. It fetches deps from esm.sh (esm_base_url)

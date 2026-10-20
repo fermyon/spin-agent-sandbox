@@ -172,13 +172,11 @@ function extractField(buf: string, key: string): { value: string; complete: bool
 // (the code registry) runs through the JS interpreter's scoped KV.
 function makeStore() {
   const tsUrl = variables.get("ts_interpreter_url") ?? "http://ts-sandbox.spin.internal";
-  const pyUrl = variables.get("py_interpreter_url") ?? "http://py-sandbox.spin.internal";
   const bundlerUrl = variables.get("bundler_url") ?? "http://bundler.spin.internal";
   // The JS interpreter also knows the bundler, so apps can pull extra npm deps, bundled once
   // at publish (see create_app below).
   const interpreters: Record<Language, Interpreter> = {
     javascript: Interpreter.javascript({ baseUrl: tsUrl, bundlerUrl }),
-    python: Interpreter.python({ baseUrl: pyUrl }),
   };
   const store = new KvCodeStore({ interpreter: interpreters.javascript, namespace: "apps" });
   // Per-app conversation blobs (opaque to the api; the UI owns the shape), in their own
@@ -202,7 +200,7 @@ async function runAgent(
   if (messages.length === 0 && appId) {
     const current = await store.get(appId);
     if (current) {
-      const fence = current.language === "python" ? "python" : "javascript";
+      const fence = current.language === "javascript";
       messages.push(
         llm.userMessage(
           `You are editing an existing app titled "${current.title ?? appId}" (${current.language}). ` +

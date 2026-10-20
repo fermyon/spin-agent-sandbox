@@ -19,7 +19,7 @@ import { interpreterTool } from "@spinframework/sandbox/tools";
 import { historyFor, type History, type ToolResult } from "./llm/types";
 import { log, initLogger } from "./logger";
 
-const INTERPRETER_TOOL = interpreterTool();
+const INTERPRETER_TOOL = interpreterTool({ languages: ["javascript"] });
 
 function systemPrompt(): string {
   return (
