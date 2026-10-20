@@ -78,7 +78,7 @@ export function interpreterTool(options: InterpreterToolOptions = {}): ToolDefin
     ),
   ].join(" ");
   const codeDescription = supportsJavaScript
-    ? "The complete program to run. Print results to stdout. JavaScript supports top-level await; await asynchronous work directly instead of using a floating async IIFE."
+    ? "The complete program to run. Print results to stdout. JavaScript supports top-level await: await all asynchronous work directly. Never leave floating promises (an un-awaited async IIFE, main() call, or timer); work still running when the program ends is discarded without any output or error."
     : "The complete program to run. Print results to stdout.";
   return {
     name: "run_in_wasm_interpreter",
@@ -90,7 +90,7 @@ export function interpreterTool(options: InterpreterToolOptions = {}): ToolDefin
       "read what earlier runs wrote (also across languages); different identities are isolated; without an identity each run gets a " +
       `fresh, empty store. ${kvContext} ` +
       "HTTP handlers: supply input to run a handler against that request and get its HTTP response. JavaScript exports " +
-      "`default { async fetch(request) {} }`; Python defines `handle_request(request)` and may return an iterable of str or bytes chunks to stream the body. " +
+      "`default { async fetch(request) {} }`, awaiting all async work before it returns the Response; Python defines `handle_request(request)` and may return an iterable of str or bytes chunks to stream the body. " +
       `${libraryContext} ` +
       "Each run is a fresh instance: variables and globals do not carry over, so persist state in the key-value store. " +
       "There is no filesystem, shell, subprocess, or raw socket, and no runtime pip install. stdout and stderr are each capped at 256 KB.",

@@ -105,7 +105,10 @@ function systemPrompt(): string {
     "     then `store.get(k)` (bytes or None), `store.set(k, b'…')`, `store.delete(k)`, `store.exists(k)`,",
     "     `store.get_keys()`. There are no JSON helpers: use `json.dumps(v).encode()` and `json.loads(store.get(k))`.",
     "   Reference: https://spinframework.dev/v4/kv-store-api-guide",
-    "6. Keep it one self-contained file, then call create_app with { language, title, code } (plus `kvEnabled` if it uses KV).",
+    "6. JavaScript: `await` all asynchronous work (`fetch`, timers) before returning the `Response`.",
+    "   Never leave floating promises, such as an un-awaited `doWork()` call: work still running when the handler",
+    "   returns is discarded without any output or error.",
+    "7. Keep it one self-contained file, then call create_app with { language, title, code } (plus `kvEnabled` if it uses KV).",
     "After publishing, reply with a single short sentence naming the app.",
   ].join("\n");
 }
