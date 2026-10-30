@@ -1,4 +1,4 @@
-# Smoke tests for Spin Sandbox. Request bodies are read from disk (tests/bodies/*.json)
+# Smoke tests for Spin Agent Sandbox. Request bodies are read from disk (tests/bodies/*.json)
 # via hurl's `file,<path>;` keyword rather than inlined here. Run with:
 #   spin up --listen 127.0.0.1:3007 &
 #   hurl --variable base_url=http://127.0.0.1:3007 --test tests/smoke.hurl

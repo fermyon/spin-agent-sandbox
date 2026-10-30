@@ -3,7 +3,7 @@ spin_manifest_version = 2
 [application]
 name = "app-builder"
 version = "0.1.0"
-authors = ["Spin Sandbox"]
+authors = ["Spin Agent Sandbox"]
 description = "App Builder: an LLM generates HTTP-handler web apps, stores them via @spinframework/sandbox, and serves each live at its own URL."
 
 [variables]

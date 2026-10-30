@@ -3,7 +3,7 @@ spin_manifest_version = 2
 [application]
 name = "ai-code-executor"
 version = "0.1.0"
-authors = ["Spin Sandbox"]
+authors = ["Spin Agent Sandbox"]
 description = "AI Code Executor: an LLM agent that runs model-written code in private, service-chained Wasm interpreter components."
 
 [variables]
