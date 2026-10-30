@@ -1,4 +1,4 @@
-# Spin Sandbox
+# Spin Agent Sandbox
 
 Run untrusted JavaScript/TypeScript and Python in isolated WebAssembly components on
 [Spin](https://spinframework.dev). This repository includes the sandboxes, an npm

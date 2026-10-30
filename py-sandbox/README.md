@@ -1,6 +1,6 @@
 # py-sandbox
 
-The Python component of Spin Sandbox. It executes untrusted, AI-generated
+The Python component of Spin Agent Sandbox. It executes untrusted, AI-generated
 Python received as a JSON envelope on `POST /py/...`, compiled to WebAssembly with
 [`componentize-py`](https://pypi.org/project/componentize-py/) (CPython 3.12 to
 `wasm32-wasi`, Spin Python SDK 3.4.1 for Spin 3.x / WASI Preview 2).
