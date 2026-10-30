@@ -32,7 +32,7 @@
     "sucrase": "^3.35.0",
     "ulidx": "^2.4.1",
     "uuid": "^11.0.0",
-    "zod": "^4.0.0"
+    "zod": "^4.6.6"
   },
   "config": {
     "witDependencies": [
