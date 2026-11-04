@@ -40,12 +40,17 @@ Everything reuses the repo's primitives: the sandbox's HTTP-handler execution, i
 scoped KV (the code store), and per-language service chaining. The sandbox's request
 `input.path` lets a stored app route on sub-paths.
 
-Generated apps can persist state, too. Each runs with its own private, scoped
-[Spin KV](https://spinframework.dev/v4/kv-store-api-guide): the `default` store, which
-the sandbox scopes per app (`identity = code:<id>`), isolated from other apps and from
-the code registry. So a counter or a saved list survives across requests. The model is
-told to reach it via `openDefault()` (JS) / `key_value.open_default()` (Python) and to
-set `kvEnabled: true` in `create_app`; KV is off for apps that don't.
+### App permissions and storage
+
+The developer sets `APP_EXECUTION_POLICY` in [`api/src/index.ts`](api/src/index.ts), not the model. Defaults deny outbound HTTP and disable app KV. To allow persistence:
+
+```ts
+const APP_EXECUTION_POLICY = { allowedHosts: [], kvEnabled: true };
+```
+
+The policy is saved with each published app; republish existing apps to update it. To allow an API, add its HTTPS origin here and to the deployment's outbound allowlist. `create_app` accepts only `language`, `title`, `code`, and optional `dependencies`.
+
+With KV enabled, every request to an app shares its `code:<id>` namespace, isolated from other apps and the code registry. Editing preserves that ID; creating another app gets a new one. Only KV persists, not variables or globals. The model needs no argument for this: `kvEnabled` in the policy is enough, and the prompt tells it whether KV is available. The code registry works even when app KV is disabled.
 
 ## The two surfaces (one component)
 
@@ -126,8 +131,7 @@ credentials:
   "Open live" redirects there; the app's relative `fetch` calls carry the key instead of
   the cookie, and a key opens only its own app. Anyone holding an app's URL can use that
   app.
-- **Egress is per app.** The sandbox denies an app all network access unless it
-  declared `allowedHosts` at publish time.
+- **Permissions are developer-owned.** Each app runs with the policy saved at publish time. The model cannot choose outbound hosts, enable KV, or select sandbox IDs.
 
 Before deploying:
 

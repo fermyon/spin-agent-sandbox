@@ -7,6 +7,7 @@ export interface ToolDefinition {
     type: "object";
     properties: Record<string, unknown>;
     required: string[];
+    additionalProperties?: boolean;
   };
 }
 
@@ -20,14 +21,6 @@ const DEPENDENCIES = {
   description:
     "JavaScript only. Extra npm dependencies as name -> semver ranges. Use ESM import; Python cannot add packages.",
   additionalProperties: { type: "string" },
-};
-const ALLOWED_HOSTS = {
-  type: "array",
-  items: { type: "string" },
-  description:
-    'Hosts this run may call over HTTP(S), e.g. ["api.github.com", "*.example.com"]. Required for any outbound request: ' +
-    'absent or empty denies all, and a bare "*" grants nothing. Private, loopback, link-local, and internal hosts are always ' +
-    "blocked, and the host app's own allow-list still applies.",
 };
 const HTTP_INPUT = {
   type: "object",
@@ -53,14 +46,14 @@ export function interpreterTool(options: InterpreterToolOptions = {}): ToolDefin
   const httpContext = [
     ...only(
       supportsJavaScript,
-      "JavaScript uses the standard `fetch`; a host missing from allowedHosts makes it throw a generic \"An error occurred while using the host API\".",
+      "JavaScript uses the standard `fetch`. If the destination is not allowed, fetch rejects; the runtime may report the generic error \"An error occurred while using the host API\".",
     ),
     ...only(
       supportsPython,
       "Python uses `from spin_sdk.http import send, Request` and `send(Request(method, url, headers, body))`; urllib, http.client, and requests are not available. " +
-        "A host missing from allowedHosts raises `Err(ErrorCode_HttpRequestDenied())`.",
+        "If the destination is not allowed, the guard returns HttpRequestDenied, surfaced as `Err(ErrorCode_HttpRequestDenied())`.",
     ),
-    "If a call is denied, add its host to allowedHosts and run again.",
+    "Network permissions are configured by the application and cannot be changed through tool arguments.",
   ].join(" ");
   const kvContext = [
     ...only(supportsJavaScript, "JavaScript: `import { openDefault } from \"@spinframework/spin-kv\"`, then get/set or getJson/setJson."),
@@ -85,14 +78,14 @@ export function interpreterTool(options: InterpreterToolOptions = {}): ToolDefin
     description:
       `Run ${languageLabel} code in an isolated WebAssembly sandbox and get back its stdout, stderr, and error. ` +
       "Beyond computation, parsing, and data work, code can call external HTTP APIs, keep data across runs, and serve HTTP requests. " +
-      `Outbound HTTP: list every host the code calls in allowedHosts (nothing is reachable otherwise). ${httpContext} ` +
-      "Persistent storage: set kvEnabled and pass the same identity on every run that should share data. Runs with the same identity " +
-      "read what earlier runs wrote (also across languages); different identities are isolated; without an identity each run gets a " +
-      `fresh, empty store. ${kvContext} ` +
+      `Outbound HTTP is denied unless the application permits the destination. ${httpContext} ` +
+      "Persistent storage is available only when enabled by the application, which also controls the storage namespace. " +
+      "Runs in the same namespace share stored KV data, whether they use the same language or different languages. " +
+      `Sharing depends on the namespace, not on reusing an Interpreter client object; different namespaces are isolated. ${kvContext} ` +
       "HTTP handlers: supply input to run a handler against that request and get its HTTP response. JavaScript exports " +
       "`default { async fetch(request) {} }`, awaiting all async work before it returns the Response; Python defines `handle_request(request)` and may return an iterable of str or bytes chunks to stream the body. " +
       `${libraryContext} ` +
-      "Each run is a fresh instance: variables and globals do not carry over, so persist state in the key-value store. " +
+      "Each run is a fresh instance: variables and globals do not carry over. When storage is enabled, persist state in the key-value store. " +
       "There is no filesystem, shell, subprocess, or raw socket, and no runtime pip install. stdout and stderr are each capped at 256 KB.",
     inputSchema: {
       type: "object",
@@ -100,20 +93,10 @@ export function interpreterTool(options: InterpreterToolOptions = {}): ToolDefin
         language: { type: "string", enum: languages },
         code: { type: "string", description: codeDescription },
         ...(supportsJavaScript ? { dependencies: DEPENDENCIES } : {}),
-        allowedHosts: ALLOWED_HOSTS,
         input: HTTP_INPUT,
-        identity: {
-          type: "string",
-          description:
-            "Stable name for this sandbox's key-value namespace. Reuse it on every run that should share stored data; " +
-            "runs with different identities are isolated. Omit it for a fresh, empty namespace each run.",
-        },
-        kvEnabled: {
-          type: "boolean",
-          description: "Enable the key-value store for this run (off by default). Combine with identity to keep data across runs.",
-        },
       },
       required: ["language", "code"],
+      additionalProperties: false,
     },
   };
 }

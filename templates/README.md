@@ -9,9 +9,11 @@ app has no build step. The components are built and published by
 
 | Template      | `spin new` (new app)                     | `spin add` (existing app) | Components           |
 | ------------- | ---------------------------------------- | ------------------------- | -------------------- |
-| `sandbox-ts`  | JS/TS sandbox + bundler (both private)   | adds both (private)       | ts-sandbox + bundler |
+| `sandbox-ts`  | JS/TS sandbox + bundler                  | adds both                 | ts-sandbox + bundler |
 | `sandbox-py`  | app with the Python sandbox              | adds the Python sandbox   | py-sandbox           |
 | `sandbox-app` | app with both sandboxes                  | not supported             | ts + py              |
+
+Every sandbox component is **private**: it has no public route and is reachable only by service chaining from another component in the same app, because it runs untrusted code.
 
 `sandbox-ts` gives JavaScript npm-dependency support: it wires the code sandbox
 together with its experimental bundler, both as private components. The bundler uses the
@@ -36,17 +38,17 @@ spin templates install --git https://github.com/fermyon/spin-sandboxes --upgrade
 ## Use
 
 ```bash
-# New app with the JS/TS sandbox + bundler (both private; drive them from your own component):
+# New app with the JS/TS sandbox + bundler (drive them from your own component):
 spin new -t sandbox-ts my-sandbox
 
-# New app with the Python sandbox (prompts for HTTP path, default /py/...):
-spin new -t sandbox-py my-py && cd my-py && spin up
+# New app with the Python sandbox (private; drive it from your own component):
+spin new -t sandbox-py my-py
 
 # Add a sandbox to an existing app:
-spin add -t sandbox-ts        # JS/TS sandbox + bundler (private)
+spin add -t sandbox-ts        # JS/TS sandbox + bundler
 spin add -t sandbox-py        # Python sandbox
 
-# New app with both sandboxes at /ts/... and /py/...:
+# New app with both private sandboxes (ts-sandbox, py-sandbox):
 spin new -t sandbox-app my-sandbox
 ```
 
@@ -58,8 +60,18 @@ the component id; `sandbox-ts` uses `project-name` for the sandbox and
 
 Every sandbox component starts with `allowed_outbound_hosts = []`, so user code can make no
 outbound requests until you list the hosts it may reach. A request's `allowedHosts` can
-only narrow that list. In `spin add` mode, also add `http://<name>.spin.internal` (and the
-`-bundler` one for `sandbox-ts`) to your calling component's `allowed_outbound_hosts`.
+only narrow that list.
+
+### Calling a private sandbox
+
+Add your own component (it holds the only public route), list the sandbox host in its `allowed_outbound_hosts` (`http://<name>.spin.internal`, plus `-bundler` for `sandbox-ts`), and call it with the SDK:
+
+```ts
+const py = new Interpreter({ baseUrl: "http://my-py.spin.internal" });
+await py.run(code, { lang: "python" }); // application-owned policy, see sdk/README.md
+```
+
+`examples/ai-code-executor` is a complete caller.
 
 ## Releasing the components (maintainers)
 

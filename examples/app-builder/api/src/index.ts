@@ -23,11 +23,17 @@ import { createProvider } from "#llm-provider";
 
 import { Interpreter, type Language } from "@spinframework/sandbox/interpreter";
 import { KvCodeStore, serveStoredCode } from "@spinframework/sandbox/store";
+import type { RunOpts } from "@spinframework/sandbox/core";
 import type { ToolDefinition } from "@spinframework/sandbox/tools";
 import { historyFor, type History, type ToolResult } from "./llm/types";
 import { log, initLogger } from "./logger";
 
 // ---- the tool the model calls to publish an app ----
+
+const APP_EXECUTION_POLICY: Pick<RunOpts, "allowedHosts" | "kvEnabled"> = {
+  allowedHosts: [],
+  kvEnabled: false,
+};
 
 const CREATE_APP_TOOL: ToolDefinition = {
   name: "create_app",
@@ -39,9 +45,8 @@ const CREATE_APP_TOOL: ToolDefinition = {
     "For a JavaScript app you may pull additional npm packages by listing them in `dependencies` " +
     "(name -> semver); they are bundled into the app at publish time. Import them with ESM `import` " +
     "(e.g. `import { marked } from 'marked'`), NOT `require()`. Python cannot add packages. " +
-    "The app's network egress is DENIED by default. If the app calls an external API/tool with `fetch`, " +
-    "list the hosts it will reach in `allowedHosts` (e.g. [\"api.openweathermap.org\"]); only those are permitted. " +
-    "The app's private key-value store is DISABLED by default; set `kvEnabled` to true if the app persists state.",
+    "Network and key-value permissions are configured by the developer, not through tool arguments. " +
+    "When storage is enabled, each app has its own persistent namespace; editing the app reuses it.",
   inputSchema: {
     type: "object",
     properties: {
@@ -56,20 +61,9 @@ const CREATE_APP_TOOL: ToolDefinition = {
           "Use each dep via ESM `import` (e.g. `import { marked } from 'marked'`), not `require()`.",
         additionalProperties: { type: "string" },
       },
-      allowedHosts: {
-        type: "array",
-        items: { type: "string" },
-        description:
-          "Outbound hosts the app's server-side handler may call (default-deny; omit for no network). " +
-          'Give hostnames, optionally with a port or a leading "*." wildcard, e.g. ' +
-          '["api.openweathermap.org", "*.githubusercontent.com"]. Internal/loopback/metadata hosts are always blocked.',
-      },
-      kvEnabled: {
-        type: "boolean",
-        description: "Set true if the app uses its private key-value store to persist state. Default false: KV access fails.",
-      },
     },
     required: ["language", "title", "code"],
+    additionalProperties: false,
   },
 };
 
@@ -86,9 +80,9 @@ function systemPrompt(): string {
     "3. Use RELATIVE URLs everywhere in the HTML, `fetch('data')`, `href='style.css'`, never a leading '/'.",
     "   The app is mounted under a base path, so absolute paths break. The page runs in a sandboxed origin:",
     "   cookies, localStorage, sessionStorage and IndexedDB are unavailable, so keep state on the server (rule 5).",
-    "4. Inline all CSS and JS in the HTML; do not load assets from a CDN. Outbound network is DENIED by default,",
-    "   so a browser `fetch` to a third party will fail, but the app's server-side handler MAY call an external",
-    "   API if you list its hosts in create_app's `allowedHosts` (e.g. [\"api.openweathermap.org\"]); proxy such",
+    "4. Inline all CSS and JS in the HTML; do not load assets from a CDN. Browser calls to third parties are blocked.",
+    `   The developer permits these server-side outbound destinations: ${JSON.stringify(APP_EXECUTION_POLICY.allowedHosts)}.`,
+    "   An empty list denies all outbound calls. Only call permitted APIs; proxy such",
     "   calls through your own sub-path (e.g. '/data') rather than from the browser. JS calls them with `fetch`;",
     "   Python with `from spin_sdk.http import send, Request` and `send(Request('GET', url, {}, None))`",
     "   (urllib.request, http.client, and requests are not available).",
@@ -98,7 +92,7 @@ function systemPrompt(): string {
     "   (not fetched at runtime). Python cannot add packages.",
     "5. To persist state across requests (counters, saved items, notes), use the app's private key-value",
     "   store, Spin's DEFAULT store, which is automatically scoped to this app and durable across requests.",
-    "   It is DISABLED unless you pass `kvEnabled: true` to create_app, so set it whenever the app uses KV:",
+    `   The developer has ${APP_EXECUTION_POLICY.kvEnabled ? "ENABLED" : "DISABLED"} app KV. If disabled, do not use KV or promise persistence.`,
     "   - JS: `import { openDefault } from '@spinframework/spin-kv'; const store = openDefault();` then",
     "     `store.getJson(k)`, `store.setJson(k, v)`, `store.delete(k)`, `store.exists(k)`, `store.getKeys()`.",
     "   - Python (synchronous in this sandbox): `from spin_sdk import key_value; store = key_value.open_default()`",
@@ -108,7 +102,8 @@ function systemPrompt(): string {
     "6. JavaScript: `await` all asynchronous work (`fetch`, timers) before returning the `Response`.",
     "   Never leave floating promises, such as an un-awaited `doWork()` call: work still running when the handler",
     "   returns is discarded without any output or error.",
-    "7. Keep it one self-contained file, then call create_app with { language, title, code } (plus `kvEnabled` if it uses KV).",
+    "7. Keep it one self-contained file, then call create_app with { language, title, code } and optional dependencies.",
+    "   Do not include permissions or sandbox IDs; the application owns them.",
     "After publishing, reply with a single short sentence naming the app.",
   ].join("\n");
 }
@@ -273,9 +268,12 @@ async function runAgent(
         title: string;
         code: string;
         dependencies?: Record<string, string>;
-        allowedHosts?: string[];
-        kvEnabled?: boolean;
       };
+      if (!input || typeof input !== "object" || Array.isArray(input) ||
+          Object.keys(input).some((key) => !Object.prototype.hasOwnProperty.call(CREATE_APP_TOOL.inputSchema.properties, key))) {
+        toolResults.push({ id: call.id, content: "error: unsupported tool arguments; execution permissions are controlled by the developer", isError: true });
+        continue;
+      }
       if ((input.language !== "python" && input.language !== "javascript") || typeof input.code !== "string") {
         toolResults.push({
           id: call.id,
@@ -296,9 +294,6 @@ async function runAgent(
           ? input.dependencies
           : undefined;
       const bundled = deps ? await interpreters.javascript.bundle(input.code, { dependencies: deps }) : undefined;
-      // The model lists the hosts the app may call; egress is default-deny otherwise. Stored with
-      // the app so serveStoredCode applies it on every request.
-      const allowedHosts = Array.isArray(input.allowedHosts) ? input.allowedHosts : undefined;
       // Save at the app's id when editing (update in place); otherwise mint a new one.
       const meta = await store.save({
         id: appId,
@@ -306,8 +301,7 @@ async function runAgent(
         language: input.language,
         title,
         dependencies: deps,
-        allowedHosts,
-        kvEnabled: input.kvEnabled === true,
+        ...APP_EXECUTION_POLICY,
         bundled,
       });
       appId = meta.id; // subsequent turns in this session edit the same app
