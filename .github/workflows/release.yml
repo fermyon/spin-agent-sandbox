@@ -32,7 +32,7 @@ jobs:
   tests:
     uses: ./.github/workflows/test.yml
     with:
-      run-bundler: true
+      run-bundler: false
 
   release:
     needs: tests
