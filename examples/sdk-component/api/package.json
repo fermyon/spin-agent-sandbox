@@ -14,5 +14,10 @@
   "devDependencies": {
     "esbuild": "^0.25.8",
     "mkdirp": "^3.0.1"
+  },
+  "overrides": {
+    "@bytecodealliance/jco-std": {
+      "minimatch": "^11.0.1"
+    }
   }
 }

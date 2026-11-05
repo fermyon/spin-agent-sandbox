@@ -19,6 +19,12 @@
     "@types/markdown-it": "^14.1.2"
   },
   "overrides": {
+    "@vercel/nft": {
+      "glob": "^14.0.2"
+    },
+    "readdir-glob": {
+      "minimatch": "^11.0.1"
+    },
     "simple-git": "^4.0.2"
   }
 }

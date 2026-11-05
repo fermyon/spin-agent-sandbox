@@ -38,5 +38,10 @@
     "witDependencies": [
       { "witPath": "../../../wit/sandbox-guard", "package": "sandbox:guard@0.1.0", "world": "executor-host" }
     ]
+  },
+  "overrides": {
+    "@bytecodealliance/jco-std": {
+      "minimatch": "^11.0.1"
+    }
   }
 }

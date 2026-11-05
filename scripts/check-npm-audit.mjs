@@ -88,16 +88,14 @@ function normalizeVulnerabilities(vulnerabilities) {
     .sort((left, right) => left.name.localeCompare(right.name));
 }
 
-// The example UIs are served as static `nuxt generate` output, so these
-// packages run only in the Nuxt dev server and build. node-forge reaches the
-// dev server through listhen's self-signed HTTPS; braces reaches the build
-// through nitropack's globbing. Neither advisory has a patched release, and
-// npm's suggested fix downgrades nuxt to 4.1.3 without clearing them.
+// The example UIs are served as static `nuxt generate` output. deepmerge is
+// used by Rollup's node-resolve plugin during the build and has no patched
+// release for GHSA-gcqx-w48m-w2h4. Builds must use trusted configuration.
 function expectedNuxtFindings() {
   const findings = [
     {
       name: "@nuxt/nitro-server",
-      severity: "high",
+      severity: "low",
       isDirect: false,
       range: ">=3.20.0",
       fixAvailable: true,
@@ -107,7 +105,7 @@ function expectedNuxtFindings() {
     },
     {
       name: "@nuxt/vite-builder",
-      severity: "high",
+      severity: "low",
       isDirect: false,
       range: "3.20.0 - 3.21.11 || >=4.2.0",
       fixAvailable: true,
@@ -117,7 +115,7 @@ function expectedNuxtFindings() {
     },
     {
       name: "@nuxt/vite-server",
-      severity: "high",
+      severity: "low",
       isDirect: false,
       range: ">=4.6.0",
       fixAvailable: true,
@@ -126,92 +124,45 @@ function expectedNuxtFindings() {
       nodes: ["node_modules/@nuxt/vite-server"],
     },
     {
-      name: "braces",
-      severity: "high",
-      isDirect: false,
-      range: "*",
-      fixAvailable: true,
-      via: [
-        {
-          source: 1240992,
-          severity: "high",
-          url: "https://github.com/advisories/GHSA-vfj7-8cjw-p6xm",
-          range: "<=3.0.3",
-        },
-      ],
-      effects: ["micromatch"],
-      nodes: ["node_modules/braces"],
-    },
-    {
-      name: "fast-glob",
-      severity: "high",
-      isDirect: false,
-      range: "*",
-      fixAvailable: true,
-      via: ["micromatch"],
-      effects: ["globby"],
-      nodes: ["node_modules/fast-glob"],
-    },
-    {
-      name: "globby",
-      severity: "high",
+      name: "@rollup/plugin-node-resolve",
+      severity: "low",
       isDirect: false,
       range: ">=8.0.0",
       fixAvailable: true,
-      via: ["fast-glob", "micromatch"],
-      effects: [],
-      nodes: ["node_modules/globby"],
-    },
-    {
-      name: "listhen",
-      severity: "high",
-      isDirect: false,
-      range: ">=0.3.0",
-      fixAvailable: true,
-      via: ["node-forge"],
+      via: ["deepmerge"],
       effects: ["nitropack"],
-      nodes: ["node_modules/listhen"],
+      nodes: ["node_modules/@rollup/plugin-node-resolve"],
     },
     {
-      name: "micromatch",
-      severity: "high",
+      name: "deepmerge",
+      severity: "low",
       isDirect: false,
-      range: ">=0.2.0",
+      range: ">=4.2.0",
       fixAvailable: true,
-      via: ["braces"],
-      effects: ["fast-glob", "globby"],
-      nodes: ["node_modules/micromatch"],
+      via: [
+        {
+          source: 1243505,
+          severity: "low",
+          url: "https://github.com/advisories/GHSA-gcqx-w48m-w2h4",
+          range: ">=4.2.0 <=4.3.1",
+        },
+      ],
+      effects: ["@rollup/plugin-node-resolve"],
+      nodes: ["node_modules/deepmerge"],
     },
     {
       name: "nitropack",
-      severity: "high",
+      severity: "low",
       isDirect: false,
-      range: ">=0.5.4",
+      range: ">=0.1.0",
       fixAvailable: true,
-      via: ["listhen"],
+      via: ["@rollup/plugin-node-resolve"],
       effects: ["@nuxt/nitro-server"],
       nodes: ["node_modules/nitropack"],
     },
     {
-      name: "node-forge",
-      severity: "high",
-      isDirect: false,
-      range: "*",
-      fixAvailable: true,
-      via: [
-        {
-          source: 1240912,
-          severity: "high",
-          url: "https://github.com/advisories/GHSA-86w9-cpqp-85rv",
-          range: "<=1.4.0",
-        },
-      ],
-      effects: ["listhen"],
-      nodes: ["node_modules/node-forge"],
-    },
-    {
       name: "nuxt",
-      severity: "high",
+      severity: "low",
       isDirect: true,
       range: "3.20.0 - 3.21.11 || >=4.2.0",
       fixAvailable: true,
@@ -230,11 +181,11 @@ const nuxtAudit = {
   vulnerabilities: expectedNuxtFindings(),
   metadata: {
     info: 0,
-    low: 0,
+    low: 7,
     moderate: 0,
-    high: 11,
+    high: 0,
     critical: 0,
-    total: 11,
+    total: 7,
   },
 };
 
