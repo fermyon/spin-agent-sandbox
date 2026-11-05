@@ -1,8 +1,8 @@
 name: Release
 
-# Runs the full test workflow, then builds the three components from the same commit and
-# publishes them, with the test run's bundler compatibility reports, as GitHub release
-# assets so the Spin templates (templates/sandbox-*) can reference them by URL + digest.
+# Runs the test workflow, then builds the three components from the same commit and
+# publishes them as GitHub release assets. Bundler compatibility reports are included
+# when the optional live bundler tests are enabled for a manual release.
 #
 #   - push a tag `vX.Y.Z`  -> a versioned release with that tag
 #   - run manually         -> a rolling `canary` prerelease
@@ -15,6 +15,12 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      run-bundler:
+        description: Run the live bundler integration and compatibility gates.
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: read
@@ -32,7 +38,7 @@ jobs:
   tests:
     uses: ./.github/workflows/test.yml
     with:
-      run-bundler: false
+      run-bundler: ${{ inputs.run-bundler || false }}
 
   release:
     needs: tests
@@ -94,6 +100,7 @@ jobs:
           node tests/check-imports.mjs
 
       - name: Download compatibility reports from the test run
+        if: inputs.run-bundler == true
         uses: actions/download-artifact@v4
         with:
           name: bundler-test-results
@@ -104,8 +111,13 @@ jobs:
         run: |
           mkdir -p _dist
           cp dist/ts-sandbox.wasm dist/py-sandbox.wasm packages/typescript/bundler/dist/bundler.wasm _dist/
-          tar -czf "_dist/compatibility-${GITHUB_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.tar.gz" -C _reports .
-          ( cd _dist && sha256sum ts-sandbox.wasm py-sandbox.wasm bundler.wasm compatibility-*.tar.gz > "checksums-${RELEASE_VERSION}.txt" )
+          files=(ts-sandbox.wasm py-sandbox.wasm bundler.wasm)
+          if [[ -d _reports ]]; then
+            report="compatibility-${GITHUB_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.tar.gz"
+            tar -czf "_dist/${report}" -C _reports .
+            files+=("$report")
+          fi
+          ( cd _dist && sha256sum "${files[@]}" > "checksums-${RELEASE_VERSION}.txt" )
           cat "_dist/checksums-${RELEASE_VERSION}.txt"
 
       - name: Move canary tag
@@ -122,8 +134,4 @@ jobs:
           fail_on_unmatched_files: true
           generate_release_notes: true
           files: |
-            _dist/ts-sandbox.wasm
-            _dist/py-sandbox.wasm
-            _dist/bundler.wasm
-            _dist/checksums-*.txt
-            _dist/compatibility-*.tar.gz
+            _dist/*
