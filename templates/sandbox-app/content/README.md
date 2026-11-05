@@ -1,58 +1,26 @@
 # {{project-name}}
 
-A Spin application that executes dynamic, AI-generated JS/TS and Python code received over
-HTTP, inside WebAssembly. Both components are prebuilt and pulled from GitHub releases, so
-there is no build step: `spin up` fetches them by URL and digest.
+A Spin application that scaffolds two **private** code sandboxes (JS/TS and Python) for executing dynamic, AI-generated code in WebAssembly. Both components are prebuilt and pulled from GitHub releases, so there is no build step.
 
-| Component    | Route        | Language        |
-| ------------ | ------------ | --------------- |
-| `ts-sandbox` | `POST /ts/…` | JavaScript / TS |
-| `py-sandbox` | `POST /py/…` | Python          |
+| Component    | Language        | Service-chaining host              |
+| ------------ | --------------- | ---------------------------------- |
+| `ts-sandbox` | JavaScript / TS | `http://ts-sandbox.spin.internal`  |
+| `py-sandbox` | Python          | `http://py-sandbox.spin.internal`  |
 
-## Run
+Neither has a public route, because they run untrusted code. Add your own component that calls them with `@spinframework/sandbox`, and add both hosts to its `allowed_outbound_hosts`:
 
-```bash
-spin up          # fetches the components on first run, then serves on :3000
+```ts
+const js = new Interpreter({ baseUrl: "http://ts-sandbox.spin.internal" });
+const py = new Interpreter({ baseUrl: "http://py-sandbox.spin.internal" });
+await py.run("print(6 * 7)", { lang: "python" });
 ```
 
-## Request / response contract
-
-POST a strict JSON envelope to `/ts/...` or `/py/...`:
-
-```jsonc
-{
-  "code": "…source…",          // required: the JS/TS or Python to run
-  "sandboxId": "abc123",        // required: scopes the KV store
-  "input": {                     // optional: the request the user code sees
-    "method": "POST",
-    "query":   { "name": "ada" },
-    "body":    { "values": [1, 2, 3] }
-  },
-  "allowedHosts": ["api.example.com"],  // optional: per-request allow-list, within allowed_outbound_hosts
-  "kvEnabled": true                      // optional: enables scoped KV access (default false)
-}
-```
-
-Code may be a main program that prints (captured as `{stdout, stderr, error}`) or an HTTP
-handler (`export default { fetch }` / `def handle_request(request)`) whose `Response` is
-returned verbatim.
-
-```bash
-curl -s localhost:3000/py/run -d '{"code":"print(6*7)","sandboxId":"demo"}'
-# {"stdout": "42\n", "stderr": "", "error": null}
-```
+See [examples/ai-code-executor](https://github.com/fermyon/spin-sandboxes/tree/main/examples/ai-code-executor) for a complete caller. Set `allowedHosts`, `kvEnabled`, and `identity` from application code, never from model output.
 
 ## Security model
 
-The trust boundary is the Wasm component (no filesystem; egress gated by Spin). Per-sandbox
-KV keys are namespaced unambiguously so no sandbox can read another's; outbound HTTP is
-default-deny and refuses loopback, link-local, private, and `.internal` targets even if
-allow-listed. There is no in-component CPU/wall-clock timeout or memory limit, so enforce a
-request deadline and memory cap at the host/deployment layer.
+The trust boundary is the Wasm component (no filesystem; egress gated by Spin). Per-sandbox KV keys are namespaced unambiguously, and KV is off unless the caller enables it. Outbound HTTP is default-deny and refuses loopback, link-local, private, and `.internal` targets even if allow-listed. There is no in-component CPU/wall-clock timeout or memory limit, so enforce a request deadline and memory cap at the host/deployment layer.
 
-Each component's `allowed_outbound_hosts` in `spin.toml` starts empty, so user code cannot
-make outbound requests. Add the hosts it may reach there (for example
-`["https://api.example.com"]`); a request's `allowedHosts` can then only narrow that list.
+Each component's `allowed_outbound_hosts` in `spin.toml` starts empty, so user code cannot make outbound requests. Add the hosts it may reach there (for example `["https://api.example.com"]`); a request's `allowedHosts` can then only narrow that list.
 
-To modify or rebuild the components, see
-[spin-sandboxes](https://github.com/fermyon/spin-sandboxes).
+To modify or rebuild the components, see [spin-sandboxes](https://github.com/fermyon/spin-sandboxes).

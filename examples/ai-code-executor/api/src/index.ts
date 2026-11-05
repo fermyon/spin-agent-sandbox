@@ -14,12 +14,16 @@ import * as variables from "@spinframework/spin-variables";
 import { createProvider } from "#llm-provider";
 
 import { Interpreter, type Language } from "@spinframework/sandbox/interpreter";
-import type { HttpInput } from "@spinframework/sandbox/core";
+import type { HttpInput, RunOpts } from "@spinframework/sandbox/core";
 import { interpreterTool } from "@spinframework/sandbox/tools";
 import { historyFor, type History, type ToolResult } from "./llm/types";
 import { log, initLogger } from "./logger";
 
 const INTERPRETER_TOOL = interpreterTool();
+const EXECUTION_POLICY: Pick<RunOpts, "allowedHosts" | "kvEnabled"> = {
+  allowedHosts: [],
+  kvEnabled: false,
+};
 
 function systemPrompt(): string {
   return (
@@ -39,8 +43,7 @@ type WireEvent =
       id: number;
       language: string;
       code: string;
-      // Extra npm packages the model asked to bundle in (name -> semver), and the outbound
-      // hosts it allow-listed for this run, shown in the UI alongside the code.
+      // Extra npm packages the model requested and application-approved outbound hosts.
       packages?: Record<string, string>;
       allowedHosts?: string[];
       genMs: number;
@@ -68,6 +71,7 @@ function formatToolResult(stdout: string, stderr: string, error: string | null):
 // output the moment the sandbox returns) instead of waiting for the whole
 // transcript.
 async function runAgent(prompt: string, history: unknown, emit: Emit): Promise<void> {
+  const sandboxId = crypto.randomUUID();
   const llm = createProvider();
   const tsUrl = variables.get("ts_interpreter_url") ?? "http://ts-sandbox.spin.internal";
   const pyUrl = variables.get("py_interpreter_url") ?? "http://py-sandbox.spin.internal";
@@ -109,26 +113,27 @@ async function runAgent(prompt: string, history: unknown, emit: Emit): Promise<v
         language: Language;
         code: string;
         dependencies?: Record<string, string>;
-        allowedHosts?: string[];
-        identity?: string;
         input?: HttpInput;
-        kvEnabled?: boolean;
       };
+      if (!input || typeof input !== "object" || Array.isArray(input) ||
+          Object.keys(input).some((key) => !Object.prototype.hasOwnProperty.call(INTERPRETER_TOOL.inputSchema.properties, key))) {
+        toolResults.push({ id: call.id, content: "error: unsupported tool arguments; execution permissions are controlled by the application", isError: true });
+        continue;
+      }
       if ((input.language !== "python" && input.language !== "javascript") || typeof input.code !== "string") {
         toolResults.push({ id: call.id, content: "error: arguments must include language (python|javascript) and code", isError: true });
         continue;
       }
       const id = toolId++;
 
-      // Stream the code the moment the model produces it (before it runs), along with the
-      // extra packages and allow-listed hosts it requested, so the UI can show them.
+      // Stream the code, requested packages, and application-approved hosts before execution.
       emit({
         t: "tool_start",
         id,
         language: input.language,
         code: input.code,
         packages: input.language === "javascript" ? input.dependencies : undefined,
-        allowedHosts: Array.isArray(input.allowedHosts) && input.allowedHosts.length ? input.allowedHosts : undefined,
+        allowedHosts: EXECUTION_POLICY.allowedHosts?.length ? EXECUTION_POLICY.allowedHosts : undefined,
         genMs,
       });
 
@@ -138,18 +143,9 @@ async function runAgent(prompt: string, history: unknown, emit: Emit): Promise<v
       let execMs = 0;
       try {
         const t = Date.now();
-        // The model picks `identity`, and it becomes the sandbox id as-is, so every
-        // conversation (or prompt-injected content) naming the same identity shares the
-        // same KV data. That is fine for this single-user demo. A multi-user app should
-        // prefix it with a scope it controls, length-prefixed so no two (scope, identity)
-        // pairs produce the same id, e.g.
-        // `input.identity ? `${userId.length}:${userId}:${input.identity}` : undefined`
-        // (runs without an identity already get a fresh random id). KV keys are
-        // namespaced per sandbox id, so distinct scopes never see each other's data.
         const runOpts = {
-          allowedHosts: Array.isArray(input.allowedHosts) ? input.allowedHosts : [],
-          identity: input.identity,
-          kvEnabled: input.kvEnabled ?? false,
+          ...EXECUTION_POLICY,
+          identity: sandboxId,
           packageJson:
             input.language === "javascript" && input.dependencies && Object.keys(input.dependencies).length
               ? { dependencies: input.dependencies }

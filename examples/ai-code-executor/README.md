@@ -57,6 +57,20 @@ each step):
   fed back to the model, which loops until it has an answer. For JavaScript the model
   may also list extra npm `dependencies`, which are bundled in before the run.
 
+The developer controls `EXECUTION_POLICY` in [`api/src/index.ts`](api/src/index.ts). It defaults to no outbound HTTP and no KV. For example, to allow session storage:
+
+```ts
+const EXECUTION_POLICY = { allowedHosts: [], kvEnabled: true };
+```
+
+To allow an external API, add its HTTPS origin to `allowedHosts` and the deployment allowlist. The model cannot change permissions or supply sandbox IDs.
+
+### Sandbox identity and reuse
+
+The API generates one session ID per `/api/chat` request and passes it as the identity. With KV enabled, all calls in that loop share storage across languages, for example a counter that later calls read. With KV disabled, the ID has no effect. Variables and globals never persist, regardless of ID.
+
+A later chat request gets a new session ID, even with earlier history. Reuse across turns requires server-stored conversation IDs and ownership checks, not IDs recovered from client history. The shared access token is not per-user authentication. See the [SDK example](../../sdk/README.md#identity-and-session-isolation) for the mapping and retention requirements.
+
 ## Streaming + timing
 
 `/api/chat` responds with a newline-delimited JSON (NDJSON) stream, not one buffered
@@ -159,8 +173,7 @@ ones.
 ## Security: read before deploying
 
 The model's code runs in the private interpreters with no network access unless the
-model lists hosts in `allowedHosts`, and no storage unless it sets `kvEnabled`. The api
-sets the access cookie `HttpOnly` (and `Secure` over HTTPS) and rejects `/api/*`
+application permits hosts in `EXECUTION_POLICY.allowedHosts`, and no storage unless the application sets `EXECUTION_POLICY.kvEnabled`. The api sets the access cookie `HttpOnly` (and `Secure` over HTTPS) and rejects `/api/*`
 requests from other origins. Before deploying:
 
 1. Set `access_token`. With it empty the instance is open (the api logs a warning on
@@ -176,9 +189,7 @@ requests from other origins. Before deploying:
    ```
    This applies to the whole app, so it also blocks a model server on `localhost` or a
    private address; use it with a remote model.
-3. The model chooses `identity`, so runs that name the same identity share key-value
-   data. For more than one user, have the api prefix it with a length-prefixed user
-   scope (`${userId.length}:${userId}:${identity}`) before running the code.
+3. If enabling KV, derive the session ID from authenticated user or conversation context instead of generating one per request. Do not share one ID across users.
 
 ## Layout
 

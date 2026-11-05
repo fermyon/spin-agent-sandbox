@@ -53,6 +53,25 @@ test("run() defaults allowedHosts and kvEnabled to deny and uses /ts for javascr
   assert.equal(env.sandboxId, "gen-id"); // generated when no identity
 });
 
+test("application-owned identities are reused within a session and separated across sessions", async () => {
+  const mock = mockFetch(() => ({ body: JSON.stringify({ stdout: "ok", stderr: "", error: null }) }));
+  const javascript = Interpreter.javascript({ baseUrl: "http://ts", fetch: mock.fn });
+  const python = Interpreter.python({ baseUrl: "http://py", fetch: mock.fn });
+  const sessionA = { identity: "server-issued-session-a", kvEnabled: true };
+  const sessionB = { identity: "server-issued-session-b", kvEnabled: true };
+
+  await javascript.run("console.log(1)", sessionA);
+  await python.run("print(2)", sessionA);
+  await javascript.run("console.log(3)", sessionB);
+
+  const envelopes = mock.calls.map((call) => JSON.parse(call.init.body));
+  assert.deepEqual(envelopes.map((envelope) => envelope.sandboxId), [
+    sessionA.identity, sessionA.identity, sessionB.identity,
+  ]);
+  assert.ok(envelopes.every((envelope) => envelope.kvEnabled === true));
+  assert.deepEqual(mock.calls.map((call) => call.url), ["http://ts/ts/run", "http://py/py/run", "http://ts/ts/run"]);
+});
+
 test("language-bound clients use their language for direct run() and runHandler() calls", async () => {
   const mock = mockFetch(() => ({ body: JSON.stringify({ stdout: "ok", stderr: "", error: null }) }));
   const javascript = Interpreter.javascript({ baseUrl: "http://w", fetch: mock.fn });

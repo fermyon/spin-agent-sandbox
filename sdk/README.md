@@ -40,6 +40,26 @@ import { interpreterTool, toAnthropicTool } from "@spinframework/sandbox/tools";
 const tools = [toAnthropicTool(interpreterTool({ languages: ["javascript"] }))];
 ```
 
+The model supplies `language`, `code`, optional HTTP `input`, and JavaScript `dependencies`. The developer sets `allowedHosts`, `kvEnabled`, and `identity` in execution options. Validate tool arguments, reject unknown fields, and never spread model arguments into those options. Keep sandbox endpoints private.
+
+### Identity and session isolation
+
+An `identity` selects a KV namespace, shared across languages when KV is enabled. Omit it for a new ID per call; reuse it for shared storage. Every execution is a fresh Wasm instance: variables and globals never persist. The model never sees or chooses the identity. To let an agent keep state across calls, generate one ID per conversation and pass it with `kvEnabled: true`:
+
+```ts
+const sessionId = crypto.randomUUID();
+
+await runner.run(args.code, {
+  lang: args.language,
+  input: args.input,
+  allowedHosts: ["https://api.example.com"],
+  kvEnabled: true,
+  identity: sessionId,
+});
+```
+
+For reuse across chat turns, store the UUID server-side with its owner and check ownership on every request. IDs select namespaces; they are not authorization. Never accept raw IDs from model output or unchecked client input. Use separate IDs for separate users/conversations, and define quotas and cleanup: abandoning an ID does not delete its KV data. Resumable side tracks and KV cloning are not provided.
+
 ## Backends
 
 - **`interpreter`**: a thin client over a sandbox component's `POST /ts/run`

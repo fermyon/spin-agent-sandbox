@@ -11,15 +11,17 @@ description = "{{project-description}}"
 # Both components are prebuilt and pulled from the spin-sandboxes GitHub releases.
 # To move to a newer release, update each source URL and digest.
 
+# Both components are PRIVATE (no public route): they run untrusted code and are reachable
+# only via service chaining from another component in this app. Add your own component that
+# drives them through @spinframework/sandbox (see examples/ai-code-executor) and list
+# "http://ts-sandbox.spin.internal" / "http://py-sandbox.spin.internal" in its
+# `allowed_outbound_hosts`.
+
 # ---------------------------------------------------------------------------
 # TypeScript / JavaScript sandbox
 # ---------------------------------------------------------------------------
-# NOTE: /ts and /py are PUBLIC; this standalone app is a local dev/test harness. In
-# production run the sandbox as a PRIVATE component (`route = { private = true }`) inside a
-# consuming app and reach it via service chaining through @spinframework/sandbox; see the
-# `sandbox-ts` / `sandbox-py` templates' `spin add` mode and examples/ai-code-executor.
 [[trigger.http]]
-route = "/ts/..."
+route = { private = true }
 component = "ts-sandbox"
 
 [component.ts-sandbox]
@@ -37,7 +39,7 @@ log_level = "info"
 # Python sandbox
 # ---------------------------------------------------------------------------
 [[trigger.http]]
-route = "/py/..."
+route = { private = true }
 component = "py-sandbox"
 
 [component.py-sandbox]
