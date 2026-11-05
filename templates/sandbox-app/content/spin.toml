@@ -8,7 +8,7 @@ version = "0.1.0"
 authors = ["{{authors}}"]
 description = "{{project-description}}"
 
-# Both components are prebuilt and pulled from the spin-sandboxes GitHub releases.
+# Both components are prebuilt and pulled from the spin-agent-sandbox GitHub releases.
 # To move to a newer release, update each source URL and digest.
 
 # Both components are PRIVATE (no public route): they run untrusted code and are reachable
@@ -25,7 +25,7 @@ route = { private = true }
 component = "ts-sandbox"
 
 [component.ts-sandbox]
-source = { url = "https://github.com/fermyon/spin-sandboxes/releases/download/v0.1.0/ts-sandbox.wasm", digest = "sha256:0000000000000000000000000000000000000000000000000000000000000000" }
+source = { url = "https://github.com/fermyon/spin-agent-sandbox/releases/download/canary/ts-sandbox.wasm", digest = "sha256:5c815217be184d01ad9b1697273ae41dba22c8d1bb6fd47d831a2ebaf04fe30b" }
 # Single shared KV store; the component scopes keys per sandbox id.
 key_value_stores = ["default"]
 # Outbound HTTP is denied until you list hosts here, e.g. ["https://api.example.com"]. Each
@@ -43,7 +43,7 @@ route = { private = true }
 component = "py-sandbox"
 
 [component.py-sandbox]
-source = { url = "https://github.com/fermyon/spin-sandboxes/releases/download/v0.1.0/py-sandbox.wasm", digest = "sha256:0000000000000000000000000000000000000000000000000000000000000000" }
+source = { url = "https://github.com/fermyon/spin-agent-sandbox/releases/download/canary/py-sandbox.wasm", digest = "sha256:9ab0826b16a066106caf0ef36823a901576eab2f0beb484c8e325deca79c4ad2" }
 key_value_stores = ["default"]
 # Outbound HTTP is denied until you list hosts here, e.g. ["https://api.example.com"]. Each
 # request's `allowedHosts` can only narrow this list, and it always refuses private and
