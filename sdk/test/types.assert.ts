@@ -32,3 +32,23 @@ itp.exec(["echo", "hi"]);
 
 // But the interpreter DOES have its scoped-KV power surface.
 void itp.kv("ns");
+
+// The tool's input type narrows to the configured languages, like its schema.
+import { interpreterTool, type InterpreterToolInput } from "../src/tools.ts";
+import type * as z from "zod";
+type InputOf<T> = T extends { inputSchema: z.ZodType<infer I> } ? I : never;
+type PyInput = InputOf<ReturnType<typeof interpreterTool<"python">>>;
+declare const py: PyInput;
+const pyLang: "python" = py.language;
+void pyLang;
+// @ts-expect-error a Python-only tool has no dependencies argument
+void py.dependencies;
+const pyTool = interpreterTool({ languages: ["python"] });
+const parsedPy = pyTool.inputSchema.parse({});
+// @ts-expect-error language is inferred as "python" from the options literal
+const notJs: "javascript" = parsedPy.language;
+void notJs;
+declare const both: InterpreterToolInput;
+void both.dependencies;
+const lang: "python" | "javascript" = interpreterTool().inputSchema.parse({}).language;
+void lang;

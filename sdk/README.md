@@ -31,16 +31,126 @@ or validation failures.
 
 ## Agent tools
 
-`interpreterTool()` returns context for the languages served by one interpreter endpoint.
-Adapt it to Anthropic or OpenAI tool shapes with `toAnthropicTool()` or `toOpenAITool()`.
+`interpreterTool()` returns `{ name, description, inputSchema }` for the languages served
+by one interpreter endpoint. `inputSchema` is a strict [Zod](https://zod.dev) schema, which
+is the single source of truth: frameworks that take Zod (such as the Vercel AI SDK) use it
+directly, and the Anthropic and OpenAI adapters derive JSON Schema from it.
+
+Every agent setup has the same three parts: the `Interpreter` clients, the tool, and an
+`execute` function where the developer sets execution policy.
 
 ```ts
-import { interpreterTool, toAnthropicTool } from "@spinframework/sandbox/tools";
+import { Interpreter } from "@spinframework/sandbox/interpreter";
+import { interpreterTool, type InterpreterToolInput } from "@spinframework/sandbox/tools";
 
-const tools = [toAnthropicTool(interpreterTool({ languages: ["javascript"] }))];
+// One client per private sandbox component.
+const interpreters = {
+  javascript: Interpreter.javascript({ baseUrl: "http://ts-sandbox.spin.internal" }),
+  python: Interpreter.python({ baseUrl: "http://py-sandbox.spin.internal" }),
+};
+
+// A Zod-backed tool, limited to the languages you serve.
+export const sandboxTool = interpreterTool({ languages: ["javascript", "python"] });
+
+// Agent system prompt. Keep the floating-promise rule: un-awaited work is discarded silently.
+export const SYSTEM_PROMPT =
+  "Write code and run it in the sandbox; never compute by hand. Print results to stdout. " +
+  "In JavaScript, await all asynchronous work: never leave floating promises (an un-awaited " +
+  "async call, IIFE, or timer), because work still running when the program ends is discarded.";
+
+// The developer sets execution policy; model arguments never reach these options.
+export async function runSandbox(args: InterpreterToolInput, sessionId: string): Promise<string> {
+  const opts = {
+    allowedHosts: ["https://api.example.com"],
+    kvEnabled: true,
+    identity: sessionId,
+    packageJson: args.language === "javascript" && args.dependencies ? { dependencies: args.dependencies } : undefined,
+  };
+  const runner = interpreters[args.language];
+  if (args.input) {
+    const res = await runner.runHandler(args.code, args.input, opts);
+    return `HTTP ${res.status}\n${await res.text()}`;
+  }
+  const r = await runner.execute(args.code, opts);
+  return r.error ? `${r.stdout}\n${r.stderr}\nerror: ${r.error.name}: ${r.error.value}` : r.stdout;
+}
 ```
 
-The model supplies `language`, `code`, optional HTTP `input`, and JavaScript `dependencies`. The developer sets `allowedHosts`, `kvEnabled`, and `identity` in execution options. Validate tool arguments, reject unknown fields, and never spread model arguments into those options. Keep sandbox endpoints private.
+The input type narrows to the configured languages: with `languages: ["python"]`, `language`
+is `"python"` and `dependencies` does not exist, matching the schema.
+
+The model supplies `language`, `code`, optional HTTP `input`, and JavaScript `dependencies`. The developer sets `allowedHosts`, `kvEnabled`, and `identity` in execution options. Validate tool arguments with `inputSchema.safeParse(args)`. The schema is strict, so it rejects unknown fields such as `allowedHosts`. Never spread model arguments into those options. Keep sandbox endpoints private.
+
+### Vercel AI SDK
+
+Pass the Zod schema as-is. The AI SDK validates the model's arguments with it, and `execute`
+receives them typed.
+
+```ts
+import { ToolLoopAgent, tool, stepCountIs } from "ai";
+import { anthropic } from "@ai-sdk/anthropic";
+
+const sessionId = crypto.randomUUID();
+const agent = new ToolLoopAgent({
+  model: anthropic("claude-sonnet-5-5"),
+  instructions: SYSTEM_PROMPT,
+  tools: {
+    [sandboxTool.name]: tool({
+      description: sandboxTool.description,
+      inputSchema: sandboxTool.inputSchema,
+      execute: (args) => runSandbox(args, sessionId),
+    }),
+  },
+  stopWhen: stepCountIs(10),
+});
+
+const { text } = await agent.generate({ prompt: "What is the 50th Fibonacci number?" });
+```
+
+### Anthropic SDK
+
+`toAnthropicTool()` derives the JSON Schema from the Zod schema. Validate each `tool_use`
+with the same Zod schema before running it.
+
+```ts
+import Anthropic from "@anthropic-ai/sdk";
+import { toAnthropicTool } from "@spinframework/sandbox/tools";
+
+const client = new Anthropic();
+const sessionId = crypto.randomUUID();
+const tools = [toAnthropicTool(sandboxTool)];
+const messages: Anthropic.MessageParam[] = [{ role: "user", content: "What is the 50th Fibonacci number?" }];
+
+for (let step = 0; step < 10; step++) {
+  const res = await client.messages.create({
+    model: "claude-sonnet-5-5",
+    max_tokens: 4096,
+    system: SYSTEM_PROMPT,
+    tools,
+    messages,
+  });
+  messages.push({ role: "assistant", content: res.content });
+  if (res.stop_reason !== "tool_use") break;
+
+  const results: Anthropic.ToolResultBlockParam[] = [];
+  for (const block of res.content) {
+    if (block.type !== "tool_use") continue;
+    const parsed = sandboxTool.inputSchema.safeParse(block.input); // rejects allowedHosts and other unknown fields
+    results.push(
+      parsed.success
+        ? { type: "tool_result", tool_use_id: block.id, content: await runSandbox(parsed.data, sessionId) }
+        : { type: "tool_result", tool_use_id: block.id, content: parsed.error.message, is_error: true },
+    );
+  }
+  messages.push({ role: "user", content: results });
+}
+```
+
+### OpenAI and plain JSON Schema
+
+`toOpenAITool(sandboxTool)` returns OpenAI's function-tool shape, and `toToolDefinition()`
+returns the provider-neutral JSON Schema form. The adapters also accept a hand-written
+`ToolDefinition` with a JSON Schema `inputSchema`.
 
 ### Identity and session isolation
 

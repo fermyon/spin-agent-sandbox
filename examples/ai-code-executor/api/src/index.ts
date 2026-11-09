@@ -14,12 +14,13 @@ import * as variables from "@spinframework/spin-variables";
 import { createProvider } from "#llm-provider";
 
 import { Interpreter, type Language } from "@spinframework/sandbox/interpreter";
-import type { HttpInput, RunOpts } from "@spinframework/sandbox/core";
-import { interpreterTool } from "@spinframework/sandbox/tools";
+import type { RunOpts } from "@spinframework/sandbox/core";
+import { interpreterTool, toToolDefinition } from "@spinframework/sandbox/tools";
 import { historyFor, type History, type ToolResult } from "./llm/types";
 import { log, initLogger } from "./logger";
 
 const INTERPRETER_TOOL = interpreterTool();
+const INTERPRETER_TOOL_JSON = toToolDefinition(INTERPRETER_TOOL);
 const EXECUTION_POLICY: Pick<RunOpts, "allowedHosts" | "kvEnabled"> = {
   allowedHosts: [],
   kvEnabled: false,
@@ -101,7 +102,7 @@ async function runAgent(prompt: string, history: unknown, emit: Emit): Promise<v
     // produced, instead of arriving in one buffered blob at the end of the turn.
     const res = await llm.turn(
       messages,
-      { system: systemPrompt(), tools: [INTERPRETER_TOOL], maxTokens: 4096 },
+      { system: systemPrompt(), tools: [INTERPRETER_TOOL_JSON], maxTokens: 4096 },
       { onText: (block, text) => emit({ t: "text_delta", block: `${turn}-${block}`, text }) },
     );
     const genMs = Date.now() - genStart;
@@ -109,21 +110,17 @@ async function runAgent(prompt: string, history: unknown, emit: Emit): Promise<v
 
     const toolResults: ToolResult[] = [];
     for (const call of res.toolCalls) {
-      const input = call.input as {
-        language: Language;
-        code: string;
-        dependencies?: Record<string, string>;
-        input?: HttpInput;
-      };
-      if (!input || typeof input !== "object" || Array.isArray(input) ||
-          Object.keys(input).some((key) => !Object.prototype.hasOwnProperty.call(INTERPRETER_TOOL.inputSchema.properties, key))) {
-        toolResults.push({ id: call.id, content: "error: unsupported tool arguments; execution permissions are controlled by the application", isError: true });
+      // The strict Zod schema rejects unknown fields, so the model cannot set execution policy.
+      const parsed = INTERPRETER_TOOL.inputSchema.safeParse(call.input);
+      if (!parsed.success) {
+        toolResults.push({
+          id: call.id,
+          content: `error: invalid tool arguments (${parsed.error.issues.map((i) => i.message).join("; ")}); execution permissions are controlled by the application`,
+          isError: true,
+        });
         continue;
       }
-      if ((input.language !== "python" && input.language !== "javascript") || typeof input.code !== "string") {
-        toolResults.push({ id: call.id, content: "error: arguments must include language (python|javascript) and code", isError: true });
-        continue;
-      }
+      const input = parsed.data;
       const id = toolId++;
 
       // Stream the code, requested packages, and application-approved hosts before execution.
