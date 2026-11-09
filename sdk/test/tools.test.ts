@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { interpreterTool, toAnthropicTool, toOpenAITool } from "../src/tools.ts";
+import { interpreterTool, toAnthropicTool, toOpenAITool, toToolDefinition, type ToolDefinition } from "../src/tools.ts";
+
+const jsonTool = (options?: Parameters<typeof interpreterTool>[0]) => toToolDefinition(interpreterTool(options));
 
 test("interpreterTool scopes its schema to the configured language", () => {
-  const tool = interpreterTool({ languages: ["python"] });
+  const tool = jsonTool({ languages: ["python"] });
   assert.equal(tool.name, "run_in_wasm_interpreter");
   assert.deepEqual(tool.inputSchema.properties.language, { type: "string", enum: ["python"] });
   assert.equal("dependencies" in tool.inputSchema.properties, false);
@@ -14,7 +16,7 @@ test("interpreterTool scopes its schema to the configured language", () => {
 
 test("interpreterTool leaves execution policy to the application", () => {
   for (const languages of [undefined, ["python"] as const, ["javascript"] as const]) {
-    const tool = interpreterTool({ languages });
+    const tool = jsonTool({ languages });
     for (const field of ["allowedHosts", "kvEnabled", "identity"]) {
       assert.equal(field in tool.inputSchema.properties, false);
       assert.equal(tool.description.includes(field), false);
@@ -25,8 +27,37 @@ test("interpreterTool leaves execution policy to the application", () => {
   }
 });
 
+test("the Zod schema rejects policy fields and unknown arguments", () => {
+  const { inputSchema } = interpreterTool();
+  for (const field of ["allowedHosts", "kvEnabled", "identity", "extra"]) {
+    const result = inputSchema.safeParse({ language: "python", code: "print(1)", [field]: true });
+    assert.equal(result.success, false, field);
+  }
+});
+
+test("the Zod schema validates and types model arguments", () => {
+  const { inputSchema } = interpreterTool();
+  const args = {
+    language: "javascript",
+    code: "console.log(1)",
+    dependencies: { marked: "^11.0.0" },
+    input: { method: "POST", path: "/x", body: { a: 1 } },
+  };
+  assert.deepEqual(inputSchema.parse(args), args);
+  assert.equal(inputSchema.safeParse({ language: "ruby", code: "puts 1" }).success, false);
+  assert.equal(inputSchema.safeParse({ language: "python" }).success, false);
+  assert.equal(inputSchema.safeParse({ language: "python", code: 1 }).success, false);
+  assert.equal(inputSchema.safeParse({ language: "javascript", code: "", dependencies: { x: 1 } }).success, false);
+});
+
+test("Python-only tools reject JavaScript-only arguments", () => {
+  const { inputSchema } = interpreterTool({ languages: ["python"] });
+  assert.equal(inputSchema.safeParse({ language: "javascript", code: "1" }).success, false);
+  assert.equal(inputSchema.safeParse({ language: "python", code: "1", dependencies: {} }).success, false);
+});
+
 test("JavaScript tools retain program inputs and asynchronous execution guidance", () => {
-  const tool = interpreterTool({ languages: ["javascript"] });
+  const tool = jsonTool({ languages: ["javascript"] });
   assert.deepEqual(Object.keys(tool.inputSchema.properties), ["language", "code", "dependencies", "input"]);
   assert.match(JSON.stringify(tool.inputSchema.properties.code), /Never leave floating promises/);
 });
@@ -49,11 +80,41 @@ test("HTTP guidance explains denied destinations using the runtime's actual erro
   assert.match(javascript.description, /runtime may report the generic error/);
 });
 
+test("the derived JSON Schema carries no $schema keyword", () => {
+  assert.equal("$schema" in jsonTool().inputSchema, false);
+});
+
 test("tool adapters support Anthropic and OpenAI shapes", () => {
   const tool = interpreterTool({ languages: ["javascript"] });
-  assert.deepEqual(toAnthropicTool(tool).input_schema, tool.inputSchema);
+  const json = toToolDefinition(tool);
+  assert.deepEqual(toAnthropicTool(tool), { name: json.name, description: json.description, input_schema: json.inputSchema });
   assert.deepEqual(toOpenAITool(tool), {
     type: "function",
-    function: { name: tool.name, description: tool.description, parameters: tool.inputSchema },
+    function: { name: json.name, description: json.description, parameters: json.inputSchema },
   });
+});
+
+test("tool adapters pass hand-written JSON Schema tools through unchanged", () => {
+  const custom: ToolDefinition = {
+    name: "create_app",
+    description: "Publish an app.",
+    inputSchema: { type: "object", properties: { code: { type: "string" } }, required: ["code"], additionalProperties: false },
+  };
+  assert.equal(toToolDefinition(custom), custom);
+  assert.equal(toAnthropicTool(custom).input_schema, custom.inputSchema);
+  assert.equal(toOpenAITool(custom).function.parameters, custom.inputSchema);
+});
+
+test("the derived JSON Schema and description match the pre-Zod hand-written output", async () => {
+  // Captured from the JSON Schema version of tools.ts. Any drift in what the model sees fails here.
+  const { default: golden } = await import("./fixtures/interpreter-tool.json", { with: { type: "json" } });
+  const configs = {
+    default: undefined,
+    python: { languages: ["python"] },
+    javascript: { languages: ["javascript"] },
+    "javascript,python": { languages: ["javascript", "python"] },
+  } as const;
+  for (const [key, options] of Object.entries(configs)) {
+    assert.deepStrictEqual(jsonTool(options), (golden as Record<string, unknown>)[key], key);
+  }
 });
