@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "An extensible client for sandboxed code execution from a Spin application. Ships a Wasm code-interpreter backend; extensible to other backends.",
   "type": "module",
-  "license": "Apache-2.0",
+  "license": "Apache-2.0 WITH LLVM-exception",
   "exports": {
     ".": "./src/index.ts",
     "./core": "./src/core/index.ts",
