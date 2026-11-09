@@ -321,6 +321,10 @@ export class InterpreterKV {
     return this.eval<string[]>(`out({ v: s.getKeys() });`, "").then((r) => r.v);
   }
 
+  async clear(): Promise<void> {
+    await this.eval(`for (const key of s.getKeys()) s.delete(key); out({ ok: true });`, "");
+  }
+
   // Runs a KV snippet against this namespace and parses the JSON it prints.
   private async eval<T>(bodyExpr: string, key: string): Promise<{ v: T }> {
     const code =

@@ -25,7 +25,7 @@ test("run() maps the main-program shape and selects the route + envelope", async
   const mock = mockFetch(() => ({ body: JSON.stringify({ stdout: "42\n", stderr: "", error: null }) }));
   const itp = new Interpreter({ baseUrl: "http://wasm.spin.internal/", fetch: mock.fn });
 
-  const res = await itp.run("print(6*7)", { lang: "python", identity: "job-1", allowedHosts: ["api.x.com"], kvEnabled: true });
+  const res = await itp.run("print(6*7)", { lang: "python", identity: "job-1", allowedHosts: ["https://api.x.com"], kvEnabled: true });
 
   assert.equal(res.stdout, "42\n");
   assert.equal(res.error, undefined);
@@ -36,7 +36,7 @@ test("run() maps the main-program shape and selects the route + envelope", async
   const env = JSON.parse(mock.calls[0].init.body);
   assert.equal(env.code, "print(6*7)");
   assert.equal(env.sandboxId, "job-1");
-  assert.deepEqual(env.allowedHosts, ["api.x.com"]);
+  assert.deepEqual(env.allowedHosts, ["https://api.x.com"]);
   assert.equal(env.kvEnabled, true);
 });
 
@@ -117,6 +117,19 @@ test("an unbound client retains access to both language routes and JavaScript KV
   assert.equal(mock.calls[0].url, "http://combined/ts/run");
   assert.deepEqual(itp.capabilities().languages, ["python", "javascript"]);
   assert.equal(itp.capabilities().arbitraryImage, true);
+});
+
+test("KV clear runs in the selected namespace and propagates errors", async () => {
+  const mock = mockFetch(() => ({ body: JSON.stringify({ stdout: '{"ok":true}\n', stderr: "", error: null }) }));
+  const itp = Interpreter.javascript({ baseUrl: "http://ts", fetch: mock.fn });
+  await itp.kv("tenant-a").clear();
+  const envelope = JSON.parse(mock.calls[0].init.body);
+  assert.equal(envelope.sandboxId, "tenant-a");
+  assert.equal(envelope.kvEnabled, true);
+  assert.match(envelope.code, /s\.getKeys\(\).*s\.delete\(key\)/);
+
+  const failing = mockFetch(() => ({ body: JSON.stringify({ stdout: "", stderr: "", error: "denied" }) }));
+  await assert.rejects(() => Interpreter.javascript({ baseUrl: "http://ts", fetch: failing.fn }).kv("tenant-a").clear(), /denied/);
 });
 
 test("run() surfaces a runtime error string as Result.error (data, not throw)", async () => {

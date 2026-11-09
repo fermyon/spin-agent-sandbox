@@ -135,13 +135,27 @@ jsonpath "$.stdout" contains "keys=[]"
 # --- Egress (TypeScript): default-deny with no allowedHosts ---
 POST {{base_url}}/ts/run
 content-type: application/json
+{"code":"console.log('should not run')","sandboxId":"egress-test","allowedHosts":["example.com"]}
+HTTP 400
+[Asserts]
+jsonpath "$.message" contains "allowedHosts"
+
+POST {{base_url}}/py/run
+content-type: application/json
+{"code":"print('should not run')","sandboxId":"egress-test","allowedHosts":["https://example.com/path"]}
+HTTP 400
+[Asserts]
+jsonpath "$.message" contains "allowedHosts"
+
+POST {{base_url}}/ts/run
+content-type: application/json
 file,bodies/ts-egress-deny.json;
 HTTP 200
 [Asserts]
 jsonpath "$.stdout" contains "DENIED"
 jsonpath "$.stdout" not contains "ALLOWED"
 
-# --- Egress: a bare "*" in the per-request allow-list must NOT grant all ---
+# --- Egress: a wildcard host in the per-request allow-list must NOT grant all ---
 POST {{base_url}}/ts/run
 content-type: application/json
 file,bodies/ts-egress-star.json;

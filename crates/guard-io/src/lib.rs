@@ -2,6 +2,8 @@
 //! This stays separate from `guard` to avoid a component-instantiation cycle.
 
 mod bindings;
+#[path = "../../allowed_hosts.rs"]
+mod allowed_hosts;
 mod capabilities;
 mod context;
 mod egress;

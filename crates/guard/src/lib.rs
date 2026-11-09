@@ -7,6 +7,8 @@ wit_bindgen::generate!({
 });
 
 mod envelope;
+#[path = "../../allowed_hosts.rs"]
+mod allowed_hosts;
 mod logging;
 
 use futures::{SinkExt, TryStreamExt};
