@@ -72,6 +72,11 @@ pub fn validate(body: &[u8]) -> Result<Envelope, EnvelopeError> {
     if raw.sandbox_id.len() > MAX_SANDBOX_ID {
         return Err(EnvelopeError::Invalid(format!("sandboxId must be at most {MAX_SANDBOX_ID} bytes")));
     }
+    if let Some(hosts) = &raw.allowed_hosts {
+        if hosts.iter().any(|host| crate::allowed_hosts::parse_pattern(host).is_none()) {
+            return Err(EnvelopeError::Invalid("allowedHosts contains an invalid host pattern".to_string()));
+        }
+    }
     Ok(Envelope {
         code: raw.code,
         sandbox_id: raw.sandbox_id,
@@ -91,7 +96,7 @@ mod tests {
             "code": "console.log(1)",
             "sandboxId": "tenant-a",
             "input": {"method": "POST", "path": "/x", "body": "hi"},
-            "allowedHosts": ["api.example.com"],
+            "allowedHosts": ["https://api.example.com"],
             "kvEnabled": true
         }"#;
         let env = validate(body).expect("valid envelope");
@@ -100,7 +105,7 @@ mod tests {
         let input = env.input.expect("input present");
         assert_eq!(input.method, Some("POST".to_string()));
         assert_eq!(input.path, Some("/x".to_string()));
-        assert_eq!(env.allowed_hosts, Some(vec!["api.example.com".to_string()]));
+        assert_eq!(env.allowed_hosts, Some(vec!["https://api.example.com".to_string()]));
         assert!(env.kv_enabled);
     }
 
@@ -112,6 +117,14 @@ mod tests {
         // Absent allowedHosts means no outbound is permitted.
         assert_eq!(env.allowed_hosts, None);
         assert!(!env.kv_enabled);
+    }
+
+    #[test]
+    fn rejects_invalid_allowed_hosts() {
+        for host in ["*", "example.com", "https://example.com/path", "https://example.com:1-10"] {
+            let body = serde_json::json!({"code": "1", "sandboxId": "a", "allowedHosts": [host]}).to_string();
+            assert!(matches!(validate(body.as_bytes()), Err(EnvelopeError::Invalid(_))), "{host}");
+        }
     }
 
     #[test]

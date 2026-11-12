@@ -38,8 +38,14 @@ if (!baseUrl) {
     const kv = Interpreter.javascript({ baseUrl }).kv(namespace);
 
     await kv.setJson("answer", 42);
+    await kv.setJson("other", "value");
     assert.equal(await kv.getJson<number>("answer"), 42);
-    await kv.delete("answer");
+    const other = Interpreter.javascript({ baseUrl }).kv(`${namespace}-other`);
+    await other.setJson("answer", 99);
+    await kv.clear();
     assert.equal(await kv.getJson<number>("answer"), null);
+    assert.deepEqual(await kv.keys(), []);
+    assert.equal(await other.getJson<number>("answer"), 99);
+    await other.clear();
   });
 }

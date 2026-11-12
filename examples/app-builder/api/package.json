@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "description": "App Builder API, an LLM generates HTTP-handler apps, stores them, and serves each live",
-  "license": "Apache-2.0",
+  "license": "Apache-2.0 WITH LLVM-exception",
   "main": "index.js",
   "type": "module",
   "scripts": {

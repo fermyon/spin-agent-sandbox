@@ -58,7 +58,13 @@ await runner.run(args.code, {
 });
 ```
 
-For reuse across chat turns, store the UUID server-side with its owner and check ownership on every request. IDs select namespaces; they are not authorization. Never accept raw IDs from model output or unchecked client input. Use separate IDs for separate users/conversations, and define quotas and cleanup: abandoning an ID does not delete its KV data. Resumable side tracks and KV cloning are not provided.
+For reuse across chat turns, store the UUID server-side with its owner and check ownership on every request. IDs select namespaces; they are not authorization. Never accept raw IDs from model output or unchecked client input. Use separate IDs for separate users/conversations, and define quotas and cleanup: abandoning an ID does not delete its KV data. After stopping all writers, use `await javascript.kv(sessionId).clear()` to remove the namespace's keys. This operation is not transactional; a failure may leave some keys behind and can be retried. Resumable side tracks and KV cloning are not provided.
+
+`allowedHosts` entries use `scheme://host[:port]`, for example `https://api.example.com`
+or `https://*.example.com:*`. Wildcards match subdomains only, wildcard hosts grant no
+access, and malformed entries return 400. The Spin manifest allowlist remains authoritative.
+Private routes are reachable by any component granted the corresponding service-chaining
+permission, so only trusted components should be granted access.
 
 ## Backends
 

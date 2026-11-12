@@ -1,5 +1,6 @@
 //! Per-request egress allow-list layered on Spin's host policy, with an SSRF backstop.
 
+use crate::allowed_hosts::parse_pattern;
 use ip_network::IpNetwork;
 use std::net::IpAddr;
 use url::Url;
@@ -36,21 +37,6 @@ fn parse_authority(scheme: &str, authority: &str) -> Option<(String, Option<u16>
     Some((url.host_str()?.to_string(), url.port()))
 }
 
-/// Splits the host part of an allow-list pattern (`host` or `host:port-spec`,
-/// with an IPv6 host in brackets) into its host and the raw, not-yet-parsed
-/// port spec — unlike `parse_authority`, the port half may also be `*`.
-fn split_pattern(pat: &str) -> (&str, Option<&str>) {
-    if let Some(rest) = pat.strip_prefix('[') {
-        if let Some((host, tail)) = rest.split_once(']') {
-            return (host, tail.strip_prefix(':'));
-        }
-    }
-    match pat.rsplit_once(':') {
-        Some((host, port)) => (host, Some(port)),
-        None => (pat, None),
-    }
-}
-
 /// The well-known default port for a URL scheme, used when an allow-list
 /// entry omits a port entirely.
 fn well_known_port(scheme: &str) -> Option<u16> {
@@ -77,8 +63,8 @@ fn port_matches(pat_port: Option<&str>, scheme: &str, port: Option<u16>) -> bool
 /// Returns true if `scheme://authority` (the outbound request's scheme and
 /// `host[:port]`) is allowed by the per-request `allowed` list. An allow-list
 /// entry with an explicit scheme (`https://example.com`) only matches that
-/// scheme; an entry without one, or with a `*` scheme (`*://example.com`),
-/// matches any scheme. An entry with no port matches only the request
+/// scheme; an entry with a `*` scheme (`*://example.com`) matches any scheme.
+/// An entry with no port matches only the request
 /// scheme's default port (80/http, 443/https); `:*` allows any port and
 /// `:8080` allows exactly that port.
 pub fn host_allowed(scheme: &str, authority: &str, allowed: &[String]) -> bool {
@@ -93,28 +79,16 @@ pub fn host_allowed(scheme: &str, authority: &str, allowed: &[String]) -> bool {
         return false; // deny internal targets unconditionally
     }
     allowed.iter().any(|raw| {
-        let raw = raw.trim();
-        if raw == "*" {
-            return false; // a bare "*" from the per-request list must not allow-all
+        let Some(pattern) = parse_pattern(raw) else { return false };
+        if matches!(pattern.host.as_str(), "*" | "self" | "self.alt") || (pattern.scheme != "*" && pattern.scheme != scheme_lower) {
+            return false;
         }
-        let (pat_scheme, rest) = match raw.split_once("://") {
-            Some((s, rest)) => (Some(s.to_ascii_lowercase()), rest),
-            None => (None, raw),
-        };
-        if let Some(ps) = &pat_scheme {
-            if ps != "*" && *ps != scheme_lower {
-                return false;
-            }
-        }
-        let rest = rest.split('/').next().unwrap_or(rest);
-        let (pat_host, pat_port) = split_pattern(rest);
-        let pat_host = pat_host.to_ascii_lowercase();
-        let host_matches = if let Some(base) = pat_host.strip_prefix("*.") {
-            host_lower == base || host_lower.ends_with(&format!(".{base}"))
+        let host_matches = if pattern.subdomains_only {
+            host_lower.ends_with(&format!(".{}", pattern.host))
         } else {
-            host_lower == pat_host
+            host_lower == pattern.host
         };
-        host_matches && port_matches(pat_port, &scheme_lower, port)
+        host_matches && port_matches(pattern.port.as_deref(), &scheme_lower, port)
     })
 }
 
@@ -131,7 +105,7 @@ mod tests {
     fn allows_an_exact_host_match() {
         // No port in the pattern defaults to the request scheme's well-known port,
         // mirroring Spin's own allowed_outbound_hosts port mechanics.
-        let allowed = vec!["example.com".to_string()];
+        let allowed = vec!["https://example.com".to_string()];
         assert!(host_allowed("https", "example.com", &allowed));
         assert!(host_allowed("https", "example.com:443", &allowed));
         assert!(!host_allowed("https", "example.com:8080", &allowed));
@@ -140,7 +114,7 @@ mod tests {
 
     #[test]
     fn allows_a_host_port_pattern_only_on_that_port() {
-        let allowed = vec!["example.com:8080".to_string()];
+        let allowed = vec!["https://example.com:8080".to_string()];
         assert!(host_allowed("https", "example.com:8080", &allowed));
         assert!(!host_allowed("https", "example.com:9090", &allowed));
         assert!(!host_allowed("https", "example.com", &allowed));
@@ -148,7 +122,7 @@ mod tests {
 
     #[test]
     fn a_wildcard_port_allows_any_port() {
-        let allowed = vec!["example.com:*".to_string()];
+        let allowed = vec!["https://example.com:*".to_string()];
         assert!(host_allowed("https", "example.com", &allowed));
         assert!(host_allowed("https", "example.com:8080", &allowed));
         assert!(host_allowed("https", "example.com:65535", &allowed));
@@ -173,32 +147,38 @@ mod tests {
 
     #[test]
     fn a_star_scheme_pattern_matches_any_scheme() {
-        let allowed = vec!["*://example.com".to_string()];
+        let allowed = vec!["*://example.com:*".to_string()];
         assert!(host_allowed("http", "example.com", &allowed));
         assert!(host_allowed("https", "example.com", &allowed));
     }
 
     #[test]
-    fn a_scheme_less_pattern_matches_any_scheme() {
+    fn a_scheme_less_pattern_does_not_match() {
         let allowed = vec!["example.com".to_string()];
-        assert!(host_allowed("http", "example.com", &allowed));
-        assert!(host_allowed("https", "example.com", &allowed));
+        assert!(!host_allowed("http", "example.com", &allowed));
+        assert!(!host_allowed("https", "example.com", &allowed));
     }
 
     #[test]
-    fn wildcard_subdomain_matches_any_depth_and_the_bare_domain() {
-        // By design, "*.example.com" also covers the bare "example.com", not just
-        // strict subdomains.
-        let allowed = vec!["*.example.com".to_string()];
+    fn wildcard_subdomain_matches_any_depth_but_not_the_bare_domain() {
+        let allowed = vec!["https://*.example.com".to_string()];
         assert!(host_allowed("https", "a.example.com", &allowed));
         assert!(host_allowed("https", "a.b.example.com", &allowed));
-        assert!(host_allowed("https", "example.com", &allowed));
+        assert!(!host_allowed("https", "example.com", &allowed));
         assert!(!host_allowed("https", "notexample.com", &allowed));
     }
 
     #[test]
     fn a_bare_star_does_not_allow_all() {
         assert!(!host_allowed("https", "example.com", &["*".to_string()]));
+        assert!(!host_allowed("https", "example.com", &["*://*:*".to_string()]));
+    }
+
+    #[test]
+    fn spin_self_patterns_do_not_match_outbound_hosts() {
+        for host in ["self", "self.alt"] {
+            assert!(!host_allowed("https", host, &[format!("https://{host}")]));
+        }
     }
 
     #[test]
@@ -216,13 +196,13 @@ mod tests {
             "[fc00::1]",
             "[::ffff:169.254.169.254]", // IPv4-mapped IPv6
         ] {
-            assert!(!host_allowed("https", host, &[host.trim_start_matches('[').trim_end_matches(']').to_string()]), "{host}");
+            assert!(!host_allowed("https", host, &[format!("https://{host}")]), "{host}");
         }
     }
 
     #[test]
     fn allows_public_ip_literals() {
-        let allowed = vec!["93.184.216.34".to_string()];
+        let allowed = vec!["https://93.184.216.34".to_string()];
         assert!(host_allowed("https", "93.184.216.34", &allowed));
     }
 
@@ -238,7 +218,7 @@ mod tests {
 
     #[test]
     fn matching_is_case_insensitive() {
-        let allowed = vec!["Example.COM".to_string()];
+        let allowed = vec!["https://Example.COM".to_string()];
         assert!(host_allowed("https", "example.com", &allowed));
         assert!(host_allowed("HTTPS", "EXAMPLE.com", &allowed));
     }

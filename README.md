@@ -67,7 +67,7 @@ POST this envelope to `/ts/...` or `/py/...`:
 {
   "code": "print(6 * 7)",
   "sandboxId": "demo",
-  "allowedHosts": ["api.example.com"],
+  "allowedHosts": ["https://api.example.com"],
   "kvEnabled": true,
   "input": { "method": "GET", "path": "/" }
 }
@@ -75,7 +75,10 @@ POST this envelope to `/ts/...` or `/py/...`:
 
 `code` and `sandboxId` are required; `sandboxId` must be non-empty and at most 256
 bytes. `allowedHosts` narrows egress for outbound HTTP;
-missing or empty denies it. `kvEnabled` is `false` by default; set it to `true` to
+missing or empty denies it. Entries use `scheme://host[:port]`; `*.example.com`
+matches subdomains only and `:*` allows any port. CIDR and port ranges are not
+supported, wildcard hosts grant nothing, and malformed entries return `400`.
+`kvEnabled` is `false` by default; set it to `true` to
 allow access to the scoped key-value store. `input` creates the request delivered to
 an HTTP handler.
 
@@ -142,6 +145,8 @@ In production, run sandboxes as private components and reach them through Spin s
 chaining or the [`@spinframework/sandbox`](sdk) client library. The
 [AI code executor](examples/ai-code-executor) shows the complete wiring.
 
+Sandbox endpoints do not authenticate callers: any component allowed to reach a private route can choose an ID and policy. Grant access only to trusted callers, or authenticate public routes. The application must map requests to sandbox IDs and set `allowedHosts` and `kvEnabled` itself; never accept these from model output or unchecked users.
+
 ## Testing
 
 Run unit tests with:
@@ -170,6 +175,8 @@ template updates.
   built-in caps are on size: code over 5 MB (or an oversized request body) is rejected
   with `413`, and captured stdout/stderr is truncated at 256 KB.
 - **Stateless.** Each `run` is single-shot. Only the scoped KV store persists.
+- **KV lifetime and quotas.** KV has no per-sandbox quota or automatic cleanup. Once an ID is retired, remove its data with `Interpreter.javascript(...).kv(id).clear()`; coordinate cleanup with writers.
+- **Secrets.** Code can read any secrets provided in its code, input, or component environment. Do not configure sensitive environment variables on sandbox components; there is no host-side credential injection for outbound requests.
 - **Fixed capabilities.** No filesystem, shell, or subprocess, and no `pip`/`npm`
   install at runtime. The pre-bundled dependency set (plus, for JS, whatever the bundler can package) is the whole toolbox.
 - **Egress DNS.** Private IP literals and local/internal names are denied by the

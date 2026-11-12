@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "description": "Wasm sandbox that executes dynamic JS/TS code via Spin",
-  "license": "Apache-2.0",
+  "license": "Apache-2.0 WITH LLVM-exception",
   "main": "index.js",
   "type": "module",
   "scripts": {

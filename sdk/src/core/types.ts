@@ -69,7 +69,7 @@ export interface RunOpts {
   lang?: Language;
   /**
    * Per-run outbound allow-list. Default-deny: an empty/omitted list blocks all
-   * egress.
+  * egress. Entries use scheme://host[:port]; *. matches subdomains only.
    */
   allowedHosts?: string[];
   /** Enables access to the sandbox's scoped KV store for this run. Default: false. */
