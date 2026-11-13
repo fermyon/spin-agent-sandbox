@@ -9,7 +9,7 @@
   "dependencies": {
     "@spinframework/sandbox": "file:../../../sdk",
     "@spinframework/wasi-http-proxy": "^2.0.0",
-    "hono": "^4.7.4"
+    "hono": "^4.13.16"
   },
   "devDependencies": {
     "esbuild": "^0.25.8",
